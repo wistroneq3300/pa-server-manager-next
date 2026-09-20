@@ -24,11 +24,13 @@ Open <http://127.0.0.1:8769/> in a desktop browser. Use `python serve.py --port 
 ## Design
 
 - Official transparent Wistron website logo asset
-- Graphite / Steel product shell with machined-metal surfaces
-- Native WebGL server-to-rack assembly with reversible scroll-driven composition
-- Subtle pointer depth and a static reduced-motion layout
+- Distinct **Pearl Light / Graphite Dark** themes, anchored in Wistron blue and green
+- Original native WebGL Compute Tray / NVL72-inspired rack, with reversible scroll-driven assembly
+- Drag to inspect all sides; arrow keys rotate, Home resets, and scrolling gently restores the narrative camera
+- Reduced-motion layout keeps both management entries available and permits explicit user-controlled rotation
 - Dedicated L10 and L11 project workspaces
 - Rebuilt five-tab system detail workspace
+- System identity and CPU / memory / storage / NIC / GPU summaries come from reported inventory, not an assumed GPU product
 - 48U rack, topology, component composition and telemetry views
 
 See [DESIGN-NOTES.md](DESIGN-NOTES.md) for scope, source attribution, validation and known limitations.
@@ -38,6 +40,8 @@ See [DESIGN-NOTES.md](DESIGN-NOTES.md) for scope, source attribution, validation
 This redesign lives on `astra-cinematic-ui`, separate from `main`.
 
 With the server running, use `node qa/acceptance.cjs`. The test runner uses Playwright and Chrome for development testing only; the application adds no runtime dependencies. Set `PLAYWRIGHT_MODULE` and `CHROME_PATH` if required by your environment. Results and screenshots are generated in `qa/artifacts/`.
+
+Additional dependency-free checks: `node qa/hardware-identity.cjs --unit`, `node qa/theme-contract.cjs`, `node qa/theme-palette.cjs`, `node qa/story-adapter.cjs`, and `node qa/core-scene.cjs`. The supplementary browser suite is `node qa/appearance-interaction.cjs`; consult [the validation notes](DESIGN-NOTES.md#validation) for which checks were actually executed.
 
 Direct routes: `/#/dashboard`, `/#/projects/fleet_l`, `/#/machine/host_a`, `/#/rack/proj_k`.
 

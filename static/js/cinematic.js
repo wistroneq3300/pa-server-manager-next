@@ -4,6 +4,45 @@
   const previous = { dashboard: RENDERERS.dashboard, projects: RENDERERS.projects, render: _renderMachine };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const savedTheme = localStorage.getItem('pa_theme');
+  // Keep the original persisted theme/API; only adapt presentation consumers.
+  const originalTheme = applyTheme;
+  function chartPalette(chart) {
+    const light = document.documentElement.dataset.theme === 'light';
+    const ink = light ? '#46616e' : '#a3b3c1';
+    const grid = light ? 'rgba(37,73,89,.12)' : 'rgba(154,183,203,.13)';
+    const options = chart.config.options;
+    options.color = ink;
+    options.plugins ||= {};
+    if (options.plugins.legend !== false) {
+      options.plugins.legend ||= {};
+      options.plugins.legend.labels ||= {};
+      options.plugins.legend.labels.color = ink;
+    }
+    if (options.plugins.title && options.plugins.title !== false) options.plugins.title.color = ink;
+    for (const axis of Object.values(options.scales || {})) {
+      axis.ticks ||= {}; axis.ticks.color = ink;
+      axis.grid ||= {}; axis.grid.color = grid;
+      axis.border ||= {}; axis.border.color = grid;
+      if (axis.title) axis.title.color = ink;
+    }
+  }
+  if (window.Chart) Chart.register({id:'paWistronPalette',beforeUpdate:chartPalette});
+  applyTheme = function(theme) {
+    originalTheme(theme);
+    const light = theme === 'light', button = document.getElementById('theme-toggle');
+    if (button) {
+      button.innerHTML = `<span aria-hidden="true">${light ? '☀' : '◐'}</span><span>${light ? 'Light' : 'Dark'}</span>`;
+      button.title = light ? '目前為 Pearl Light，切換至 Graphite Dark' : '目前為 Graphite Dark，切換至 Pearl Light';
+      button.setAttribute('aria-label', button.title);
+      button.setAttribute('aria-pressed', String(light));
+    }
+    if (window.Chart) {
+      Chart.defaults.color = light ? '#46616e' : '#a3b3c1';
+      Chart.defaults.borderColor = light ? 'rgba(37,73,89,.12)' : 'rgba(154,183,203,.13)';
+      Object.values(Chart.instances).forEach(chart => { if (chart.canvas?.isConnected) chart.update('none'); });
+    }
+    window.dispatchEvent(new CustomEvent('pa-theme-change',{detail:{theme}}));
+  };
   const two = n => String(n).padStart(2, '0');
   let teardown = () => {};
   let search = '';
@@ -27,7 +66,7 @@
         <div class="cine-stage" id="core-stage" data-phase="system">
           <div class="cine-stage-top"><span><i class="p-live-dot"></i> WISTRON <b>/</b> DATACENTER ENGINEERING</span><span class="cine-edition">SYSTEM CORE <b>01—02</b></span></div>
           <div class="cine-floor" aria-hidden="true"></div>
-          <div class="cine-core" id="core-visual" aria-hidden="true"><img class="cine-fallback" src="/static/img/server-hero.png" alt=""><canvas id="system-core"></canvas></div>
+          <div class="cine-core" id="core-visual"><img class="cine-fallback" src="/static/img/server-hero.png" alt="靜態概念伺服器示意"><canvas id="system-core" tabindex="0" role="img" aria-label="Compute Tray 與 Rack 互動 3D 模型" aria-describedby="core-interaction-help"></canvas></div>
           <div class="cine-copy cine-copy-system" id="core-system-copy">
             <div class="cine-chapter"><span>01</span><b>L10 / SYSTEM LEVEL</b></div>
             <h2>System.<br><span>To rack.</span></h2>
@@ -41,8 +80,9 @@
             <div class="cine-hero-actions"><button class="btn primary" onclick="${l11[0] ? `productRack(${esc(JSON.stringify(l11[0].name))})` : `productLevel('rack')`}">進入 Rack 工作區 <span>↗</span></button></div>
             <div class="cine-live-summary"><span><b>${two(l11.length)}</b> L11 專案</span><i></i><span><b>${two(rack.length)}</b> 元件</span></div>
           </div>
-          <div class="cine-object-label"><span class="cine-label-system">L10 / GPU SYSTEM</span><span class="cine-label-rack">L11 / 48U RACK</span><small>PARAMETRIC HARDWARE STUDY</small></div>
-          <div class="cine-stage-bottom"><div class="cine-scroll-cue"><span>↓</span> 捲動查看 System → Rack <div class="cine-progress"><i></i></div></div><span>概念硬體 · 非特定 Wistron 機型</span><button class="cine-link" onclick="cineProjects()">專案一覽 ↘</button></div>
+          <div class="cine-object-label"><span class="cine-label-system">L10 / COMPUTE TRAY</span><span class="cine-label-rack">L11 / NVL72 RACK STUDY</span><small>VERA RUBIN–INSPIRED · 3D STUDY</small></div>
+          <div class="cine-core-tools" id="core-tools"><span id="core-interaction-help">按住拖曳旋轉 · 方向鍵查看 · Home 重設</span><div><button type="button" data-core-view="rear" aria-label="3D 模型背面視角">背面</button><button type="button" data-core-view="reset" aria-label="重設 3D 模型視角">↺ 重設視角</button></div></div>
+          <div class="cine-stage-bottom"><div class="cine-scroll-cue"><span>↓</span> 捲動查看 System → Rack <div class="cine-progress"><i></i></div></div><span>結構示意 · 非官方 CAD／即時設備</span><button class="cine-link" onclick="cineProjects()">專案一覽 ↘</button></div>
         </div>
       </section>
       <section class="cine-fleet" aria-label="工程狀態摘要"><div class="cine-fleet-total"><span class="cine-kicker">WORKSPACE SNAPSHOT</span><div><strong>${two(machines.length)}</strong><span>受管設備<small>Fixture / 模擬資料</small></span></div></div><div class="cine-fleet-levels"><button onclick="productLevel('system')"><span>L10 <small>System</small></span><b>${two(system.length)}</b></button><button onclick="productLevel('rack')"><span>L11 <small>Rack components</small></span><b>${two(rack.length)}</b></button></div><div class="cine-fleet-health"><span class="cine-kicker">OS CONNECTIVITY</span><div class="cine-connectivity">${connected.map(m=>`<i class="${m.os_alive===true?'on':m.os_alive===false?'off':'unknown'}" title="${esc(m.name)} · ${m.os_alive===true?'OS 在線':m.os_alive===false?'OS 離線':'未知'}"></i>`).join('')||'<span>尚無管理介面</span>'}</div><p><b>${online}</b> 在線 <span>／ ${connected.length} 有管理介面</span></p></div><div class="cine-attention"><span class="cine-kicker">ATTENTION</span><strong>${two(offline.length)}<small>OS 離線</small></strong><span>確認連線與電源狀態</span></div></section>
@@ -99,6 +139,7 @@
   rackPowerAllNames = async function(...args) { await originalAllPower(...args); await refreshRackState(); };
 
   function mountStory() {
+    teardown(); teardown = () => {};
     const story = document.getElementById('core-story');
     if (!story) return;
     const stage = document.getElementById('core-stage');
@@ -111,12 +152,32 @@
     try { if (!lowResource) scene = window.PACoreScene?.mount(canvas); } catch (_) { canvas.dataset.coreState = 'fallback'; }
     if (lowResource) { canvas.dataset.coreState = 'fallback'; canvas.dataset.coreError = 'Static preview on low-resource device'; }
     let raf = 0;
-    const onReady = () => visual.classList.add('is-rendered');
-    const onFallback = () => { visual.classList.remove('is-rendered'); stage.dataset.scene = 'fallback'; };
+    const toolButtons = [...stage.querySelectorAll('[data-core-view]')];
+    const help = document.getElementById('core-interaction-help');
+    const onReady = () => {
+      visual.classList.add('is-rendered'); stage.dataset.scene = 'interactive'; canvas.tabIndex = 0;
+      toolButtons.forEach(button => button.disabled = false);
+      help.textContent = '按住拖曳旋轉 · 方向鍵查看 · Home 重設';
+    };
+    const onFallback = () => {
+      visual.classList.remove('is-rendered'); stage.dataset.scene = 'fallback'; canvas.tabIndex = -1;
+      toolButtons.forEach(button => button.disabled = true);
+      help.textContent = '靜態預覽 · 3D 暫不可用，管理功能不受影響';
+    };
     canvas.addEventListener('pa-core-ready', onReady);
     canvas.addEventListener('pa-core-fallback', onFallback);
     if (canvas.dataset.coreState === 'ready') onReady();
     if (!scene?.supported) onFallback();
+    scene?.setTheme?.(document.documentElement.dataset.theme);
+    const onTheme = event => scene?.setTheme?.(event.detail.theme);
+    const onTool = event => {
+      const button = event.target.closest('[data-core-view]');
+      if (!button || button.disabled) return;
+      if (button.dataset.coreView === 'rear') scene?.setOrbit?.(Math.PI,0);
+      else scene?.resetOrbit?.();
+    };
+    document.getElementById('core-tools').addEventListener('click', onTool);
+    window.addEventListener('pa-theme-change', onTheme);
     function update() {
       raf = 0;
       const bounds = story.getBoundingClientRect();
@@ -132,6 +193,8 @@
       const travel = Math.min(1, progress / .62);
       const composition = travel * travel * (3 - 2 * travel);
       stage.style.setProperty('--core-x', `${composition * -60}%`);
+      // Reserve a quiet footer beneath the tall rack for its identity and controls.
+      stage.style.setProperty('--core-height', `${90 - composition * 14}%`);
       stage.dataset.phase = crossed ? 'rack' : 'system';
       const systemVisible = reduced.matches || out > .05;
       const rackVisible = reduced.matches || entering > .05;
@@ -142,25 +205,17 @@
       scene?.setProgress(progress);
     }
     const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
-    const onPointer = event => {
-      if (reduced.matches || event.pointerType === 'touch') return;
-      const r = stage.getBoundingClientRect();
-      scene?.setPointer((event.clientX-r.left)/r.width*2-1, (event.clientY-r.top)/r.height*2-1);
-    };
-    const onLeave = () => scene?.setPointer(0,0);
     window.addEventListener('scroll', schedule, {passive:true});
     window.addEventListener('resize', schedule, {passive:true});
     reduced.addEventListener('change', schedule);
-    stage.addEventListener('pointermove', onPointer, {passive:true});
-    stage.addEventListener('pointerleave', onLeave);
     update();
     teardown = () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
       reduced.removeEventListener('change', schedule);
-      stage.removeEventListener('pointermove', onPointer);
-      stage.removeEventListener('pointerleave', onLeave);
+      document.getElementById('core-tools')?.removeEventListener('click', onTool);
+      window.removeEventListener('pa-theme-change', onTheme);
       canvas.removeEventListener('pa-core-ready', onReady);
       canvas.removeEventListener('pa-core-fallback', onFallback);
       scene?.destroy();
@@ -192,12 +247,9 @@
     lastView = view;
   };
   document.addEventListener('DOMContentLoaded', () => {
-    if (savedTheme === 'light') applyTheme('light');
+    applyTheme(savedTheme === 'light' ? 'light' : 'dark');
     document.querySelector('.p-brand-product').innerHTML = 'PA Server<span>Manager<span class="cine-version"> / NEXT</span></span>';
     document.querySelector('.p-brand-caption').textContent = 'DATACENTER ENGINEERING';
-    const button = document.getElementById('theme-toggle');
-    button.title = 'Graphite / Steel 顯示模式';
-    button.setAttribute('aria-label', '切換 Graphite / Steel 顯示模式');
     document.querySelector('.p-top-label').innerHTML = 'ENGINEERING <i>/</i>';
     afterRender();
   });
