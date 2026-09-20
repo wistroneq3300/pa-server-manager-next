@@ -1,79 +1,127 @@
-# Wistron PA Server Manager — desktop product concept 04
+# PA Server Manager Next — cinematic engineering workspace
 
-## Source and scope
+## Scope and branch
 
-Based on the local GitHub checkout at `E:/CodexProjects/pa-server-manager`, commit `499f561`.
-Reviewed README sections 1.1–1.10, the actual `static/index.html`, `static/js/app.js`, the user guide, and existing branding assets.
+- Repository: `wistroneq3300/pa-server-manager-next` only.
+- Working branch: `astra-cinematic-ui`, based on preview baseline `ce3cb5480a4ac8fc3f58e156348baad0c9bc8d06`.
+- Original frontend provenance: `pa-server-manager`, commit `499f561`.
+- Independent, fixture-backed desktop UI preview; no production FastAPI service or live hardware is connected.
+- The original repository and the new repository's `main` remain untouched. The user authorized publishing this redesign to its new branch.
 
-This directory is independent of the repository. The source checkout, FastAPI backend and GitHub branches were not modified.
+## Design decisions
 
-## Product structure retained
+### One continuous engineering subject
 
-| Area | Original behavior retained in the preview frontend |
+Reference: [website demonstration around 5:31–8:10](https://www.youtube.com/watch?v=UWdn0w-fbzQ&t=331s). Actual frames at approximately 5:49, 6:26 and 7:13 show the main subject on the right, the same subject repositioned left, and a modal using the same material vocabulary. Only these design methods are borrowed; no video assets, source code or gold palette are copied.
+
+The new System Core is original procedural geometry. A GPU server's lid, cooling banks, fans, drive caddies and chassis form the L10 composition. Scrolling closes the chassis and assembles related modules and rails into a rack. One canvas changes position, scale, view angle and assembly state while text moves to the opposite side. Scrolling upward reverses the same progress value.
+
+This is a conceptual hardware study, not a specific Wistron SKU, a live twin or the fixture rack's exact configuration. Precise 48U placement is displayed in the operational Rack workspace.
+
+The narrative is optional for daily use: navigation, System/Rack entries and “跳到專案” are immediately available. There is no wheel interception, scroll hijacking, animation gate or splash screen.
+
+### Product language
+
+- Graphite black and navy structure, machined-metal edges and restrained highlights.
+- Logo blue/green anchors; cool blue controls and limited lime emphasis.
+- Larger type and a single hardware focus on the Dashboard; compact scanning and stable tables in workspaces.
+- Consistent identity and Operations rail across all five system tabs.
+- Metal rails, front-panel texture and soft hover focus in the rack, without transforming its selectable coordinate grid.
+- Unified Dialog, Terminal, KVM, case-library, loading, error and empty surfaces.
+- Graphite / Steel modes retain the original theme control; Steel is a lighter dark scheme.
+
+## Product coverage
+
+| Area | Preserved workflows |
 | --- | --- |
-| Dashboard | Managed counts, availability, power states, project status, SUT health, AI Copilot |
-| L10 System Level | Separate project groups, project ordering, system ordering, project management, OS/BMC states, move between compatible projects, system broadcast |
-| L11 Rack Level | Separate project groups, add system/component, mount existing L11 systems into their own project |
-| Rack Manager | Project selection, 48U placement with descending display and bottom-up numbering, component list, topology, telemetry by component kind, rack actions and broadcast |
-| System detail | Basic information, hardware inventory, firmware, sensors, diagnosis, power controls, terminal, telemetry, assign-task/test-library entry |
-| Common tools | User guide, original theme control, project KVM entry |
+| Dashboard | L10/L11 project entries, counts, OS and project health, Copilot and project management |
+| L10 workspace | Search, project management, add/scan/broadcast, collapse/expand, project/system ordering, OS/BMC IP and status, power, move, Terminal, KVM, settings and deletion |
+| System detail | Overview, Hardware, Sensors & firmware, Telemetry and Test tasks; original inventory, diagnosis and operations |
+| L11 workspace | 48U numbering, multi-U placement, component types, mount/unmount/move, list, topology, telemetry, Copilot and rack actions |
+| Shared tools | Guide, theme, project KVM, Terminal/Broadcast, confirmations and test-library workflow |
 
-L10 and L11 are management levels, not physical sites. The navigation remains Dashboard, System Manager and Rack Manager. No task-board, scheduling, or project-progress model was invented.
+L10 and L11 are management levels, not sites or floors. No project-progress, kanban or scheduling model is introduced. Inherited unfinished features stay explicitly unfinished.
 
-## Visual changes
+## Implementation
 
-- A new dark graphite product shell, sculpted metal panels, beveled controls and layered shadows. The dark direction is intentional; the old theme control does not yet provide a fully designed light-mode alternative.
-- Official transparent Wistron logo replaces the repository's white-background raster image.
-- New server concept artwork, CSS rack models, pointer-driven perspective and light reflections. Reduced-motion preference disables movement; data tables remain stable.
-- Dashboard explicitly separates L10 system projects from L11 rack projects.
-- Project workspace uses large level selectors, project shortcuts, search and regrouped table columns. All OS/BMC addresses, statuses and original row operations remain accessible.
-- Single-system pages are fully recomposed into Overview, Hardware, Sensors & firmware, Telemetry and Test tasks, with a persistent operations rail. Original hardware, sensors, firmware and chart content is relocated, not replaced with decorative placeholders.
-- Rack workspace combines dimensional rack configuration with composition, topology and Copilot; list and telemetry views remain available.
-- Low-frequency per-system actions move into a menu; original handlers are retained.
+No frontend framework change or new application dependency is introduced.
 
-## Brand sources and image
+| File | Responsibility |
+| --- | --- |
+| `static/js/app.js` | Unchanged original routes, state, API contracts and operations |
+| `product.js` / `product.css` | Existing preview adapters and project/rack composition |
+| `product-detail.js` / `product-detail.css` | Five-tab detail workspace, identity and firmware navigation |
+| `core-scene.js` | Native WebGL geometry, shaders and lifecycle |
+| `cinematic.js` / `cinematic.css` | Dashboard narrative, shell, L10/Rack surfaces, search persistence and rack power-state refresh |
+| `workspace-cinematic.js` / `.css` | Detail/Dialog consistency, keyboard/focus behavior and search caret preservation |
+| `preview-fixtures.js` | In-memory endpoint-compatible simulations |
+| `qa/acceptance.cjs` | Reproducible desktop acceptance, not a shipped runtime dependency |
 
-- Official website: https://www.wistron.com/en
-- Transparent logo discovered in that page's rendered DOM: https://www.wistron.com/_next/static/media/logo.8b542402.svg
-- Saved byte-for-byte as `static/img/wistron-official.svg` using the browser's loaded asset export. The downloaded file uses `#006C93` and `#A1CC56` for the mark. These are verified digital asset colors, not an assertion about a published CI/Pantone standard.
-- Dark graphite surfaces and lighter blue/green interface variations are this concept's design extensions, not official brand specifications. Logo colors are unchanged.
-- Product context: https://www.wistron.com/en/Product%26Services/Enterprise%26Networking
-- `static/img/server-hero.png` is an AI-generated 1536×1024 conceptual GPU-server illustration, not a photograph or an exact Wistron model. Generated with the built-in image-generation tool and visually inspected. Full prompt and provenance: [server-hero-prompt.md](static/img/server-hero-prompt.md).
+Original `app.js` SHA256:
 
-## Implementation and limitations
+```text
+05A5E7916C0C104CA536AF85FB324E58EF9288ABB1B81A72D93799798FFA9F3C
+```
 
-- `static/js/app.js` is byte-identical to the source checkout (SHA256 verified).
-- Active new presentation layer: `static/css/product.css`, `static/js/product.js`, `static/css/product-detail.css`, `static/js/product-detail.js`. Legacy atelier/pro/polish/premium enhancements are not loaded.
-- `static/js/preview-fixtures.js` intercepts API requests and provides in-memory sample data. No real API calls are forwarded.
-- The preview replaces WebSocket connections with a local demonstration. SSH, KVM, power, AI and scans do not execute on real equipment.
-- The KVM dialog is a design simulation, not the actual noVNC session.
-- The original test-library JSON is copied into fixtures for the existing assign-task browsing UI.
-- Sample project names are based on repository documentation; counts, devices, hardware readings and addresses are demonstration data, not a production snapshot.
-- Changes to sample projects/devices disappear after reload.
-- Topology creation remains marked as pending, matching the existing application.
+Adapters preserve endpoint paths and payloads. Targeted behavior fixes outside `app.js` preserve the caret when test search recreates its dialog, refresh displayed machine state after rack power operations, and prevent search from matching hidden move-project dropdown options.
 
-## Validation performed
+### WebGL and motion
 
-- JavaScript syntax checks for product and detail presentation scripts.
-- Desktop browser inspection of dashboard, regrouped project table, new system Overview and L11 rack plane/telemetry.
-- Independent desktop check at 1728×1117: no document horizontal overflow, no JavaScript page errors; all five system tabs switch; all 13 original telemetry canvases have nonzero displayed dimensions in the active tab.
-- Sensors analysis completes in the new panel. A small presentation-level adapter fixes the original selector lookup without changing its request or API.
-- Test library loads 6 categories / 3,112 entries; first category opens the original assign-task sheet with 2,291 entries.
-- Rack plane displays 48U with 44U occupied and 4U free; rack telemetry displays server, switch, power shelf, PDU and CDU data.
-- Browser logs inspected without reported JavaScript errors at checked points.
-- `app.js` SHA256 equals original: `05A5E7916C0C104CA536AF85FB324E58EF9288ABB1B81A72D93799798FFA9F3C`.
-- Original E-drive repository remains clean; no commit, branch mutation or GitHub push performed.
+- Original shaders/meshes; no CDN, external textures, downloaded model or runtime network dependency.
+- Six geometry buffers uploaded once; matrices/opacity change per frame rather than rebuilding vertices.
+- Event-driven rendering with no perpetual idle animation loop.
+- ResizeObserver, device pixel ratio capped at 1.7, maximum drawing-buffer side capped at 4096 or GPU limit.
+- Route teardown releases buffers, shaders/program, RAF, observers and listeners.
+- Context loss displays the concept-image fallback; restoration rebuilds resources.
+- Unavailable WebGL or detected low-resource devices use the static image. Management remains available.
+- Reduced motion disables scroll/pointer movement, removes sticky narrative spacing and shows both level entry points.
+- Telemetry tab selection resizes the original Chart.js instances.
 
-This is a design review preview. Production API integration, all action branches and live hardware behavior still require regression testing after design approval.
+### Fixtures
+
+Fixture corrections cover add-system response shape, project counts/rename/order, machine order, passive rack components, occupied-U validation, diagnosis report and power-status fields. CPU/DIMM/GPU summary values match detailed and telemetry data. Broadcast emulates the ready/output protocol asynchronously.
+
+Changes are in-memory and reset on refresh. IPs use documentation ranges; credentials are preview-only strings.
+
+## Brand and assets
+
+- [Wistron official website](https://www.wistron.com/en).
+- [Official website SVG](https://www.wistron.com/_next/static/media/logo.8b542402.svg) already included as `static/img/wistron-official.svg`.
+- Mark colors `#006C93` and `#A1CC56` are digital asset colors, not a complete official CI/Pantone specification.
+- Trademark ownership remains with Wistron; inclusion supports this internal Wistron-oriented concept and does not imply endorsement or a general logo redistribution license.
+- `server-hero.png` is existing AI-generated concept artwork, not a real product photo. See [prompt/provenance](static/img/server-hero-prompt.md).
+- The new procedural scene was authored for this repository. No reference-video content is redistributed.
+
+## Validation
+
+With the preview server running, execute:
+
+```powershell
+node qa/acceptance.cjs
+```
+
+The runner uses Playwright and locally installed Chrome only for development testing. Set `PLAYWRIGHT_MODULE` and `CHROME_PATH` for another environment.
+
+Exact results and screenshots are in [qa/artifacts/acceptance.md](qa/artifacts/acceptance.md) and [acceptance.json](qa/artifacts/acceptance.json). Checks cover desktop widths 1440/1600/1920, all views, CRUD and ordering, 13 telemetry canvases, 6 categories / 3,112 cases, 48U placement, Terminal/KVM/Broadcast, state recovery, deep links, motion, console and outbound requests.
+
+This is fixture UI acceptance, not production hardware validation.
+
+## Known limitations
+
+1. Terminal/SSH, KVM, power, scan and AI are simulations.
+2. Topology creation remains pending; existing topology visualization works.
+3. Original rack-wide Reboot/AUX select devices but report unfinished command wiring. They do not pretend to execute.
+4. KVM sync controls demonstrate local state without sending input to a BMC.
+5. The server is a loopback development preview, not production hosting.
+6. Desktop is the target; smaller windows may need contained table scrolling.
+7. Production integration still requires removing fixture interception, configuring the KVM broker, reconnecting existing FastAPI/WebSocket services and authorized live-backend regression tests.
 
 ## Run
 
-From the parent workspace:
-
 ```powershell
-.venv/Scripts/python.exe preview-v4/serve.py
+python serve.py --port 8769
 ```
 
-Open `http://127.0.0.1:8768/` in a desktop browser. The static server listens only on loopback.
+Open `http://127.0.0.1:8769/`. Hash routes support direct entry and reload.
 
-After design approval, transfer the presentation work into a new Git branch. Do not merge or push over the existing branch as part of this preview.
+Optional scenarios: `?preview=empty`, `?preview=loading`, `?preview=error` (first detail request fails; retry succeeds).

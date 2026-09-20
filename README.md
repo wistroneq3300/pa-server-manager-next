@@ -19,18 +19,35 @@ Python 3 is sufficient; no package installation is required.
 python serve.py
 ```
 
-Open <http://127.0.0.1:8768/> in a desktop browser.
+Open <http://127.0.0.1:8769/> in a desktop browser. Use `python serve.py --port 8770` to choose another port.
 
 ## Design
 
 - Official transparent Wistron website logo asset
-- Graphite datacenter product shell with dimensional surfaces
-- Pointer-driven depth, light reflection and reduced-motion support
+- Graphite / Steel product shell with machined-metal surfaces
+- Native WebGL server-to-rack assembly with reversible scroll-driven composition
+- Subtle pointer depth and a static reduced-motion layout
 - Dedicated L10 and L11 project workspaces
 - Rebuilt five-tab system detail workspace
 - 48U rack, topology, component composition and telemetry views
 
 See [DESIGN-NOTES.md](DESIGN-NOTES.md) for scope, source attribution, validation and known limitations.
+
+## Desktop acceptance
+
+This redesign lives on `astra-cinematic-ui`, separate from `main`.
+
+With the server running, use `node qa/acceptance.cjs`. The test runner uses Playwright and Chrome for development testing only; the application adds no runtime dependencies. Set `PLAYWRIGHT_MODULE` and `CHROME_PATH` if required by your environment. Results and screenshots are generated in `qa/artifacts/`.
+
+Direct routes: `/#/dashboard`, `/#/projects/fleet_l`, `/#/machine/host_a`, `/#/rack/proj_k`.
+
+State demonstrations: `/?preview=empty#/projects`, `/?preview=loading#/machine/host_a`, and `/?preview=error#/machine/host_a` (retry recovers).
+
+## Desktop preview
+
+![Dashboard at 1600px](qa/artifacts/dashboard-desktop-1600.png)
+
+[Rack transition](qa/artifacts/dashboard-rack-stage-1600.png) · [System Detail](qa/artifacts/system-detail-1600.png) · [Rack Workspace](qa/artifacts/rack-workspace-1600.png) · [Acceptance results](qa/artifacts/acceptance.md)
 
 ## Safety
 

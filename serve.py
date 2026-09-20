@@ -1,5 +1,7 @@
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import argparse
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
 
@@ -8,7 +10,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def do_GET(self):
-        if self.path in ('/', '/index.html'):
+        if urlsplit(self.path).path in ('/', '/index.html'):
             self.path = '/static/index.html'
         if self.path.startswith(('/api/', '/ws/')):
             self.send_error(404, 'Design preview has no live backend')
@@ -23,5 +25,8 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         pass
 
 if __name__ == '__main__':
-    print('Wistron product preview: http://127.0.0.1:8768/', flush=True)
-    ThreadingHTTPServer(('127.0.0.1', 8768), PreviewHandler).serve_forever()
+    parser = argparse.ArgumentParser(description='PA Server Manager local UI preview')
+    parser.add_argument('--port', type=int, default=8769)
+    args = parser.parse_args()
+    print(f'Wistron product preview: http://127.0.0.1:{args.port}/', flush=True)
+    ThreadingHTTPServer(('127.0.0.1', args.port), PreviewHandler).serve_forever()

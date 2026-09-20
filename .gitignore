@@ -4,3 +4,4 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
+qa/artifacts/failure-*.png
