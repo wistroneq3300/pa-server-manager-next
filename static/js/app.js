@@ -3955,6 +3955,7 @@ function changeOsIp(name) {
       </p>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">OS IP</label>
       <input class="input" id="new-os-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curOs)}" placeholder="例如 INTERNAL_IP_10">
+      <button class="btn small" id="osip-probe-btn" style="margin-top:8px" onclick="probeChangeOsBmc('${esc(name)}')" title="依新 OS IP + 原 SSH 帳密，先確認 hostname 再用 ipmitool lan print 抓取 BMC IP 自動帶入">🔍 依新 OS 抓取 BMC IP</button>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">BMC IP</label>
       <input class="input" id="new-bmc-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curBmc)}" placeholder="例如 INTERNAL_IP_11">
       <div id="osip-msg" style="margin-top:10px;font-size:12px;white-space:pre-line"></div>
@@ -3963,6 +3964,41 @@ function changeOsIp(name) {
       { txt: "取消", cls: "", fn: () => closeDialog() },
       { txt: "變更 IP", cls: "primary", id: "ip-submit-btn", fn: () => submitChangeOsIp(name) },
     ]);
+}
+// 變更 IP 彈窗：依「新 OS IP + 原機台 SSH 帳密」先確認 hostname，再抓 BMC IP 自動帶入
+async function probeChangeOsBmc(name) {
+  const ipEl = $("new-os-ip-input"), msgEl = $("osip-msg"), btn = $("osip-probe-btn");
+  const ip = ipEl ? ipEl.value.trim() : "";
+  const m = machines.find(x => x.name === name);
+  if (!m) return;
+  if (!ip) { msgEl.textContent = "請先輸入新的 OS IP 再抓取 BMC IP。"; msgEl.style.color = "var(--red)"; return; }
+  if (btn) { btn.disabled = true; btn.textContent = "🔍 抓取中…"; }
+  msgEl.textContent = "正在連線新 OS：確認 hostname 並用 ipmitool 抓取 BMC IP…";
+  msgEl.style.color = "var(--text-faint)";
+  try {
+    const d = await api("/api/machines/probe-bmc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ os_ip: ip, os_user: m.os_user || "", os_pass: m.os_pass || "", os_port: parseInt(m.os_port) || 22, expected_hostname: m.name }),
+    });
+    if (d.ok) {
+      $("new-bmc-ip-input").value = d.bmc_ip;
+      msgEl.textContent = `✅ hostname 相符（${d.hostname}），已抓到 BMC IP：${d.bmc_ip}（可再確認後一起送出）`;
+      msgEl.style.color = "var(--green)";
+    } else {
+      msgEl.style.color = "var(--red)";
+      if (d.ipmitool_ok === false) {
+        msgEl.textContent = "⚠️ 無法自動抓取 BMC IP：OS 內未偵測到 ipmitool。請先在該主機安裝 ipmitool 後再試。";
+      } else {
+        msgEl.textContent = "⚠️ " + (d.error || "抓取 BMC IP 失敗");
+      }
+    }
+  } catch (e) {
+    msgEl.textContent = "❌ 抓取 BMC IP 失敗：" + e.message;
+    msgEl.style.color = "var(--red)";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🔍 依新 OS 抓取 BMC IP"; }
+  }
 }
 function _ipSetBusy(busy) { const btn = $("ip-submit-btn"); if (btn) { btn.disabled = busy; btn.textContent = busy ? "變更中…" : "變更 IP"; } }
 function _ipSetDone() {

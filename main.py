@@ -507,6 +507,7 @@ class ProbeBMC(BaseModel):
     os_user: str
     os_pass: str
     os_port: int = 22
+    expected_hostname: str = ""   # 非空時：OS hostname 必須等於此值才抓 BMC IP（變更 IP 用）
 
 
 def _probe_bmc_ip(os_ip, os_user, os_pass, os_port):
@@ -543,6 +544,12 @@ def probe_bmc(body: ProbeBMC):
     hostname, rc, err = ssh_run(body.os_ip, body.os_user, body.os_pass, body.os_port, "hostname", timeout=12)
     if rc != 0 or not hostname:
         return {"ok": False, "error": f"OS 連線失敗（SSH）：{err or '無法登入'}"}
+    hostname = hostname.strip()
+    # 變更 IP 場景：必須確認 hostname 與原機台相同（連 hostname 都換了＝換主機，走新增系統）
+    if body.expected_hostname and hostname != body.expected_hostname:
+        return {"ok": False, "hostname": hostname,
+                "error": f"新 OS 的 hostname 是「{hostname}」，與機台名稱「{body.expected_hostname}」不符。"
+                         f"（等於換了一台主機，請改用「＋ 新增系統」重新加入，而非變更 IP。）"}
     bmc_ip, has_ipmi, perr = _probe_bmc_ip(body.os_ip, body.os_user, body.os_pass, body.os_port)
     if not has_ipmi:
         return {"ok": False, "hostname": hostname, "ipmitool_ok": False,
