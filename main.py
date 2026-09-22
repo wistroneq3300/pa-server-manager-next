@@ -116,6 +116,15 @@ class AddRackPassive(BaseModel):
     rack_size: int = 1
 
 
+class OsEntry(BaseModel):
+    """機框內單一 OS 的連線資訊（多 OS 機框用）。slot 由後端指派。"""
+    ip: str
+    user: str
+    pass_: str = Field(..., alias="pass")
+    port: int = 22
+    label: str = ""
+
+
 class AddMachine(BaseModel):
     os_ip: str = Field(..., description="OS IP")
     os_user: str
@@ -128,6 +137,8 @@ class AddMachine(BaseModel):
     project: str = ""
     level: str = "system"   # 'system' = L10 單機; 'rack' = L11 整櫃
     rack_size: int = 1      # L11 rack level 用：機櫃占用高度（U 數）
+    os: list[OsEntry] = []  # 多 OS 機框：額外 OS（os[0]=os_ip 為主 OS，此為 os[1..]）
+    model_config = {"populate_by_name": True}
 
 
 class AddProject(BaseModel):
@@ -397,15 +408,28 @@ def add_machine(body: AddMachine):
     if rc != 0 or not hostname:
         raise HTTPException(400, f"OS 連線失敗（SSH）：{err or '無法登入'}")
 
-    # 2) BMC：若有填 BMC IP → ping + SSH 驗證連線（驗證 OS 與 BMC 都可連才新增）
+    # 2) BMC：若有填 BMC IP → ping + SSH 登入 + 在 BMC 內跑 ipmitool lan print 確認 IP 無誤
     if body.bmc_ip:
         if not ping_check(body.bmc_ip):
             raise HTTPException(400, f"BMC 連線失敗（{body.bmc_ip} ping 不到）")
         if body.bmc_user and body.bmc_pass:
-            # BMC 多半是專屬 CLI，跑一個無害指令確認能登入即可
-            bmc_rc_ok = ssh_login_ok(body.bmc_ip, body.bmc_user, body.bmc_pass, body.bmc_port)
-            if not bmc_rc_ok:
-                raise HTTPException(400, f"BMC SSH 登入失敗（{body.bmc_user}@{body.bmc_ip}）")
+            # 2a) 先用 BMC 帳密 SSH 登入（驗證帳密）
+            if not ssh_login_ok(body.bmc_ip, body.bmc_user, body.bmc_pass, body.bmc_port):
+                raise HTTPException(400, f"BMC SSH 登入失敗（{body.bmc_user}@{body.bmc_ip}:{body.bmc_port}），請確認 BMC 帳密")
+            # 2b) 在 BMC console 內跑 ipmitool lan print，確認它回報的 IP == 填入的 BMC IP
+            bmc_out, bmc_rc, bmc_err = ssh_run(body.bmc_ip, body.bmc_user, body.bmc_pass,
+                                                body.bmc_port, "ipmitool lan print 2>/dev/null", timeout=20)
+            reported_ip = None
+            for line in (bmc_out or "").splitlines():
+                s = line.strip()
+                if s.startswith("IP Address") and ":" in s and "Source" not in s:
+                    reported_ip = s.split(":", 1)[1].strip()
+                    break
+            if reported_ip and reported_ip != body.bmc_ip:
+                raise HTTPException(400,
+                    f"BMC IP 不符：你填的是 {body.bmc_ip}，但 BMC（{body.bmc_user}@{body.bmc_ip}）"
+                    f"回報自己的 IP 是 {reported_ip}。請確認填對 BMC 管理網卡。")
+            # reported_ip 為 None = BMC 內無 ipmitool 或取不到，不阻擋（2a 已驗證帳密可登入）
 
     if body.project and body.project not in projects:
         raise HTTPException(400, f"專案不存在: {body.project}")
@@ -421,6 +445,13 @@ def add_machine(body: AddMachine):
             conflicts.append(f"OS IP {body.os_ip} 已被「{mk}」使用")
         if body.bmc_ip and mv.get("bmc_ip") and mv["bmc_ip"] == body.bmc_ip:
             conflicts.append(f"BMC IP {body.bmc_ip} 已被「{mk}」使用")
+        # 多 OS：每個額外 OS 的 IP 也要做衝突檢查（不與其他機台主 OS / 其他 OS 重複）
+        for eo in (body.os or []):
+            if eo.ip and eo.ip == mv.get("os_ip"):
+                conflicts.append(f"OS IP {eo.ip} 已被「{mk}」使用")
+            for xo in (mv.get("os") or []):
+                if eo.ip and xo.get("ip") == eo.ip:
+                    conflicts.append(f"OS IP {eo.ip} 已被「{mk}」的 OS{xo.get('slot')} 使用")
     if conflicts:
         detail = "；".join(dict.fromkeys(conflicts))
         raise HTTPException(400, f"無法新增：偵測到衝突 — {detail}。若確實要重複新增，請先處理既有機台，或確認這是同一個名稱/IP。")
@@ -444,6 +475,27 @@ def add_machine(body: AddMachine):
         "order": max([x.get("order", 0) for x in machines.values()] or [-1]) + 1,
         "created": datetime.datetime.now().isoformat(timespec="seconds"),
     }
+
+    # 多 OS 機框：把 os[0]=主 OS（=os_ip）+ 額外 OS 組成 os 陣列，並驗證每個額外 OS
+    os_list = _norm_os_entry({"ip": body.os_ip, "user": body.os_user, "pass": body.os_pass,
+                              "port": body.os_port, "label": "OS 1"}, 1)
+    if os_list:
+        os_list = [os_list]
+        for i, eo in enumerate(body.os or [], start=2):
+            entry = _norm_os_entry({"ip": eo.ip, "user": eo.user, "pass": eo.pass_,
+                                    "port": eo.port, "label": eo.label or f"OS {i}"}, i)
+            if not entry:
+                raise HTTPException(400, f"OS {i} 的 IP / 帳號 / 密碼為必填")
+            # 驗證額外 OS 可連（SSH hostname）
+            h2, rc2, err2 = ssh_run(entry["ip"], entry["user"], entry["pass"], entry["port"], "hostname")
+            if rc2 != 0:
+                raise HTTPException(400, f"OS {i}（{entry['ip']}）SSH 連線失敗：{err2 or '無法登入'}")
+            os_list.append(entry)
+        if len(os_list) > 1:
+            rec["os"] = os_list
+            rec["active_os"] = 1
+            _sync_active_os(rec)
+
     _seq += 1
     machines[name] = rec
     _save_data()
@@ -578,8 +630,19 @@ def edit_machine(name: str, body: dict):
             m[f] = str(body[f] or "").strip()
     if "use_c17" in body:
         m["use_c17"] = bool(body["use_c17"])
+    # 機框級 BMC 帳密（IPMI 電源管理）。密碼留空 = 不更動。
+    for f in ("bmc_ip", "bmc_user"):
+        if f in body:
+            m[f] = str(body[f] or "").strip()
+    if "bmc_pass" in body and body.get("bmc_pass") and not _is_masked(body["bmc_pass"]):
+        m["bmc_pass"] = str(body["bmc_pass"])
+    if "bmc_port" in body:
+        try:
+            m["bmc_port"] = int(body["bmc_port"]) or 623
+        except Exception:
+            pass
     _save_data()
-    return {"ok": True, "machine": m}
+    return {"ok": True, "machine": _bmc_safe(m)}
 
 
 class ChangeOsIp(BaseModel):
@@ -654,6 +717,251 @@ def change_bmc_ip(name: str, body: ChangeBmcIp):
     _save_data()
     return {"ok": True, "changed": True, "msg": f"已將 BMC IP 由 {old_ip} 更新為 {new_ip}。",
             "machine": m}
+
+
+# ---- 多 OS 機框（一台 server 含多個獨立 OS，每個 OS 配對一個 BMC）CRUD ----
+class AddOs(BaseModel):
+    ip: str
+    user: str
+    pass_: str = Field(..., alias="pass")
+    port: int = 22
+    label: str = ""
+    # 該 OS 節點配對的 BMC（IPMI 電源管理）。port 固定 623 不存。
+    bmc_ip: str = ""
+    bmc_user: str = ""
+    bmc_pass: str = ""
+    model_config = {"populate_by_name": True}
+
+
+class UpdateOs(BaseModel):
+    ip: str = ""
+    user: str = ""
+    pass_: str = Field("", alias="pass")
+    port: int = 22
+    label: str = ""
+    # BMC 欄位：留空 = 不更動
+    bmc_ip: str = ""
+    bmc_user: str = ""
+    bmc_pass: str = ""
+    model_config = {"populate_by_name": True}
+
+
+class SelectOs(BaseModel):
+    slot: int
+
+
+def _os_conflict(m_name, m, ip):
+    """檢查 ip 是否與任何其他機台（主 OS 或任一 OS slot）衝突。回傳訊息或 None。"""
+    for mk, mv in machines.items():
+        if mk == m_name:
+            continue
+        if mv.get("os_ip") and mv["os_ip"] == ip:
+            return f"OS IP {ip} 已被「{mk}」使用"
+        for xo in (mv.get("os") or []):
+            if xo.get("ip") == ip:
+                return f"OS IP {ip} 已被「{mk}」的 OS{xo.get('slot')} 使用"
+    return None
+
+
+@app.post("/api/machines/{name}/os")
+def machine_add_os(name: str, body: AddOs):
+    """為機框新增一個 OS slot。IP/帳號必填，密碼可空（之後用 PATCH 補）。
+    不做 SSH 強驗證（方便先註冊 slot 再補帳密）；實際 SSH 連線驗證在開終端時才做。"""
+    if name not in machines:
+        raise HTTPException(404, f"機台不存在: {name}")
+    m = machines[name]
+    ip = (body.ip or "").strip()
+    user = (body.user or "").strip()
+    pw = "" if _is_masked(body.pass_) else (body.pass_ or "")
+    add_bmc_pass = "" if _is_masked(body.bmc_pass) else (body.bmc_pass or "")
+    if not ip or not user:
+        raise HTTPException(400, "OS IP / 帳號為必填（密碼可之後再補）")
+    port = int(body.port or 22)
+    if (c := _os_conflict(name, m, ip)):
+        raise HTTPException(400, f"無法新增：{c}")
+    # 確保有 os 陣列；os[0] 若缺（舊單 OS 機台）先補（主 OS 允許 user 空，只要 ip 有）
+    os_list = m.get("os")
+    if not os_list:
+        primary_ip = (m.get("os_ip") or "").strip()
+        if primary_ip:
+            primary = {
+                "slot": 1, "ip": primary_ip,
+                "user": (m.get("os_user") or "").strip(),
+                "pass": "" if _is_masked(m.get("os_pass")) else (m.get("os_pass") or ""),
+                "port": int(m.get("os_port") or 22),
+                "label": "OS 1",
+                # 主 OS 節點沿用機台層級 BMC（舊單 OS 機台遷移過來的 BMC）
+                "bmc_ip": (m.get("bmc_ip") or "").strip(),
+                "bmc_user": (m.get("bmc_user") or "").strip(),
+                "bmc_pass": "" if _is_masked(m.get("bmc_pass")) else (m.get("bmc_pass") or ""),
+            }
+            os_list = [primary]
+        else:
+            os_list = []
+    else:
+        os_list = [o for o in os_list if isinstance(o, dict) and o.get("ip")]
+        # 若過濾後空掉（全是髒資料），補回主 OS
+        if not os_list:
+            primary_ip = (m.get("os_ip") or "").strip()
+            if primary_ip:
+                os_list = [{"slot": 1, "ip": primary_ip,
+                            "user": (m.get("os_user") or "").strip(),
+                            "pass": "" if _is_masked(m.get("os_pass")) else (m.get("os_pass") or ""),
+                            "port": int(m.get("os_port") or 22),
+                            "label": "OS 1",
+                            "bmc_ip": (m.get("bmc_ip") or "").strip(),
+                            "bmc_user": (m.get("bmc_user") or "").strip(),
+                            "bmc_pass": "" if _is_masked(m.get("bmc_pass")) else (m.get("bmc_pass") or "")}]
+            else:
+                os_list = []
+    slot = len(os_list) + 1
+    entry = _norm_os_entry({"ip": ip, "user": user, "pass": pw, "port": port,
+                            "label": body.label or f"OS {slot}",
+                            "bmc_ip": body.bmc_ip, "bmc_user": body.bmc_user,
+                            "bmc_pass": add_bmc_pass}, slot)
+    if entry is None:
+        # 新增的 OS 也要有 ip+user 才成立（上面已檢查 ip/user 非空，這裡只是防禦）
+        raise HTTPException(400, "OS 資料無效")
+    os_list.append(entry)
+    m["os"] = os_list
+    m.setdefault("active_os", 1)
+    _sync_active_os(m)   # 同步 active（通常仍是 slot1，但若 active_os 指到新 slot 會更新）
+    _save_data()
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
+@app.patch("/api/machines/{name}/os/{slot}")
+def machine_update_os(name: str, slot: int, body: UpdateOs):
+    """更新某 OS slot 的帳密（只改有填的欄位）。"""
+    if name not in machines:
+        raise HTTPException(404, f"機台不存在: {name}")
+    m = machines[name]
+    os_list = m.get("os") or []
+    if not (1 <= slot <= len(os_list)):
+        raise HTTPException(404, f"OS {slot} 不存在")
+    cur = os_list[slot - 1]
+    if body.ip:
+        new_ip = body.ip.strip()
+        if (c := _os_conflict(name, m, new_ip)):
+            raise HTTPException(400, f"無法變更：{c}")
+        cur["ip"] = new_ip
+    if body.user:
+        cur["user"] = body.user.strip()
+    if body.pass_ and not _is_masked(body.pass_):
+        cur["pass"] = body.pass_
+    if body.port:
+        cur["port"] = int(body.port)
+    if body.label:
+        cur["label"] = body.label.strip()
+    # BMC 欄位（留空 = 不更動）
+    if body.bmc_ip:
+        cur["bmc_ip"] = body.bmc_ip.strip()
+    if body.bmc_user:
+        cur["bmc_user"] = body.bmc_user.strip()
+    if body.bmc_pass and not _is_masked(body.bmc_pass):
+        cur["bmc_pass"] = body.bmc_pass
+    if slot == int(m.get("active_os") or 1):
+        _sync_active_os(m)
+    _save_data()
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
+@app.delete("/api/machines/{name}/os/{slot}")
+def machine_delete_os(name: str, slot: int):
+    """移除某 OS slot。OS 1（主 OS）不可移除；移除後 slot 重新編號。"""
+    if name not in machines:
+        raise HTTPException(404, f"機台不存在: {name}")
+    m = machines[name]
+    os_list = m.get("os") or []
+    if not (1 <= slot <= len(os_list)):
+        raise HTTPException(404, f"OS {slot} 不存在")
+    if slot == 1:
+        raise HTTPException(400, "OS 1 為機框主 OS，不可移除")
+    del os_list[slot - 1]
+    active = int(m.get("active_os") or 1)
+    # 重新編號 slot
+    for i, e in enumerate(os_list, start=1):
+        e["slot"] = i
+    # 若移除的是 active，回退到 OS 1
+    if active >= slot:
+        m["active_os"] = 1
+    if len(os_list) <= 1:
+        # 只剩一個 OS → 退化回單 OS（移除 os 陣列，維持既有結構）
+        m.pop("os", None)
+        m.pop("active_os", None)
+    else:
+        m["os"] = os_list
+        _sync_active_os(m)
+    _save_data()
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
+@app.post("/api/machines/{name}/select-os")
+def machine_select_os(name: str, body: SelectOs):
+    """切換機框「目前選定 OS」。把該 slot 的帳密同步到 os_ip/...（成為終端/SSH 目標）。
+    切換時清除該機台所有 OS/BMC/感測器快取，確保下一次 detail/sensors 用『新選定 OS』
+    重新抓取，避免不同 slot 的硬體/感測器因共用 name 快取而串台。"""
+    if name not in machines:
+        raise HTTPException(404, f"機台不存在: {name}")
+    m = machines[name]
+    os_list = m.get("os") or []
+    if not (1 <= body.slot <= len(os_list)):
+        raise HTTPException(404, f"OS {body.slot} 不存在")
+    m["active_os"] = body.slot
+    _sync_active_os(m)
+    _save_data()
+    # 換 OS → 舊快取不屬於新 OS，全部清掉，重抓
+    _os_info_cache.pop(name, None)
+    _os_info_time.pop(name, None)
+    _os_hw_cache.pop(name, None)
+    _os_hw_time.pop(name, None)
+    _bmc_fw_cache.pop(name, None)
+    _bmc_pwr_cache.pop(name, None)
+    _bmc_pending.discard(name)
+    with _sensors_lock:
+        _sensors_cache.pop(name, None)
+        _sensors_time.pop(name, None)
+        _sensors_pending.pop(name, None)
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
+class ProbeOsSlot(BaseModel):
+    slot: int
+
+
+@app.post("/api/machines/{name}/os/{slot}/probe")
+def machine_probe_os(name: str, slot: int, body: ProbeOsSlot = None):
+    """用「該 slot 的 OS 帳密」SSH 上去：
+    1) 抓 hostname（自動填 OS 標籤）
+    2) 在本機跑 ipmitool lan print 抓 BMC IP Address（自動填 BMC IP）
+    回 {ok, hostname, bmc_ip, ipmitool_ok, error}。BMC 帳號/密碼不抓（手動填）。"""
+    if name not in machines:
+        raise HTTPException(404, f"機台不存在: {name}")
+    m = machines[name]
+    os_list = m.get("os") or []
+    if not (1 <= slot <= len(os_list)):
+        raise HTTPException(404, f"OS {slot} 不存在")
+    e = os_list[slot - 1]
+    os_ip = e.get("ip") or ""
+    os_user = e.get("user") or ""
+    os_pass = e.get("pass") or ""
+    os_port = int(e.get("port") or 22)
+    if not os_ip or not os_user or not os_pass:
+        return {"ok": False, "error": f"OS {slot} 未填齊 OS IP/帳號/密碼，無法自動抓取。請先補齊再按「抓」。"}
+    # 1) hostname
+    hostname, rc, err = ssh_run(os_ip, os_user, os_pass, os_port, "hostname", timeout=12)
+    if rc != 0 or not hostname:
+        return {"ok": False, "error": f"SSH 連不上 OS {slot}（{os_ip}）：{err or '無法登入'}"}
+    hostname = hostname.strip()
+    # 2) BMC IP（用該 OS 本機 ipmitool lan print）
+    bmc_ip, has_ipmi, perr = _probe_bmc_ip(os_ip, os_user, os_pass, os_port)
+    if not has_ipmi:
+        return {"ok": True, "hostname": hostname, "bmc_ip": None, "ipmitool_ok": False,
+                "error": f"hostname 已抓到（{hostname}），但 OS {slot} 內無 ipmitool，無法自動抓 BMC IP。請手動填 BMC IP。"}
+    if not bmc_ip:
+        return {"ok": True, "hostname": hostname, "bmc_ip": None, "ipmitool_ok": True,
+                "error": f"hostname 已抓到（{hostname}），但 ipmitool 取不到 BMC IP：{perr}。請手動填。"}
+    return {"ok": True, "hostname": hostname, "bmc_ip": bmc_ip, "ipmitool_ok": True}
 
 
 # ---- 線上狀態快取（TTL），避免大量機台時每次 API 都同步 ping 卡住 ----
@@ -824,6 +1132,8 @@ def list_machines(force_scan: bool = False):
         c["bmc_alive"] = _status_cache.get(("bmc", name)) if m.get("bmc_ip") else None
         c["health"] = _health_cache.get(name, ("unknown", 0))[0]
         c.pop("status", None)
+        c["os"] = _mask_os_list(m.get("os"))
+        c["active_os"] = int(m.get("active_os") or 1)
         safe.append(c)
     return {"machines": safe, "last_scan": _STATUS_TIME}
 
@@ -1044,6 +1354,13 @@ def machine_get_one(name: str):
     c["bmc_pass"] = "****" if c.get("bmc_pass") else ""
     c["os_alive"] = ping_check(m.get("os_ip"), 2)
     c["bmc_alive"] = ping_check(m.get("bmc_ip"), 2) if m.get("bmc_ip") else None
+    c["os"] = _mask_os_list(m.get("os"))
+    c["active_os"] = int(m.get("active_os") or 1)
+    # 每個 OS 的即時 ping（多 OS 機框用；單 OS 機台也給一個）
+    c["os_alive_map"] = {
+        str(int(e.get("slot") or i + 1)): ping_check(e.get("ip"), 2)
+        for i, e in enumerate(m.get("os") or []) if e.get("ip")
+    }
     return {"machine": c}
 
 
@@ -1054,7 +1371,79 @@ def _bmc_safe(m):
     c["bmc_pass"] = "****" if c.get("bmc_pass") else ""
     c["os_alive"] = ping_check(m.get("os_ip"), 2) if m.get("os_ip") else None
     c["bmc_alive"] = ping_check(m.get("bmc_ip"), 2) if m.get("bmc_ip") else None
+    c["os"] = _mask_os_list(m.get("os"))
     return c
+
+
+def _is_masked(v):
+    """前端回傳的密碼若含遮罩符號（**）就視為「未提供」，不得寫回成為真實密碼。
+    避免 masking 的值（****）被當成真實密碼存進資料檔，導致 SSH/IPMI 連線失效。"""
+    return isinstance(v, str) and "**" in v
+
+
+def _mask_os_list(os_list):
+    """回傳 os 陣列的副本，每個 OS 的 pass + bmc_pass 遮成 ****（回傳前端用）。"""
+    if not os_list:
+        return os_list
+    out = []
+    for e in os_list:
+        d = dict(e)
+        d["pass"] = "****" if d.get("pass") else ""
+        d["bmc_pass"] = "****" if d.get("bmc_pass") else ""
+        out.append(d)
+    return out
+
+
+def _norm_os_entry(e, slot):
+    """把一個 OS 輸入（dict）正規化成記錄格式
+    {slot, ip, user, pass, port, label, bmc_ip, bmc_user, bmc_pass}。
+    IP/帳號必填；密碼可空（先註冊 slot 再補帳密）。BMC port 固定 623 不存。
+    回傳 None 表示無效。"""
+    if not isinstance(e, dict):
+        return None
+    ip = (e.get("ip") or "").strip()
+    user = (e.get("user") or "").strip()
+    pw = (e.get("pass") or e.get("pass_") or "")
+    if not ip or not user:
+        return None
+    return {
+        "slot": int(e.get("slot") or slot),
+        "ip": ip,
+        "user": user,
+        "pass": pw,
+        "port": int(e.get("port") or 22),
+        "label": (e.get("label") or f"OS {slot}").strip(),
+        "bmc_ip": (e.get("bmc_ip") or "").strip(),
+        "bmc_user": (e.get("bmc_user") or "").strip(),
+        "bmc_pass": (e.get("bmc_pass") or ""),
+    }
+
+
+def _sync_active_os(m):
+    """把 m 的 active OS（os[active_os-1]）同步到 m 的 os_ip/os_user/os_pass/os_port，
+    以及該 OS 節點配對的 BMC（bmc_ip/bmc_user/bmc_pass）。
+    單一 OS 機台（無 os 陣列）不動。多 OS 機台靠這個讓「目前選定 OS」成為
+    所有既有邏輯（ssh_run / ssh_ipmi / status / terminal / 電源 / KVM）的目標。
+    BMC port 固定 623（IPMI 標準），不存於資料模型。"""
+    os_list = m.get("os") or []
+    if len(os_list) <= 1:
+        return
+    active = int(m.get("active_os") or 1)
+    if not (1 <= active <= len(os_list)):
+        active = 1
+        m["active_os"] = 1
+    cur = os_list[active - 1]
+    m["os_ip"] = cur.get("ip", m.get("os_ip", ""))
+    m["os_user"] = cur.get("user", m.get("os_user", ""))
+    m["os_pass"] = cur.get("pass", m.get("os_pass", ""))
+    m["os_port"] = int(cur.get("port") or m.get("os_port") or 22)
+    # 同步該節點配對的 BMC（只有該 OS 有填 BMC 才覆蓋，避免清空舊值）
+    if cur.get("bmc_ip"):
+        m["bmc_ip"] = cur.get("bmc_ip")
+        m["bmc_user"] = cur.get("bmc_user", "")
+        m["bmc_pass"] = cur.get("bmc_pass", "")
+        m["bmc_port"] = 623
+    m["active_os"] = active
 
 
 @app.get("/api/ping-ip")

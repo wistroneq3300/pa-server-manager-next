@@ -1099,13 +1099,9 @@ function rackmapHtml(members, pinged) {
 function rackBlockRow(m, u, size, pinged) {
   const n = pinged.find(x => x.name === m.name);
   const up = n ? n.os_alive : null;
-  const bmcUp = n ? n.bmc_alive : null;
   const info = mgxInfo(m);
   const osTitle = up === true ? "OS 在線" : up === false ? "OS 離線" : "OS 未知";
   const led = `<span class="led ${up === true ? "on" : up === false ? "off" : "unk"}" title="${osTitle}"></span>`;
-  const ledBmc = m.bmc_ip
-    ? `<span class="led sm ${bmcUp === true ? "on" : bmcUp === false ? "off" : "unk"}" title="BMC ${bmcUp === true ? "在線" : bmcUp === false ? "離線" : "未知"}"></span>`
-    : "";
   // 點機櫃元件本身一律進「單機詳情」；換位/類型請按右側「⇅」按鈕
   const click = `openMachine('${esc(m.name)}')`;
   const delBtn = `<button class="btn small btn-del" title="從機櫃移除" onclick="rackUnmount('${esc(m.name)}')">✕</button>`;
@@ -1121,9 +1117,9 @@ function rackBlockRow(m, u, size, pinged) {
     <span class="rm-u ${size > 1 ? "rm-u-block" : ""}">${uStack}</span>
     <div class="rm-cell ${info.cls}" onclick="${click}" style="align-items:${size > 1 ? "center" : "stretch"}">
       <div class="rm-cell-inner">
-        <span class="rm-lamps">${led}${ledBmc}</span>
+        <span class="rm-lamps">${led}</span>
         <span class="rm-name">${nm}</span>
-        <span class="rm-ip mono">${esc(m.bmc_ip || m.os_ip || "")}</span>
+        <span class="rm-ip mono">${esc(m.os_ip || "")}</span>
         <span class="rm-actions" onclick="event.stopPropagation()">
           <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
           ${delBtn}
@@ -1184,20 +1180,14 @@ function devicesHtml(members, pinged) {
   members = members.slice().sort(byU);
   const lamp = v => v === true ? `<span class="ping-lamp on">🟢</span>` : v === false ? `<span class="ping-lamp off">🔴</span>` : `<span class="ping-lamp none">⨪</span>`;
   const body = `<div class="card"><div class="table-scroll"><table class="t rack-ping-table">
-    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>OS IP</th><th>BMC IP</th><th>操作</th></tr></thead>
+    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>OS IP</th><th>操作</th></tr></thead>
     <tbody>` + members.map(m => {
       const n = pinged.find(x => x.name === m.name);
-      const isServerLike = (mgxTypeOf(m) !== "switch" && mgxTypeOf(m) !== "pdu" && mgxTypeOf(m) !== "powershelf" && mgxTypeOf(m) !== "cdu");
-      // 其他零件（switch/pdu/powershelf/cdu）只顯示 OS 狀態；server/storage/network 顯示 OS+BMC
       const osUp = n ? n.os_alive : null;
-      const bmcUp = n ? n.bmc_alive : null;
       const info = mgxInfo(m);
       const osCell = m.os_ip
         ? `${lamp(osUp)} <span class="ping-ip mono">${esc(m.os_ip)}</span>`
         : `<span style="color:var(--text-faint)">—</span>`;
-      const bmcCell = !isServerLike
-        ? `<span class="hint" style="color:var(--text-faint)">—</span>`
-        : (m.bmc_ip ? `${lamp(bmcUp)} <span class="ping-ip mono">${esc(m.bmc_ip)}</span>` : `<span style="color:var(--text-faint)">—</span>`);
       // 只有「有 OS IP」的系統才有 Terminal + 開關機（跟 System Manager 清單同一套邏輯）
       const hasOs = !!m.os_ip;
       return `<tr>
@@ -1205,7 +1195,6 @@ function devicesHtml(members, pinged) {
         <td class="mono"><a href="#" class="mach-link" onclick="event.preventDefault();openMachine('${esc(m.name)}')"><b>${esc(m.name)}</b></a></td>
         <td>${info.icon} ${esc(info.label)}</td>
         <td class="mono">${osCell}</td>
-        <td class="mono">${bmcCell}</td>
         <td style="white-space:nowrap">
           <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
           ${hasOs ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
@@ -1639,9 +1628,8 @@ function rackStatusCounts(members, pinged) {
   members.forEach(m => {
     const n = pinged.find(x => x.name === m.name);
     const upOs = n ? n.os_alive : null;
-    const upBmc = n ? n.bmc_alive : null;
-    if (upOs === true || upBmc === true) up++;
-    else if (upOs === false || upBmc === false) down++;
+    if (upOs === true) up++;
+    else if (upOs === false) down++;
     else none++;
   });
   return `狀態：<span class="ping-lamp on">🟢</span> Up ${up} &nbsp;<span class="ping-lamp off">🔴</span> Down ${down} &nbsp;<span class="ping-lamp none">⨪</span> 未 Ping ${none}`;
@@ -3886,7 +3874,7 @@ function openTermDialog(name) {
           host: ($("td-bmc-host") && $("td-bmc-host").value.trim()) || m.bmc_ip || "",
           user: ($("td-bmc-user") && $("td-bmc-user").value.trim()) || "",
           pass: ($("td-bmc-pass") && $("td-bmc-pass").value) || "",
-          port: m.bmc_port || 623,
+          port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22,
         };
         // 至少要有一組有效 creds
         const osOK = hasOs || (osCreds.host && osCreds.user && osCreds.pass);
@@ -3894,7 +3882,7 @@ function openTermDialog(name) {
         if (!osOK && !bmcOK) { alert("請至少填一組 OS 或 BMC 的 host／帳號／密碼"); return; }
         closeDialog();
         openTermAt(name, hasOs ? { host: m.os_ip, user: m.os_user, pass: m.os_pass, port: m.os_port || 22 } : (osOK ? osCreds : null),
-                  hasBmc ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 623 } : (bmcOK ? bmcCreds : null));
+                  hasBmc ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22 } : (bmcOK ? bmcCreds : null));
       } },
     ]);
 }
@@ -3949,7 +3937,7 @@ function openTerm(name) {
   if (!m) return;
   openTermAt(name,
     (m.os_ip && m.os_user && m.os_pass) ? { host: m.os_ip, user: m.os_user, pass: m.os_pass, port: m.os_port || 22 } : null,
-    (m.bmc_ip && m.bmc_user && m.bmc_pass) ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 623 } : null);
+    (m.bmc_ip && m.bmc_user && m.bmc_pass) ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22 } : null);
 }
 // ⚙ 設定：變更 OS IP / BMC IP（各自獨立，未更動的欄位後端不會動）。
 // OS IP 需 ping 通 + hostname 相符；BMC IP 只要 ping 通即可。
@@ -4032,8 +4020,51 @@ function resetTermGeometry() {
 /* ===== 廣播終端（同時控制多台 rack 系統 OS shell；Clusterssh 風格 fan-out） ===== */
 const bcState = { ws: null, order: [], terms: {}, stat: {}, active: null, broadcast: true, grid: false, gridCols: 2 };
 
+// 一檯機框的可廣播「節點」清單。多 OS 機框（os 陣列長度>1）展開成每個節點，
+// key = "name#slot"（slot=0 主 OS）；單 OS 機台就只有 "name#0"（主 OS=自己）。
+function bcNodes(m) {
+  const arr = (Array.isArray(m.os) && m.os.length > 1) ? m.os : null;
+  if (arr) {
+    return arr.map((e, i) => {
+      const slot = e.slot || (i + 1);
+      return { key: `${m.name}#${slot}`, nm: m.name, slot,
+               label: e.label || ('OS ' + slot), ip: e.ip, node: true };
+    });
+  }
+  return [{ key: `${m.name}#0`, nm: m.name, slot: 0, label: m.name, ip: m.os_ip, node: false }];
+}
+
+// node 廣播 key 可能是 "name#slot"（含 #），不能直接當 DOM id，這裡轉安全 id（#→_）
+function bcId(key) { return String(key).replace(/#/g, '_'); }
+
+// 安全把字串嵌入 HTML attribute / onclick（app.js 沒有 product-detail.js 的 quote）
+function bcQuote(s) { return JSON.stringify(String(s ?? "")).replace(/"/g, "&quot;"); }
+
+// 依 "name#slot" key 取節點 IP（多 OS 節點用 os 陣列，主 OS / 單 OS 用 os_ip）
+function bcNodeIp(key) {
+  const [nm, slot] = String(key).split('#');
+  const m = machines.find(x => x.name === nm);
+  if (!m) return "";
+  if (!slot || slot === '0') return m.os_ip || "";
+  const arr = m.os || [];
+  const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
+  return (e && e.ip) || "";
+}
+
+// 依 "name#slot" key 取節點顯示名稱（單 OS / 主 OS 只顯示機框名，節點顯示「機框 · 節點標籤」）
+function bcRootLabel(key) {
+  const [nm, slot] = String(key).split('#');
+  if (!slot || slot === '0') return nm;
+  const m = machines.find(x => x.name === nm);
+  if (!m) return key;
+  const arr = m.os || [];
+  const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
+  const lbl = e ? (e.label || ('OS ' + slot)) : ('OS ' + slot);
+  return `${nm} / ${lbl}`;
+}
+
 function rackBroadcastDialog(project) {
-  // 只列出該機櫃專案中「有 OS 連線資訊」的系統
+  // 該機櫃專案中「有 OS 連線資訊」的系統（多 OS 機框展開成節點）
   const cands = machines.filter(m => m.project === project && m.level === "rack" && m.os_ip);
   if (!cands.length) {
     const anyCands = machines.filter(m => m.level === "rack" && m.os_ip);
@@ -4044,30 +4075,60 @@ function rackBroadcastDialog(project) {
     }
     return;
   }
-  const rows = cands.map(m =>
-    `<label class="bc-check" style="display:block;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer">
-       <input type="checkbox" class="bc-chk" value="${esc(m.name)}" checked>
-       <b>${esc(m.name)}</b> <span class="mono" style="color:var(--text-dim)">${esc(m.os_ip)}</span>
-     </label>`).join("");
-  showDialog("📡 廣播終端 — 選擇要同時控制的主機", `
+  const nodeMap = {};   // key -> node，供開啟時統計
+  const rows = cands.map(m => {
+    const nodes = bcNodes(m);
+    nodes.forEach(n => { nodeMap[n.key] = n; });
+    const multi = nodes.length > 1;
+    const list = multi
+      ? `<div style="margin-left:18px;border-left:2px solid var(--border);padding-left:8px">${nodes.map(n =>
+          `<label class="bc-check" style="display:flex;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;align-items:center">
+             <input type="checkbox" class="bc-chk" value="${esc(n.key)}" checked>
+             <b>${esc(n.label)}</b><span class="mono" style="color:var(--text-dim)">${esc(n.ip)}</span>
+           </label>`).join('')}</div>`
+      : `<label class="bc-check" style="display:flex;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;align-items:center">
+           <input type="checkbox" class="bc-chk" value="${esc(m.name + '#0')}" checked>
+           <b>${esc(m.name)}</b><span class="mono" style="color:var(--text-dim)">${esc(m.os_ip)}</span>
+         </label>`;
+    const header = multi
+      ? `<div style="display:flex;align-items:center;gap:6px;margin:6px 0 4px">
+           <button class="btn small" onclick="bcSetMachineAll(${bcQuote(m.name)}, true)">☑ 整框全選</button>
+           <button class="btn small" onclick="bcSetMachineAll(${bcQuote(m.name)}, false)">☐ 整框全不選</button>
+           <b>${esc(m.name)}</b><span class="hint">${nodes.length} 節點</span>
+         </div>`
+      : '';
+    return `<div style="margin-bottom:8px">${header}${list}</div>`;
+  }).join("");
+  showDialog("📡 廣播終端 — 選擇要同時控制的主機 / 節點", `
     <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:10px">
-      勾選要同步下指令的系統（同一次指令，會同時送到所有勾選的主機 OS shell）。
+      勾選要同步下指令的「節點」（多 OS 機框每顆 OS 各自一節點；同一次指令同時送到所有勾選節點的 OS shell）。
     </label>
     <div class="table-scroll" style="max-height:46vh;overflow:auto;margin-bottom:12px">${rows}</div>
     <div style="display:flex;gap:8px">
       <button class="btn small" onclick="bcSetAll(true)">☑ 全選</button>
       <button class="btn small" onclick="bcSetAll(false)">☐ 全不選</button>
-      <span class="spacer"></span><span class="hint" id="bc-sel-count">已選 ${cands.length} 台</span>
+      <span class="spacer"></span><span class="hint">已選 <span id="bc-sel-count">${Object.keys(nodeMap).length}</span> 節點</span>
     </div>`,
     [
       { txt: "取消", cls: "", fn: () => closeDialog() },
       { txt: "開啟廣播", cls: "primary", fn: () => {
         const sel = [...document.querySelectorAll(".bc-chk:checked")].map(x => x.value);
         closeDialog();
-        if (!sel.length) { alert("請至少勾選一台主機。"); return; }
+        if (!sel.length) { alert("請至少勾選一個節點。"); return; }
         openBroadcast(sel);
       } },
     ]);
+  const upd = () => { const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length; };
+  document.querySelectorAll(".bc-chk").forEach(c => c.addEventListener("change", upd));
+}
+
+// 整框全選/全不選：勾/取消某一檯機框的所有節點
+function bcSetMachineAll(root, on) {
+  document.querySelectorAll('.bc-chk').forEach(c => {
+    const nm = String(c.value).split('#')[0];
+    if (nm === root) c.checked = !!on;
+  });
+  const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length;
 }
 
 // System Manager 的「📡 系統廣播」：依專案把帶 OS 的 L10 系統分組列出，勾選後開啟廣播。
@@ -4160,25 +4221,26 @@ function openBroadcast(names) {
   const panes = $("bc-panes"); if (panes) panes.classList.remove("grid"); panes && panes.style.removeProperty("--bc-cols");
   $("bc-title-hint").textContent = `${names.length} 台`;
   names.forEach(nm => {
+    const dKey = bcId(nm), disp = bcRootLabel(nm);
     // tab
     const tab = document.createElement("div");
     tab.className = "bc-tab" + (nm === bcState.active ? " active" : "");
-    tab.id = "bc-tab-" + nm;
-    tab.innerHTML = `<span class="lamp none" id="lamp-${nm}"></span><span class="tname">${esc(nm)}</span><span class="bc-ack" id="bc-ack-${nm}"></span><span class="x" title="關閉此主機">✕</span>`;
+    tab.id = "bc-tab-" + dKey;
+    tab.innerHTML = `<span class="lamp none" id="lamp-${dKey}"></span><span class="tname">${esc(disp)}</span><span class="bc-ack" id="bc-ack-${dKey}"></span><span class="x" title="關閉此主機">✕</span>`;
     tab.querySelector(".tname").onclick = () => bcSelect(nm);
     tab.querySelector(".x").onclick = (e) => { e.stopPropagation(); bcCloseHost(nm); };
     tabsEl.appendChild(tab);
     // pane
     const pane = document.createElement("div");
     pane.className = "bc-pane" + (nm === bcState.active ? " active" : "");
-    pane.id = "bc-pane-" + nm;
-    pane.innerHTML = `<div class="bc-pane-label"><span>${esc(nm)}</span><span class="mono" style="color:var(--text-dim);font-size:10px">${esc((machines.find(m=>m.name===nm)||{}).os_ip||"")}</span></div><div class="bc-box" id="bc-box-${nm}"></div>`;
+    pane.id = "bc-pane-" + dKey;
+    pane.innerHTML = `<div class="bc-pane-label"><span>${esc(disp)}</span><span class="mono" style="color:var(--text-dim);font-size:10px">${esc(bcNodeIp(nm))}</span></div><div class="bc-box" id="bc-box-${dKey}"></div>`;
     panesEl.appendChild(pane);
     // xterm
     const t = new Terminal({ ...XTERM_COMMON });
     const fit = new FitAddon.FitAddon();
     t.loadAddon(fit);
-    t.open($("bc-box-" + nm));
+    t.open($("bc-box-" + dKey));
     try { fit.fit(); } catch {}
     t.onData(d => {
       if (!bcState.ws || bcState.ws.readyState !== 1) return;
@@ -4206,15 +4268,15 @@ function openBroadcast(names) {
 function bcStatus(txt) { const el = $("bc-status-txt"); if (el) el.textContent = txt; }
 
 function bcSetAllLamp(state) {
-  bcState.order.forEach(nm => { const l = $("lamp-" + nm); if (l) { l.className = "lamp " + (state || (bcState.stat[nm] || "none")); } });
+  bcState.order.forEach(nm => { const l = $("lamp-" + bcId(nm)); if (l) { l.className = "lamp " + (state || (bcState.stat[nm] || "none")); } });
 }
-function bcLamp(nm, st) { bcState.stat[nm] = st; const l = $("lamp-" + nm); if (l) l.className = "lamp " + st; }
+function bcLamp(nm, st) { bcState.stat[nm] = st; const l = $("lamp-" + bcId(nm)); if (l) l.className = "lamp " + st; }
 
 function bcSelect(nm) {
   if (!bcState.order.includes(nm)) return;
   bcState.active = nm;
   bcState.order.forEach(n => {
-    const tab = $("bc-tab-" + n), pane = $("bc-pane-" + n);
+    const tab = $("bc-tab-" + bcId(n)), pane = $("bc-pane-" + bcId(n));
     if (tab) tab.classList.toggle("active", n === nm);
     if (pane) pane.classList.toggle("active", n === nm);
   });
@@ -4226,7 +4288,7 @@ function bcCloseHost(nm) {
   bcState.ws.send(JSON.stringify({ type: "closeOne", name: nm })); // 後端可忽略，前端直接關
   delete bcState.terms[nm]; delete bcState.stat[nm];
   bcState.order = bcState.order.filter(x => x !== nm);
-  const t = $("bc-tab-" + nm), p = $("bc-pane-" + nm); if (t) t.remove(); if (p) p.remove();
+  const t = $("bc-tab-" + bcId(nm)), p = $("bc-pane-" + bcId(nm)); if (t) t.remove(); if (p) p.remove();
   if (bcState.active === nm) bcState.active = bcState.order[0] || null;
   if (bcState.order.length === 0) closeBroadcast();
   else if (bcState.active) bcSelect(bcState.active);
@@ -4321,7 +4383,7 @@ function bcSendInput() {
 function bcMarkAck(nm, state) {
   bcState.ack = bcState.ack || {};
   bcState.ack[nm] = state;
-  const a = $("bc-ack-" + nm);
+  const a = $("bc-ack-" + bcId(nm));
   if (a) {
     a.textContent = state === "ok" ? "✓" : state === "send" ? "…" : "";
     a.classList.toggle("ok", state === "ok");

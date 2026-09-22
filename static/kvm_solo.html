@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
   <title>KVM</title>
   <style>
     * { box-sizing: border-box; }
@@ -46,9 +47,6 @@
       <span class="dot" id="st-dot"></span>
       <b>📺 KVM — <span id="mname">…</span></b>
       <span id="st-lbl" style="color:#6f8498;font-size:12px">連線中…</span>
-      <span class="spacer"></span>
-      <button class="kvm-btn" id="btn-min" title="縮小（隱藏視窗）">– 縮小</button>
-      <button class="kvm-btn" onclick="window.close()" title="關閉視窗">✕ 關閉</button>
     </div>
     <div id="stage">
       <div id="screen"></div>
@@ -72,10 +70,10 @@
     // ── noVNC 連線 ─────────────────────────────────────────────
     const wsUrl = `${location.origin.replace(/^http/, "ws")}/ws/kvm/${encodeURIComponent(machine)}`;
     const rfb = new RFB(screen, wsUrl, {
-      wsProtocols: ["binary"],
+      wsProtocols: [],          // 對齊廣播 KVM：不請求特定 subprotocol，避免後端不回應導致斷線
       scaleViewport: true,   // 依視窗大小縮放，避免裁切
       resizeSession: false,
-      clipViewport: true,
+      clipViewport: false,
       focusOnLoad: true,
     });
 
@@ -124,15 +122,6 @@
     window.addEventListener("mouseup", () => {
       dragging = false;
       head.style.cursor = "move";
-    });
-
-    // ── 縮小：最小化視窗（popMin 在多數瀏覽器不可靠，改為縮小視窗尺寸）──
-    document.getElementById("btn-min").addEventListener("click", () => {
-      if (window.outerWidth > 100) {
-        window.resizeTo(400, 200);   // 縮小視窗
-      } else {
-        window.resizeTo(1200, 800);  // 還原
-      }
     });
 
     // 讓畫布取得鍵盤焦點

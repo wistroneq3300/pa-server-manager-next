@@ -26,22 +26,31 @@ function loadCreds() {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     const d = JSON.parse(raw);
     const ms = d.machines || d;
+    const build = (m) => {
+      // osSlots: 多 OS 機框的每個 slot（slot 1..N）。os 預設=主 OS（os_ip）。
+      let osSlots = null;
+      if (Array.isArray(m.os) && m.os.length) {
+        osSlots = m.os.map((e, i) => ({
+          host: e.ip, user: e.user, pass: e.pass, port: e.port || 22,
+          slot: e.slot || (i + 1), label: e.label || ('OS ' + (i + 1)),
+        }));
+      }
+      return {
+        os:  { host: m.os_ip,  user: m.os_user,  pass: m.os_pass,  port: m.os_port || 22 },
+        bmc: { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 22 },
+        osSlots,
+      };
+    };
     if (Array.isArray(ms)) {
       for (const m of ms) {
         const n = m.name;
         if (!n) continue;
-        CREDS[n] = {
-          os:  { host: m.os_ip,  user: m.os_user,  pass: m.os_pass,  port: m.os_port || 22 },
-          bmc: { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 22 },
-        };
+        CREDS[n] = build(m);
       }
     } else {
       for (const [n, m] of Object.entries(ms)) {
         if (!m || typeof m !== 'object') continue;
-        CREDS[n] = {
-          os:  { host: m.os_ip,  user: m.os_user,  pass: m.os_pass,  port: m.os_port || 22 },
-          bmc: { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 22 },
-        };
+        CREDS[n] = build(m);
       }
     }
   } catch (e) {
@@ -69,16 +78,23 @@ function handleTerminal(ws, url) {
   if (kind !== 'os' && kind !== 'bmc') { sendErr(ws, 'kind 必須是 os 或 bmc'); return; }
 
   // 真實帳密優先取自 data.json（name + kind）；前端 query 只在前端 API 未遮蔽時覆寫。
+  // kind==='os' 且帶 ?slot=N → 用多 OS 機框的第 N 個 OS（osSlots[N-1]）帳密。
   let host = url.searchParams.get('host') || '';
   let user = url.searchParams.get('user') || '';
   let pass = url.searchParams.get('pass') || '';
   const qPort = Number(url.searchParams.get('port') || 0);
+  const qSlot = Number(url.searchParams.get('slot') || 0);
   let port;
-  const realHost = CREDS[name] && CREDS[name][kind] && CREDS[name][kind].host;
+  const entry = CREDS[name] || {};
+  // 決定真實帳密來源：os + slot → osSlots[slot-1]；否則 os/bmc 主帳密
+  let real = entry[kind];
+  if (kind === 'os' && qSlot >= 1 && Array.isArray(entry.osSlots) && entry.osSlots[qSlot - 1]) {
+    real = entry.osSlots[qSlot - 1];
+  }
+  const realHost = real && real.host;
 
   if (realHost) {
-    // data.json 有該機台 → 用真實帳密；query 只在「有值且非遮蔽」時覆寫
-    const real = CREDS[name][kind];
+    // data.json 有該機台（或該 slot）→ 用真實帳密；query 只在「有值且非遮蔽」時覆寫
     if (!host)                      host = real.host || '';
     if (!user)                      user = real.user || '';
     if (!pass || pass.indexOf('**') >= 0 || pass === '') pass = real.pass || '';
@@ -231,7 +247,30 @@ function handleBroadcast(ws, url) {
     };
 
     for (const nm of names) {
-      const cred = CREDS[nm] && CREDS[nm].os;
+      // target 格式：純 name（主 OS，向後相容）或 name#slot
+      //   slot=0（或無）→ 主 OS（CREDS[name].os）
+      //   slot=N (>=1) → 多 OS 機框的節點（CREDS[name].osSlots[N-1]）
+      const raw = String(nm);
+      const hash = raw.indexOf('#');
+      let root = raw, slot = 0;
+      if (hash >= 0) {
+        root = raw.slice(0, hash);
+        const sv = raw.slice(hash + 1);
+        slot = sv === '' ? 0 : (parseInt(sv, 10) || 0);
+      }
+      const rec = CREDS[root];
+      let cred = null;
+      if (rec) {
+        if (slot <= 0 || (rec.osSlots && rec.osSlots.length <= 1)) {
+          cred = rec.os;   // 主 OS（單 OS 機台或 slot 0）
+        } else {
+          const osSlots = rec.osSlots || [];
+          const si = slot - 1;
+          if (osSlots[si]) {
+            cred = { host: osSlots[si].host, user: osSlots[si].user, pass: osSlots[si].pass, port: osSlots[si].port || 22 };
+          }
+        }
+      }
       if (!cred || !cred.host || !cred.user || !cred.pass) {
         failed.push(nm);
         pending--;

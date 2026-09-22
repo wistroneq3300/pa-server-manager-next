@@ -31,3 +31,8 @@ prod-data/
 
 # 所有 SQLite 資料庫
 *.db
+
+# runtime logs
+server7000.log
+bridge7001.log
+*.log
