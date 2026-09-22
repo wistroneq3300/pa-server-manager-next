@@ -4597,8 +4597,36 @@ function buildNav() {
 }
 $("theme-toggle")?.addEventListener("click", () => applyTheme(root.dataset.theme === "dark" ? "light" : "dark"));
 window.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeAdd(); closeProjectModal(); } });
+function initRowMenuGuard() {
+  // 「•••」列選單：開啟時若面板超出右側捲動容器/視窗右緣，就向左校正，避免破框溢出。
+  // 注意 toggle 事件不冒泡，只能用 capture phase（第三參數 true）在 document 層捕獲。
+  document.addEventListener("toggle", (ev) => {
+    const details = ev.target;
+    if (!details || !details.classList || !details.classList.contains("p-row-menu")) return;
+    const panel = details.querySelector(":scope > div");
+    if (!panel) return;
+    if (details.open) {
+      const pr = panel.getBoundingClientRect();
+      const dr = details.getBoundingClientRect();
+      const scroll = details.closest(".proj-table-scroll");
+      const cr = scroll ? scroll.getBoundingClientRect() : { left: 0, right: window.innerWidth };
+      const wantRight = cr.right - 8;
+      if (pr.right > wantRight) {
+        // 面板左緣移到「容器右緣-8 - 面板寬」的視窗座標，換算為相對 details 的 left
+        panel.style.left = (wantRight - pr.width - dr.left) + "px";
+        panel.style.right = "auto";
+      } else {
+        panel.style.left = "";
+        panel.style.right = "";
+      }
+    } else {
+      panel.style.left = "";
+      panel.style.right = "";
+    }
+  }, true);
+}
 document.addEventListener("DOMContentLoaded", async () => {
-  loadTheme(); buildNav(); initTermDrag(); initBcDrag();
+  loadTheme(); buildNav(); initTermDrag(); initBcDrag(); initRowMenuGuard();
   parseHash();                      // 讀取 URL hash，指定初始分頁
   window.addEventListener("resize", () => { fitAll(); bcFitAll(); });
   window.addEventListener("hashchange", () => { parseHash(); setView(state.view); });
