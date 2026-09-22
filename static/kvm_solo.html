@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KVM</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #0b0e13; color: #dfe6f0;
+    }
+    #app { display: flex; flex-direction: column; height: 100vh; }
+    #head {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px;
+      background: #141a23; border-bottom: 1px solid #2a3441;
+      cursor: move; user-select: none; flex-wrap: wrap;
+    }
+    #head .grip { color: #5a6b80; font-size: 14px; }
+    #head b { font-size: 14px; }
+    #head .dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7688; display: inline-block; }
+    #head .dot.on { background: #a1cc56; }
+    #head .dot.err { background: #e5484d; }
+    .kvm-btn {
+      background: #2a3441; color: #dfe6f0; border: 1px solid #3a4551;
+      border-radius: 6px; padding: 4px 9px; font-size: 12px; cursor: pointer;
+    }
+    .kvm-btn:hover { background: #3a4551; }
+    .spacer { margin-left: auto; }
+    #stage { flex: 1; position: relative; background: #0b0e13; overflow: hidden; }
+    #screen { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    canvas { max-width: 100%; max-height: 100%; }
+    #overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #6f8498; font-size: 14px; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="head">
+      <span class="grip">⠿</span>
+      <span class="dot" id="st-dot"></span>
+      <b>📺 KVM — <span id="mname">…</span></b>
+      <span id="st-lbl" style="color:#6f8498;font-size:12px">連線中…</span>
+      <span class="spacer"></span>
+      <button class="kvm-btn" id="btn-min" title="縮小（隱藏視窗）">– 縮小</button>
+      <button class="kvm-btn" onclick="window.close()" title="關閉視窗">✕ 關閉</button>
+    </div>
+    <div id="stage">
+      <div id="screen"></div>
+      <div id="overlay">正在建立 KVM 連線…</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import RFB from "/static/vendor/novnc/core/rfb.js";
+
+    const params = new URLSearchParams(location.search);
+    const machine = params.get("m") || "unknown";
+    document.getElementById("mname").textContent = machine;
+
+    const dot   = document.getElementById("st-dot");
+    const lbl   = document.getElementById("st-lbl");
+    const overlay = document.getElementById("overlay");
+    const screen  = document.getElementById("screen");
+    const stage = document.getElementById("stage");
+
+    // ── noVNC 連線 ─────────────────────────────────────────────
+    const wsUrl = `${location.origin.replace(/^http/, "ws")}/ws/kvm/${encodeURIComponent(machine)}`;
+    const rfb = new RFB(screen, wsUrl, {
+      wsProtocols: ["binary"],
+      scaleViewport: true,   // 依視窗大小縮放，避免裁切
+      resizeSession: false,
+      clipViewport: true,
+      focusOnLoad: true,
+    });
+
+    function setStatus(ok, text) {
+      dot.className = "dot" + (ok === true ? " on" : ok === false ? " err" : "");
+      lbl.textContent = text;
+    }
+
+    rfb.addEventListener("connect", () => {
+      setStatus(true, "已連線");
+      overlay.style.display = "none";
+    });
+    rfb.addEventListener("disconnect", (e) => {
+      setStatus(false, e.detail.clean ? "已斷線" : "連線中斷，重新連線中…");
+      overlay.style.display = "flex";
+      overlay.textContent = "連線已中斷，嘗試重新連線…";
+      // 自動重連
+      setTimeout(() => { try { rfb.connect(); } catch (_) {} }, 2500);
+    });
+    rfb.addEventListener("credentialsrequired", () => {
+      setStatus(false, "需要驗證（未設定）");
+    });
+    rfb.addEventListener("securityfailure", () => {
+      setStatus(false, "安全驗證失敗");
+    });
+
+    // ── 視窗縮放：視窗大小改變時，讓 RFB 重新貼合 ──────────────
+    function refit() { rfb.scaleViewport = true; }
+    window.addEventListener("resize", refit);
+
+    // ── 拖曳標題列移動視窗 ─────────────────────────────────────
+    const head = document.getElementById("head");
+    let dragging = false, sx = 0, sy = 0;
+    head.addEventListener("mousedown", (e) => {
+      if (e.target.closest(".kvm-btn")) return;   // 按到按鈕不啟動拖曳
+      dragging = true;
+      sx = e.screenX - window.screenX;
+      sy = e.screenY - window.screenY;
+      head.style.cursor = "grabbing";
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      window.moveTo(e.screenX - sx, e.screenY - sy);
+    });
+    window.addEventListener("mouseup", () => {
+      dragging = false;
+      head.style.cursor = "move";
+    });
+
+    // ── 縮小：最小化視窗（popMin 在多數瀏覽器不可靠，改為縮小視窗尺寸）──
+    document.getElementById("btn-min").addEventListener("click", () => {
+      if (window.outerWidth > 100) {
+        window.resizeTo(400, 200);   // 縮小視窗
+      } else {
+        window.resizeTo(1200, 800);  // 還原
+      }
+    });
+
+    // 讓畫布取得鍵盤焦點
+    screen.addEventListener("click", () => rfb.focus && rfb.focus());
+  </script>
+</body>
+</html>

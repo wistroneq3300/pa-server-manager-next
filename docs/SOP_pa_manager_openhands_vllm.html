@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交接 SOP · PA Manager / OpenHands / vLLM</title>
+<style>
+:root{
+  --bg:#0f1420; --panel:#171e2e; --panel2:#1d2638; --line:#2a3450;
+  --ink:#e8edf7; --dim:#9aa7c3; --acc:#4da3ff; --acc2:#22c58b; --warn:#ffb454; --danger:#ff6b6b;
+  --mono:"SF Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;line-height:1.65;font-size:15px}
+#wrap{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+header.hero{
+  background:linear-gradient(135deg,#16233f 0%,#0f1420 60%,#143325 100%);
+  border:1px solid var(--line);border-radius:16px;padding:34px 34px 28px;margin-bottom:22px;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);position:relative;overflow:hidden}
+header.hero::after{content:"";position:absolute;right:-60px;top:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(77,163,255,.16),transparent 65%)}
+.hero .eyebrow{color:var(--acc2);font-size:13px;letter-spacing:.18em;font-weight:700;text-transform:uppercase}
+.hero h1{font-size:30px;margin:8px 0 6px;letter-spacing:.02em}
+.hero p{color:var(--dim);font-size:14.5px;max-width:760px}
+.hero .meta{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px}
+.pill{background:rgba(77,163,255,.12);border:1px solid rgba(77,163,255,.35);color:var(--acc);border-radius:999px;padding:4px 12px;font-size:12.5px;font-weight:600}
+.pill.green{background:rgba(34,197,139,.12);border-color:rgba(34,197,139,.35);color:var(--acc2)}
+.pill.amber{background:rgba(255,180,84,.10);border-color:rgba(255,180,84,.35);color:var(--warn)}
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;position:sticky;top:10px;z-index:50;
+  background:rgba(15,20,32,.88);backdrop-filter:blur(8px);padding:8px;border:1px solid var(--line);border-radius:14px}
+nav.tabs button{border:1px solid var(--line);background:var(--panel2);color:var(--dim);padding:9px 16px;border-radius:9px;
+  font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+nav.tabs button:hover{color:var(--ink);border-color:var(--acc)}
+nav.tabs button.active{background:var(--acc);border-color:var(--acc);color:#04121f}
+.panel{display:none;animation:fade .25s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+section.block{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:20px}
+section.block h2{font-size:20px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+section.block h2 .no{background:var(--acc);color:#04121f;border-radius:8px;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+h3{font-size:16px;margin:18px 0 8px;color:var(--acc)}
+h4{font-size:14.5px;margin:14px 0 6px;color:var(--acc2)}
+p{margin:6px 0}
+ul,ol{margin:6px 0 6px 22px}
+li{margin:3px 0}
+b,strong{color:#fff}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+code{font-family:var(--mono);background:rgba(77,163,255,.12);color:#9fd0ff;padding:1px 6px;border-radius:5px;font-size:13px}
+pre{background:#0a0e18;border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto;margin:10px 0;font-size:12.8px;line-height:1.5}
+pre code{background:none;color:#c9e6ff;padding:0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel2);color:var(--acc2);font-weight:700;white-space:nowrap}
+tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+td code{font-size:12.3px}
+.ok{color:var(--acc2);font-weight:700}
+.warn{color:var(--warn);font-weight:700}
+.bad{color:var(--danger);font-weight:700}
+.callout{border-left:4px solid var(--acc);background:rgba(77,163,255,.08);padding:12px 16px;border-radius:0 10px 10px 0;margin:12px 0}
+.callout.warn{border-color:var(--warn);background:rgba(255,180,84,.08)}
+.callout.danger{border-color:var(--danger);background:rgba(255,107,107,.08)}
+.callout.green{border-color:var(--acc2);background:rgba(34,197,139,.08)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h4{margin-top:0}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 12px;font-size:13.5px}
+.kv b{color:var(--dim)}
+.toc{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:6px}
+.toc a{display:block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-weight:600;font-size:13.5px}
+.toc a:hover{border-color:var(--acc)}
+footer{margin-top:30px;color:var(--dim);font-size:12.5px;text-align:center;border-top:1px solid var(--line);padding-top:16px}
+@media print{nav.tabs{display:none}.panel{display:block!important}.panel+.panel{margin-top:40px;page-break-before:always}body{background:#fff;color:#000}section.block{background:#fff;border-color:#ccc}}
+</style>
+</head>
+<body>
+<div id="wrap">
+<header class="hero">
+  <div class="eyebrow">交接 SOP · System Handover Runbook</div>
+  <h1>PA Server Manager / OpenHands / vLLM 交接文件</h1>
+  <p>這份文件是給你(接手的工程師或 AI agent)看的完整操作 SOP。內容依目前實際運行的機器狀態撰寫，涵蓋：<b>① PA Manager(port 6969)怎麼 build 起來</b>、<b>② OpenHands(Agent Canvas)怎麼架設</b>、<b>③ vLLM 與目前 4 顆 model 怎麼設定</b>。用上方分頁切換大項。</p>
+  <div class="meta">
+    <span class="pill">機器: EQ3300-AIAgent / 10.35.229.64</span>
+    <span class="pill green">GPU: 7× NVIDIA B200 (0~6)</span>
+    <span class="pill amber">Driver 610.43.02 · CUDA 13.3</span>
+    <span class="pill">快照日期: 2026-09-16</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-tab="tab0" class="active">🏠 總覽</button>
+  <button data-tab="tab1">① PA Manager</button>
+  <button data-tab="tab2">② OpenHands 架設</button>
+  <button data-tab="tab3">③ vLLM &amp; Models</button>
+  <button data-tab="tab4">📋 附錄速查</button>
+</nav>
+
+<div class="panel active" id="tab0">
+  <section class="block">
+    <h2><span class="no">0</span> 總覽：這台機器在跑什麼</h2>
+    <p>這是一台 <b>AI 管理與開發一體機</b>(代號 Project Naboo / EQ3300-AIAgent)，同一台機器同時擔三個角色，全部用 systemd 常駐、開機自動拉起：</p>
+    <div class="grid2">
+      <div class="card">
+        <h4>① PA Server Manager</h4>
+        <p>網頁版伺服器管理台(部門同仁用的 L10 單機 / L11 機櫃管理介面)。FastAPI + 原生 JS，跑在 <b>port 6969</b>。</p>
+      </div>
+      <div class="card">
+        <h4>② OpenHands (Agent Canvas)</h4>
+        <p>你自己日常在用的 AI 開發環境。Web UI 入口 <b>port 3000</b>，由 agent-server + automation + 前端組成。</p>
+      </div>
+      <div class="card">
+        <h4>③ vLLM 模型伺服器</h4>
+        <p>4 顆 open-weight LLM 用 vLLM 服務化，供 OpenHands 與 PA Manager 的 AI 功能使用。佔用 7 張 B200 全部。</p>
+      </div>
+    </div>
+    <h3>三者如何串在一起</h3>
+    <p>PA Manager 的 AI 分析(AI Copilot / 感測器診斷 / 機櫃分析 / 影像會診)直接呼叫本機 vLLM；OpenHands 的四個 LLM profile 也各自指到 vLLM 的 OpenAI-compatible endpoint。換句話說：<b>vLLM 掛掉 → OpenHands 與 PA 的 AI 都跟著掛</b>。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">0</span> 完整服務一覽表(所有 port / service)</h2>
+    <table>
+      <tr><th>Port</th><th>Service</th><th>用途</th><th>重要檔案 / 設定</th></tr>
+      <tr><td><code>6969</code></td><td><code>pa-manager.service</code></td><td>PA Server Manager 正式版(生產)</td><td>code: <code>/root/sheng/manager/pa_manager</code> · data: <code>/srv/pa-manager-prod/data</code></td></tr>
+      <tr><td><code>6968</code></td><td><code>pa-terminal-bridge.service</code></td><td>Web Terminal (node/ssh2, xterm)</td><td><code>terminal_bridge/server.js</code></td></tr>
+      <tr><td><code>3000</code></td><td>agent-canvas ingress</td><td>OpenHands Web UI 入口</td><td><code>/usr/bin/agent-canvas</code> · <code>/opt/openhands</code></td></tr>
+      <tr><td><code>3001</code></td><td>agent-canvas static</td><td>前端靜態檔 server</td><td><code>/usr/lib/node_modules/@openhands/agent-canvas/build</code></td></tr>
+      <tr><td><code>18000</code></td><td>agent-server</td><td>OpenHands 後端 (執行 terminal/file/code)</td><td>v1.47.0 via uvx · settings: <code>/root/.openhands/</code></td></tr>
+      <tr><td><code>18001</code></td><td>openhands-automation</td><td>自動化排程後端</td><td>v1.11.1 via uvx</td></tr>
+      <tr><td><code>18002</code></td><td><code>vllm-coder.service</code></td><td>vLLM qwen3-coder (GPU6)</td><td>/mnt/vllm-venv · HF: <code>/mnt/hf-cache</code></td></tr>
+      <tr><td><code>18003</code></td><td><code>vllm-27b.service</code></td><td>vLLM qwen3.8-27b (GPU4)</td><td>同上</td></tr>
+      <tr><td><code>18004</code></td><td><code>vllm-vl.service</code></td><td>vLLM qwen3-vl-32b (GPU5, 視覺)</td><td>同上</td></tr>
+      <tr><td><code>18011</code></td><td><code>vllm-flash.service</code></td><td>vLLM deepseek-v4-flash (GPU0-3, TP4)</td><td>同上</td></tr>
+      <tr><td><code>18992</code></td><td><code>spx-broker.service</code></td><td>SP-X KVM Auto-Login Broker (選配元件)</td><td>user portal-svc · <code>/opt/pa-manager</code></td></tr>
+      <tr><td><code>19000</code></td><td>vscode server</td><td>agent-canvas 內建 VS Code 網頁版</td><td>agent-canvas 元件</td></tr>
+    </table>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">0</span> 硬體與磁碟</h2>
+    <div class="grid2">
+      <div class="card">
+        <h4>GPU — 7× NVIDIA B200 (0~6)</h4>
+        <ul>
+          <li>Driver <b>610.43.02</b> / CUDA UMD <b>13.3</b>，CUDA Toolkit <code>/usr/local/cuda-13.3</code></li>
+          <li>每顆 183GB VRAM，全部被 4 個 vLLM 佔滿 (~160-166G)</li>
+          <li><b>沒有 GPU7</b> — 設到不存在的卡會 NVML InvalidArgument crash-loop</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>磁碟</h4>
+        <div class="kv">
+          <b>/mnt</b><span>NVMe 1.6T — HF 權重快取(335G) + <code>vllm-venv</code></span>
+          <b>/</b><span>系統碟 1.8T — 程式碼、OpenHands、資料庫</span>
+          <b>/srv/pa-manager-prod</b><span>PA Manager 生產資料 (data.json + telemetry.db ~246M)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">0</span> 如何用本文件</h2>
+    <p>接手時建議順序：先去「📋 附錄速查」跑 30 秒健康檢查確認全部服務活著 → 依需求閱讀對應分頁。</p>
+    <ol>
+      <li>只看 6969 怎麼 build → <b>① PA Manager</b></li>
+      <li>OpenHands 怎麼架起來、怎麼接管 → <b>② OpenHands 架設</b></li>
+      <li>4 顆 model 怎麼設、vLLM 壞了怎麼修 → <b>③ vLLM &amp; Models</b></li>
+      <li>快速健康檢查、緊急恢復指令 → <b>📋 附錄速查</b></li>
+    </ol>
+    <div class="callout warn"><b>交接備註：</b>既有更早的文件仍保留在 <code>/mnt/VLLM-SOP.html</code>(vLLM 專用)、<code>/mnt/hf-cache/交接檔.md</code>、<code>docs/system-handover.html</code> 與各 <code>SESSION_HANDOFF_*.md</code>。本文件是最新整合版，彼此若有出入以本文件 + 實際系統為準。</div>
+  </section>
+</div>
+
+<div class="panel" id="tab1">
+  <section class="block">
+    <h2><span class="no">1</span> PA Manager — 專案是什麼</h2>
+    <p><b>Wistron PA Server Manager</b>：AI GPU 伺服器(與機櫃)的集中式網頁管理台，把 <b>L10(單機)</b> 與 <b>L11(機櫃)</b> 監控/控制統一在一個畫面。被控主機<b>不用裝 agent</b>，全靠 SSH(OS) + IPMI/BMC 溝通。歷史 telemetry 存 SQLite；瀏覽器內的終端機由獨立的 node/ssh2 bridge 提供。</p>
+    <ul>
+      <li>後端 <b>FastAPI (Python 3.12)</b>；前端 <b>原生 JavaScript</b>(無 framework、無 build step)</li>
+      <li>GitHub: <code>https://github.com/wistroneq3300/pa-server-manager</code></li>
+      <li>本機 checkout: <code>/root/sheng/manager/pa_manager</code>(git remote 指到上面 repo)</li>
+    </ul>
+    <h3>功能重點</h3>
+    <div class="grid2">
+      <div class="card"><h4>L10 單機</h4>系統增刪 / OS SSH、BMC、硬體清單(CPU/DIMM/SSD/GPU/NIC)、sensor 即時與歷史、<b>sensor AI 診斷</b>、電源控制、GPU 資訊。</div>
+      <div class="card"><h4>L11 機櫃</h4>機櫃平面圖(U 槽)、拓樸圖、整櫃 telemetry、<b>機櫃 AI 分析</b>。</div>
+      <div class="card"><h4>Terminal / 廣播</h4>瀏覽器內 xterm(OS+BMC)、系統廣播(一次送指令到多台)。</div>
+      <div class="card"><h4>KVM</h4>單機 KVM(noVNC→BMC RFB)、KVM 同步廣播、SP-X 自動登入 broker。</div>
+      <div class="card"><h4>AI Copilot</h4>自然語言操作界面，接本機 vLLM(見下方「AI 如何接 vLLM」)。</div>
+      <div class="card"><h4>測試資料庫</h4>測試項目庫(testlib)管理、上傳 / 管理與檢視。</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">1</span> 程式碼架構(資料夾)</h2>
+    <pre><code>pa_manager/
+├── main.py                 # FastAPI 主程式（後端全部邏輯，~130KB）
+├── telemetry_core.py       # telemetry 收集 / 解析（含 AMD rocm-smi）
+├── kvm_bridge.py           # KVM(RFB) proxy
+├── requirements.txt        # Python 依賴（固定版本）
+├── run.sh                  # 試跑用啟動 script
+├── pa-manager.service      # systemd 範例（注意：路徑與實裝不同，見下）
+├── static/                 # 前端（index.html + css + js/app.js）
+├── terminal_bridge/        # node/ssh2 終端 bridge（獨立 service）
+├── deploy/                 # SP-X broker 相關
+├── spx_kvm_broker/         # SP-X KVM broker 套件（8 模組）
+├── scripts/                # 測試資料庫建置/修復批次腳本
+├── data/                   # 試用資料（生產資料在 /srv/pa-manager-prod/data）
+└── tests/                  # 測試</code></pre>
+    <p><b>重要路徑差異：</b>repo 內的 <code>pa-manager.service</code> <span class="warn">樣本檔</span>寫的是 <code>WorkingDirectory=/root/user/manager/pa_manager</code>(舊路徑)，而 <b>實際上裝在 /etc/systemd/system/ 的版本</b>已改成正確的 <code>/root/sheng/manager/pa_manager</code>。部署時若直接複製 repo 樣本會起不來，務必對照實裝 unit 修改。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">1</span> 從零 Build（乾淨機器 / 乾淨 clone）</h2>
+    <p>前置需求：<b>Linux + Python 3.12 + Node.js 18+</b>。</p>
+    <h3>Step 1 — 抓程式碼</h3>
+    <pre><code>git clone https://github.com/wistroneq3300/pa-server-manager.git
+cd pa-server-manager</code></pre>
+    <h3>Step 2 — Python 環境 + 依賴</h3>
+    <pre><code>python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt</code></pre>
+    <h3>Step 3 — Terminal bridge 的 node 依賴</h3>
+    <pre><code>cd terminal_bridge
+npm ci          # 用 package-lock.json（ssh2 + ws）
+cd ..</code></pre>
+    <h3>Step 4 — 準備資料目錄</h3>
+    <p>程式讀 <code>PA_DATA_DIR</code> 環境變數（沒設就用程式所在目錄）。生產建議獨立資料夾：</p>
+    <pre><code>export PA_DATA_DIR=/srv/pa-manager-prod/data
+mkdir -p "$PA_DATA_DIR"</code></pre>
+    <p>首次啟動資料夾是空的也行，上線後在網頁「Add System」建機台。若<span class="warn">遷移既有站</span>，就把舊的 <code>data.json</code> 與 <code>telemetry.db</code> 複製進去。</p>
+    <h3>Step 5 — 啟動（試跑 vs 正式）</h3>
+    <p><b>試跑（port 8788）：</b></p>
+    <pre><code>source .venv/bin/activate
+PORT=8788 bash run.sh
+# http://localhost:8788/</code></pre>
+    <p><b>正式（systemd, port 6969）：</b></p>
+    <pre><code>sudo cp pa-manager.service pa-terminal-bridge.service /etc/systemd/system/
+# ⚠️ 一定要編輯兩支 unit：WorkingDirectory、ExecStart 的 python 路徑、
+#    Environment PA_DATA_DIR，都改成這台機器的實際路徑
+sudo systemctl daemon-reload
+sudo systemctl enable --now pa-terminal-bridge   # 先起 node bridge
+sudo systemctl enable --now pa-manager           # 再起 python 後端
+sudo systemctl status pa-manager pa-terminal-bridge</code></pre>
+    <div class="callout"><b>兩支服務都要跑</b>，且 <code>pa-terminal-bridge</code> 要能讀同一個 <code>$PA_DATA_DIR/data.json</code>(它從這裡取機台帳密，不信任前端傳的密碼)。</div>
+    <h3>Step 6 — 驗證</h3>
+    <ul>
+      <li>開 <code>http://&lt;host&gt;:6969/</code> UI 有出來</li>
+      <li>System Manager 加一台(OS IP/user/pass) → 開 web terminal 確認 SSH 通</li>
+      <li>開某機台/機櫃 Telemetry → AI 分析那幾行有繁體中文摘要(代表 vLLM 通)</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">1</span> 目前正式環境的實際設定</h2>
+    <p><code>/etc/systemd/system/pa-manager.service</code>（實裝版，已修正路徑）：</p>
+    <pre><code>[Service]
+User=root
+WorkingDirectory=/root/sheng/manager/pa_manager
+Environment=PA_DATA_DIR=/srv/pa-manager-prod/data
+Environment=PORT=6969
+ExecStart=/usr/bin/python3.12 -m uvicorn main:app --host 0.0.0.0 --port 6969
+Restart=always
+RestartSec=3</code></pre>
+    <p><code>/etc/systemd/system/pa-terminal-bridge.service</code>：</p>
+    <pre><code>[Service]
+User=root
+WorkingDirectory=/root/sheng/manager/pa_manager/terminal_bridge
+Environment=TERM_BRIDGE_PORT=6968
+Environment=PA_DATA_DIR=/srv/pa-manager-prod/data
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3</code></pre>
+    <p><b>Podman/檔案權限注意：</b>PA 資料目錄 <code>/srv/pa-manager-prod/data</code> 是 <code>rwxrwxrwx</code>，所有相關服務用 root 跑。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">1</span> AI 如何接本機 vLLM（重要！）</h2>
+    <p>PA Manager 的「AI 功能」<b>已從舊版 Ollama 遷移到本機 vLLM</b>（Ollama 服務已停用）。端點寫死在 <code>main.py</code>：</p>
+    <table>
+      <tr><th>用途</th><th>URL / Model</th><th>對應 vLLM 服務</th></tr>
+      <tr><td>一般 AI 分析（sensor/telemetry/rack/copilot/testlib）</td><td><code>VLLM_URL = http://127.0.0.1:18002</code> · <code>qwen3-coder</code></td><td>vllm-coder (GPU6)</td></tr>
+      <tr><td>視覺 AI 會診（BMC KVM 截圖 / 機櫃照片）</td><td><code>VISION_URL = http://127.0.0.1:18004</code> · <code>qwen3-vl-32b</code></td><td>vllm-vl (GPU5)</td></tr>
+      <tr><td>DeepSeek 相關(進階)</td><td><code>DEEPSEEK_URL = http://127.0.0.1:18011</code> · <code>deepseek-v4-flash</code></td><td>vllm-flash (GPU0-3)</td></tr>
+    </table>
+    <div class="callout warn"><b>也就是說：</b>PA 的 AI 分析依賴 <code>vllm-coder</code>(18002) 活著；影像功能依賴 <code>vllm-vl</code>(18004)。vLLM 掛就沒有 AI 分析(UI 顯示空字串)，但網站其他功能仍正常。</div>
+    <h3>常見操作 / 更新指令</h3>
+    <pre><code># 更新（程式碼從 GitHub 拉新）
+cd /root/sheng/manager/pa_manager
+git pull
+# 若 python 依賴有變：
+# source .venv/bin/activate && pip install -r requirements.txt
+# 若 node 依賴有變：
+# cd terminal_bridge && npm ci
+sudo systemctl restart pa-manager pa-terminal-bridge
+
+# Rollback
+git log --oneline
+git checkout &lt;要退回的 commit&gt;
+sudo systemctl restart pa-manager pa-terminal-bridge</code></pre>
+    <h3>備份(Production)</h3>
+    <pre><code># 每日自動備份 backup_prod.sh（保留 14 份）→ 用 cron 每 02:00：
+# 0 2 * * * /root/sheng/manager/pa_manager/backup_prod.sh >> /tmp/pa_backup.log 2>&1
+# 手動備份：直接複製 $PA_DATA_DIR/(含 data.json + telemetry.db)</code></pre>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">1</span> 故障排除速查（PA Manager）</h2>
+    <table>
+      <tr><th>症狀</th><th>檢查 / 解法</th></tr>
+      <tr><td>6969 完全連不上</td><td><code>systemctl status pa-manager</code>；<code>ss -tlnp | grep 6969</code>；journalctl log</td></tr>
+      <tr><td>改了程式碼沒生效</td><td>正式版無 --reload，改完要 <code>restart pa-manager</code></td></tr>
+      <tr><td>Web terminal 連不上</td><td><code>systemctl status pa-terminal-bridge</code>(6968)；確認它能讀 <code>$PA_DATA_DIR/data.json</code> 帳密</td></tr>
+      <tr><td>AI 分析一片空白</td><td>vLLM 掛了。查 <code>curl http://127.0.0.1:18002/v1/models</code> → 見③ vLLM 章節</td></tr>
+      <tr><td>起不來但路徑對</td><td>檢查 pyvenv python 路徑：實裝用系統 <code>/usr/bin/python3.12</code> 而非 .venv(可省)，依賴用 <code>pip install -r requirements.txt</code> 裝到系統即可</td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="panel" id="tab2">
+  <section class="block">
+    <h2><span class="no">2</span> OpenHands — 這套是什麼 / 用哪些元件</h2>
+    <p>這台機器上跑的是 <b>OpenHands Agent Canvas</b> —— 你每天的 AI 開發環境(網頁介面 + 內建 VS Code + 自動化)。它不是單一程式，而是由下列元件組成，全部由一支 systemd unit <code>agent-canvas.service</code> 拉起：</p>
+    <table>
+      <tr><th>元件</th><th>Port</th><th>版本</th><th>啟動方式</th></tr>
+      <tr><td>Ingress (統一入口)</td><td><code>3000</code></td><td>@openhands/agent-canvas 1.18.0</td><td>node <code>ingress.mjs</code>（npm global）</td></tr>
+      <tr><td>前端 (static)</td><td><code>3001</code></td><td>同上</td><td>node <code>static-server.mjs</code></td></tr>
+      <tr><td>agent-server 後端</td><td><code>18000</code></td><td>openhands-agent-server <b>1.47.0</b></td><td>uvx (uv tool) 執行 <code>agent-server --import-modules canvas_ui_tool</code></td></tr>
+      <tr><td>automation 後端</td><td><code>18001</code></td><td>openhands-automation <b>1.11.1</b></td><td>uvx 執行 <code>uvicorn openhands.automation.app:app</code></td></tr>
+      <tr><td>內建 VS Code</td><td><code>19000</code></td><td>—</td><td>agent-canvas 內建 (base-path /vscode)</td></tr>
+    </table>
+    <div class="callout"><b>如何進 OpenHands：</b>瀏覽器開 <code>http://localhost:3000</code>（或 HTTP: 該機 IP:3000）。入口端點 <code>/api/*</code>→agent-server、<code>/api/automation/*</code>→automation、其餘→前端。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">2</span> 安裝方式（重裝 / 新機器復刻）</h2>
+    <h3>前置需求</h3>
+    <ul>
+      <li>Node.js (v22.23.2) + npm</li>
+      <li>uv (or uvx) — 裝在 <code>/root/.local/bin/uv</code></li>
+      <li>vLLM 四個 endpoint 要先在(見③) —— OpenHands 的 LLM 是接本機 vLLM</li>
+    </ul>
+    <h3>Step 1 — 裝 agent-canvas（npm global + CLI）</h3>
+    <pre><code>npm install -g @openhands/agent-canvas     # 提供 /usr/bin/agent-canvas</code></pre>
+    <h3>Step 2 — systemd unit</h3>
+    <pre><code>[Unit]
+Description=OpenHands Agent Canvas web UI
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/agent-canvas --port 3000
+WorkingDirectory=/opt/openhands
+Environment=HOME=/root
+Environment=PATH=/root/.local/bin:/usr/local/cuda/bin:/usr/local/bin:/root/openmpi-5.0.8:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/opt/mellanox/doca/tools/:/root/.local/bin
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=20
+StandardOutput=append:/var/log/agent-canvas.log
+StandardError=append:/var/log/agent-canvas.log
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+    <pre><code>sudo cp agent-canvas.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now agent-canvas
+sudo systemctl status agent-canvas</code></pre>
+    <p><code>/usr/bin/agent-canvas</code> 是一個 CLI：它會透過 <code>uvx</code> 動態拉 <code>openhands-agent-server</code> / <code>openhands-automation</code>(版本由環境變數 <code>OH_AGENT_SERVER_VERSION</code> 控制，預設 1.47.0)，再啟動 ingress + static + agent-server + automation 四個進程。除錯時看 log：<code>tail -f /var/log/agent-canvas.log</code>。</p>
+    <p>也有現成的管理 script：<code>/opt/openhands/agent-canvas-ctl.sh start|stop|restart|status</code>(PID-file based)。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">2</span> 設定與資料放哪（重要！）</h2>
+    <p>OpenHands 的所有設定/資料都集中在 <code>/root/.openhands/</code>：</p>
+    <table>
+      <tr><th>路徑</th><th>內容</th></tr>
+      <tr><td><code>/root/.openhands/settings.json</code></td><td>全局設定(agent 類型、conversation 參數、active_profile = deepseek-v4-flash 等)</td></tr>
+      <tr><td><code>/root/.openhands/profiles/*.json</code></td><td><b>LLM profiles</b> — 每個 profile 指向一個 vLLM endpoint（見下）</td></tr>
+      <tr><td><code>/root/.openhands/agent-profiles/*.json</code></td><td>agent 設定檔(default1/test1)、<code>llm_profile_ref</code> 指定預設用哪個 LLM profile</td></tr>
+      <tr><td><code>/root/.openhands/agent-canvas/</code></td><td>conversations(dev_conversations)、bash_events、api-key、secret-key</td></tr>
+      <tr><td><code>/root/.openhands/automation/automations.db</code></td><td>自動化排程資料庫</td></tr>
+      <tr><td><code>/root/.openhands/secrets.json</code></td><td>加密的機密（api key 等）— <b>勿外流</b></td></tr>
+      <tr><td><code>/root/.config/openhands/</code></td><td>UI 偏好(enabled_skills、analytics)</td></tr>
+      <tr><td><code>/root/workspace/project/</code></td><td>各 conversation 的專案工作目錄</td></tr>
+    </table>
+    <div class="callout danger"><b>備份重點：</b>整個 <code>/root/.openhands/</code> 就是你 OpenHands 的「靈魂」—— conversations、profiles、settings。換機器/交接時整包複製過去即可還原目前狀態。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">2</span> LLM profiles（OpenHands 用哪顆模型）</h2>
+    <p>OpenHands 不是直接改 settings 指向模型，而是用 <b>LLM profile</b> 管理；每個 profile 是一個 JSON，指到一個 OpenAI-compatible endpoint。目前 4 個 profile 對應 4 顆 vLLM：</p>
+    <table>
+      <tr><th>profile</th><th>model (litellm)</th><th>base_url</th><th>vLLM 服務</th></tr>
+      <tr><td>deepseek-v4-flash <b>(預設)</b></td><td><code>openai/deepseek-v4-flash</code></td><td><code>http://127.0.0.1:18011/v1</code></td><td>vllm-flash</td></tr>
+      <tr><td>qwen3.8-27b</td><td><code>openai/qwen3.8-27b</code></td><td><code>http://127.0.0.1:18003/v1</code></td><td>vllm-27b</td></tr>
+      <tr><td>qwen3-vl-32b</td><td><code>openai/qwen3-vl-32b</code></td><td><code>http://127.0.0.1:18004/v1</code></td><td>vllm-vl</td></tr>
+      <tr><td>qwen3-coder</td><td><code>openai/qwen3-coder</code></td><td><code>http://127.0.0.1:18002/v1</code></td><td>vllm-coder</td></tr>
+    </table>
+    <p>profile 檔範例結構（<code>api_key</code> 欄位是<b>加密後的值</b>，複製既有 profile 改 model+base_url 最快）：</p>
+    <pre><code>{
+  "model": "openai/deepseek-v4-flash",
+  "api_key": "&lt;encrypted&gt;",
+  "auth_type": "api_key",
+  "base_url": "http://127.0.0.1:18011/v1",
+  "num_retries": 5, "timeout": 300,
+  "api_mode": "auto", "stream": false, "native_tool_calling": true,
+  "extended_thinking_budget": 200000, "reasoning_effort": "high",
+  "schema_version": 1
+}</code></pre>
+    <p>開一個新 conversation 想用別顆模型 → 在 UI 用 switch_llm 選 profile 即可。預設 agent 用哪顆 → 看 <code>/root/.openhands/agent-profiles/default.json</code> 的 <code>llm_profile_ref</code>。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">2</span> 運維指令速查（OpenHands）</h2>
+    <pre><code>systemctl status agent-canvas                 # OpenHands 整包狀態
+systemctl restart agent-canvas                # 重啟（會重拉 agent-server）
+tail -f /var/log/agent-canvas.log             # 看 log
+/opt/openhands/agent-canvas-ctl.sh status     # PID-file 狀態（3000/3001/18000/18001）
+
+# 升級 agent-server 版本（改環境變數後重啟）
+#   在 unit 加 Environment=OH_AGENT_SERVER_VERSION=x.y.z 然後 restart
+# 或臨時：OH_AGENT_SERVER_VERSION=x.y.z /usr/bin/agent-canvas --port 3000
+
+# 自動化後端 DB
+/root/.openhands/automation/automations.db</code></pre>
+    <div class="callout warn"><b>注意：</b>agent-canvas 用 <code>uvx --from openhands-agent-server==1.47.0</code> 方式執行，重啟/更新時會去 PyPI 抓指定版本，所以 <b>要能連 PyPI</b>。若離線環境，需先本地預載 uv 工具快取。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">2</span> 故障排除（OpenHands）</h2>
+    <table>
+      <tr><th>症狀</th><th>檢查 / 解法</th></tr>
+      <tr><td>3000 進不去</td><td><code>systemctl status agent-canvas</code>；<code>tail -f /var/log/agent-canvas.log</code></td></tr>
+      <tr><td>開了對話但沒回應(卡 loading)</td><td>vLLM 掛了 → 檢查對應 endpoint <code>curl http://127.0.0.1:18011/v1/models</code>(預設 deepseek-v4-flash)。見③</td></tr>
+      <tr><td>重啟後版本跑掉</td><td>確認 <code>OH_AGENT_SERVER_VERSION</code> 環境變數被正確設定</td></tr>
+      <tr><td>port 被佔用</td><td>18001 若要給別人用 → vLLM flash 因此改用 <code>18011</code>(歷史緣由)</td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="panel" id="tab3">
+  <section class="block">
+    <h2><span class="no">3</span> vLLM — 總覽與硬體</h2>
+    <p>4 顆 open-weight 模型全部用 <b>vLLM 0.28.0</b>(OpenAI-compatible API) 服務化，各自的 systemd unit 管，開機自動拉起。vLLM 的 continuous batching + prefix caching 讓「20 人同時用」也撐得住。</p>
+    <div class="grid2">
+      <div class="card">
+        <h4>關鍵路徑 / 環境</h4>
+        <div class="kv">
+          <b>vLLM venv</b><span><code>/mnt/vllm-venv</code>（vLLM 0.28.0, torch 2.13.0+cu130）</span>
+          <b>HF 權重快取</b><span><code>/mnt/hf-cache</code>（335G 已用）</span>
+          <b>CUDA Toolkit</b><span><code>/usr/local/cuda-13.3</code> (nvcc 13.3.73)</span>
+          <b>Driver</b><span>610.43.02 · CUDA UMD 13.3</span>
+          <b>GPU</b><span>7× NVIDIA B200 (0~6)，各 183GB</span>
+        </div>
+      </div>
+      <div class="card">
+        <h4>4 顆模型總表</h4>
+        <table>
+          <tr><th>service</th><th>模型 id</th><th>GPU</th><th>Port</th><th>Context</th></tr>
+          <tr><td>vllm-flash</td><td>deepseek-v4-flash</td><td>0-3 (TP4)</td><td>18011</td><td>256K</td></tr>
+          <tr><td>vllm-27b</td><td>qwen3.8-27b</td><td>4</td><td>18003</td><td>256K</td></tr>
+          <tr><td>vllm-vl</td><td>qwen3-vl-32b</td><td>5</td><td>18004</td><td>64K</td></tr>
+          <tr><td>vllm-coder</td><td>qwen3-coder</td><td>6</td><td>18002</td><td>64K</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="callout warn"><b>GPU 全滿：</b>7 張卡全部被 4 個 vLLM 佔用 ~160-166GB。GPU util 閒置 0%、推理時才跳到 98-100%(continuous batching)— 這<b>不是 telemetry bug</b>。GPU4-6(EngineCore) 常常 0% 是正常的。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> 4 支 systemd unit 完整內容（現況快照）</h2>
+    <p>這是「已內聯」版本 —— 所有環境變數與啟動參數都寫死在 unit 檔內，不需另外的 start script。位置：<code>/etc/systemd/system/vllm-*.service</code>。</p>
+
+    <h3>vllm-flash.service — DeepSeek-V4-Flash（GPU0-3, TP4, port 18011, 256K）</h3>
+    <pre><code>[Service]
+User=root
+Restart=always
+RestartSec=5
+Environment="CUDA_VISIBLE_DEVICES=0,1,2,3"
+Environment="NCCL_SOCKET_IFNAME==lo"
+Environment="NCCL_IB_DISABLE=1"
+Environment="NCCL_NVLS_ENABLE=0"
+Environment="VLLM_ALLREDUCE_USE_SYMM_MEM=0"
+Environment="CUDA_HOME=/usr/local/cuda-13.3"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda-13.3/lib64"
+Environment="HF_HOME=/mnt/hf-cache"
+WorkingDirectory=/mnt
+ExecStart=/mnt/vllm-venv/bin/python -m vllm.entrypoints.openai.api_server \
+  --model /mnt/hf-cache/deepseek-ai/DeepSeek-V4-Flash-0731 \
+  --served-model-name deepseek-v4-flash \
+  --host 0.0.0.0 --port 18011 \
+  --tensor-parallel-size 4 \
+  --kv-cache-dtype fp8 --block-size 256 \
+  --moe-backend auto --disable-custom-all-reduce \
+  --attention_config.use_fp4_indexer_cache True \
+  --tokenizer-mode deepseek_v4 \
+  --tool-call-parser deepseek_v4 --enable-auto-tool-choice \
+  --max-model-len 262144 \
+  --gpu-memory-utilization 0.85 \
+  --trust-remote-code
+TimeoutStartSec=900
+LimitNOFILE=1048576</code></pre>
+
+    <h3>vllm-27b.service — Qwen3.8-27B（GPU4, TP1, port 18003, 256K）</h3>
+    <pre><code>[Service]
+User=root
+Restart=always
+RestartSec=5
+Environment="CUDA_VISIBLE_DEVICES=4"
+Environment="NCCL_SOCKET_IFNAME==lo"
+Environment="NCCL_IB_DISABLE=1"
+Environment="NCCL_NVLS_ENABLE=0"
+Environment="VLLM_ALLREDUCE_USE_SYMM_MEM=0"
+Environment="CUDA_HOME=/usr/local/cuda-13.3"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda-13.3/lib64"
+Environment="HF_HOME=/mnt/hf-cache"
+WorkingDirectory=/mnt
+ExecStart=/mnt/vllm-venv/bin/python -m vllm.entrypoints.openai.api_server \
+  --model /mnt/hf-cache/Qwen/Qwen3.8-27B \
+  --served-model-name qwen3.8-27b \
+  --host 0.0.0.0 --port 18003 \
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 262144 \
+  --trust-remote-code --enable-auto-tool-choice --tool-call-parser qwen3_coder
+TimeoutStartSec=900
+LimitNOFILE=1048576</code></pre>
+
+    <h3>vllm-vl.service — Qwen3-VL-32B（GPU5, TP1, port 18004, 64K, 視覺）</h3>
+    <pre><code>[Service]
+User=root
+Restart=always
+RestartSec=5
+Environment="CUDA_VISIBLE_DEVICES=5"
+Environment="NCCL_SOCKET_IFNAME==lo"
+Environment="NCCL_IB_DISABLE=1"
+Environment="NCCL_NVLS_ENABLE=0"
+Environment="VLLM_ALLREDUCE_USE_SYMM_MEM=0"
+Environment="CUDA_HOME=/usr/local/cuda-13.3"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda-13.3/lib64"
+Environment="HF_HOME=/mnt/hf-cache"
+WorkingDirectory=/mnt
+ExecStart=/mnt/vllm-venv/bin/python -m vllm.entrypoints.openai.api_server \
+  --model /mnt/hf-cache/Qwen/Qwen3-VL-30B-A3B-Instruct \
+  --served-model-name qwen3-vl-32b \
+  --host 0.0.0.0 --port 18004 \
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 65536 \
+  --trust-remote-code --enable-auto-tool-choice --tool-call-parser qwen3_coder
+TimeoutStartSec=900
+LimitNOFILE=1048576</code></pre>
+
+    <h3>vllm-coder.service — Qwen3-Coder-30B-A3B（GPU6, TP1, port 18002, 64K）</h3>
+    <pre><code>[Service]
+User=root
+Restart=always
+RestartSec=5
+Environment="CUDA_VISIBLE_DEVICES=6"
+Environment="VLLM_ATTENTION_BACKEND=TRITON_ATTN"
+Environment="CUDA_HOME=/usr/local/cuda-13.3"
+Environment="LD_LIBRARY_PATH=/usr/local/cuda-13.3/lib64"
+Environment="HF_HOME=/mnt/hf-cache"
+WorkingDirectory=/mnt
+ExecStart=/mnt/vllm-venv/bin/python -m vllm.entrypoints.openai.api_server \
+  --model /mnt/hf-cache/Qwen/Qwen3-Coder-30B-A3B-Instruct \
+  --served-model-name qwen3-coder \
+  --host 0.0.0.0 --port 18002 \
+  --tensor-parallel-size 1 \
+  --gpu-memory-utilization 0.90 \
+  --max-model-len 65536 \
+  --trust-remote-code --enable-auto-tool-choice --tool-call-parser qwen3_coder
+TimeoutStartSec=900
+LimitNOFILE=1048576</code></pre>
+    <div class="callout"><b>共同重點：</b>四支 unit 都 <code>Restart=always</code> + <code>TimeoutStartSec=900</code>(給首次 JIT/flashinfer 編譯時間)、都設 <code>HF_HOME=/mnt/hf-cache</code>。真正的 model 權重路徑是 <code>/mnt/hf-cache/...</code>，不是 HF hub 預設位置。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> vLLM 安裝（已有 venv / 乾淨重建）</h2>
+    <pre><code># 目前：/mnt/vllm-venv 已裝 vLLM 0.28.0 (torch 2.13.0+cu130 / CUDA 13)
+/mnt/vllm-venv/bin/vllm --version
+/mnt/vllm-venv/bin/python -c "import torch;print(torch.__version__, torch.version.cuda)"
+
+# 若需乾淨重建：
+python3 -m venv /mnt/vllm-venv
+/mnt/vllm-venv/bin/pip install --upgrade pip
+/mnt/vllm-venv/bin/pip install "vllm"        # 最新版，配 CUDA 13
+# flashinfer 若 FMHA 編譯掛掉，用 0.6.18.post1：
+# /mnt/vllm-venv/bin/pip install "flashinfer-python==0.6.18.post1"</code></pre>
+    <div class="callout danger"><b>關鍵：</b>vLLM 0.28 綁 CUDA 13。Driver 必須 ≥ CUDA 13(本機 610.43 / CUDA 13.3)。若還用 CUDA 12.8 driver 會報 <b>driver too old</b>。啟動一定要先 <code>export CUDA_HOME=/usr/local/cuda-13.3</code>（子進程才繼承得到）。</div>
+    <h3>模型權重下載（HF snapshot_download）</h3>
+    <pre><code>cat > /mnt/fetch_model.py &lt;&lt;'EOF'
+import os
+from huggingface_hub import snapshot_download
+os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
+snapshot_download(repo_id="&lt;REPO_ID&gt;",
+    local_dir="/mnt/hf-cache/&lt;REPO_ID&gt;",
+    local_dir_use_symlinks=False)
+print("OK")
+EOF
+cd /mnt && HF_HOME=/mnt/hf-cache HF_HUB_DISABLE_XET=1 \
+  nohup /mnt/vllm-venv/bin/python /mnt/fetch_model.py &gt; /tmp/fetch.log 2&gt;&amp;1 &amp;</code></pre>
+    <table>
+      <tr><th>目標</th><th>repo_id</th><th>約略大小</th></tr>
+      <tr><td>flash</td><td><code>deepseek-ai/DeepSeek-V4-Flash-0731</code></td><td>~160G</td></tr>
+      <tr><td>coder</td><td><code>Qwen/Qwen3-Coder-30B-A3B-Instruct</code></td><td>57G</td></tr>
+      <tr><td>27b</td><td><code>Qwen/Qwen3.8-27B</code></td><td>~55G</td></tr>
+      <tr><td>vl</td><td><code>Qwen/Qwen3-VL-30B-A3B-Instruct</code></td><td>—</td></tr>
+    </table>
+    <div class="callout warn"><b>不要抓錯 repo：</b>27b 用官方 <code>Qwen/Qwen3.8-27B</code>；<code>-SSM-Instruct</code> 或 redashes/...SSMFIX 都是錯的(不存在 / 非官方)。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> 啟動 / 停止 / 重啟 / 健康檢查</h2>
+    <pre><code># 啟動（開機自動起，通常不必手動）
+systemctl enable --now vllm-flash vllm-27b vllm-vl vllm-coder
+
+# 一個 model ready 與否
+curl -s --max-time 8 http://127.0.0.1:18011/v1/models | head
+# 四個都查：
+for p in 18002 18003 18004 18011; do echo "port $p:"; \
+  curl -s --max-time 8 http://127.0.0.1:$p/v1/models | python3 -c "import sys,json;print([m['id'] for m in json.load(sys.stdin)['data']])" 2>/dev/null || echo "  DOWN"; done
+
+# 看啟動 log（首啟可能花 10-20 分鐘做 kernel JIT 編譯）
+journalctl -u vllm-flash -f --no-pager
+grep "Uvicorn running\|Application startup complete" /var/log/syslog 2>/dev/null
+
+# GPU 記憶體實況
+nvidia-smi --query-gpu=index,memory.used --format=csv,noheader</code></pre>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> 三大魔鬼細節（踩過坑，最常再犯）</h2>
+    <div class="callout danger"><h3>① B200 NCCL/NVLS 卡死（TP≥2 必看，flash 就是這樣解）</h3>
+      <p>B200 的 <b>NVLink SHARP / NVLS multicast</b> 與 <b>torch symmetric memory</b> 路徑在 TP≥2 時會 hang（all_reduce 永不回傳、port 不 listen）。一定要：</p>
+      <pre><code>export NCCL_SOCKET_IFNAME='=lo'      # 單機 loopback，避開 USB NIC
+export NCCL_IB_DISABLE=1            # 單機不走 IB
+export NCCL_NVLS_ENABLE=0           # ★ 關 NVLink SHARP/NVLS multicast（hang 主因）
+export VLLM_ALLREDUCE_USE_SYMM_MEM=0 # 關 torch symmetric memory
+# 啟動參數再加：--disable-custom-all-reduce（讓 vLLM 只走 PYNCCL）</code></pre>
+      <p>成功時 NCCL log 會看到 <code>0 nvls channels</code> + <code>via P2P/CUMEM</code>；vLLM log 看到 <code>Using ['PYNCCL'] all-reduce backends</code>。<b>不要</b> <code>NCCL_P2P_DISABLE=1</code>(要保留 NVLink P2P)；<b>不要</b>手動 export RANK/WORLD_SIZE。</p>
+    </div>
+    <div class="callout warn"><h3>② flash 的 TP 不能 =3</h3>
+      <p>DeepSeek V4 有 <b>64 attention heads</b>，64/3 不整除 → validation error。TP 必須是 1/2/4/8。目前用 <b>TP4 (GPU0-3)</b>。</p>
+    </div>
+    <div class="callout warn"><h3>③ 這台只有 7 張卡 (0~6)</h3>
+      <p>不要設 <code>CUDA_VISIBLE_DEVICES=7</code> 或超過的 index —— 會 NVML InvalidArgument crash-loop。另：<code>--served-model-name "a b"</code>(空白) 在 vLLM 0.28 會被當<b>單一字串 id</b>，不是多 alias，命名要用單一 token。</p>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> 並發調校（20 人同時用）</h2>
+    <table>
+      <tr><th>手法</th><th>現況</th></tr>
+      <tr><td>prefix caching</td><td>啟用 — openhands 的 system prompt/AGENTS.md/工具定義在各 agent 間重複 → vLLM 共享 KV</td></tr>
+      <tr><td>continuous batching</td><td>內建，不需固定 slot</td></tr>
+      <tr><td>KV cache dtype fp8</td><td>flash 用 <code>--kv-cache-dtype fp8</code> 省一半 KV 記憶體</td></tr>
+      <tr><td>GPU 記憶體配置</td><td><code>--gpu-memory-utilization 0.90</code>(flash 0.85 留 headroom)</td></tr>
+      <tr><td>DSpark 推測解碼</td><td>flash(0731) 專屬，目前<b>未開</b>(要開再單獨加 --speculative-config，一次別加一堆變數)</td></tr>
+      <tr><td>MoE</td><td><code>--moe-backend auto</code>(本機偵測到 TrtLlmBf16ExpertsMoE)</td></tr>
+    </table>
+    <h4>測並發</h4>
+    <pre><code>seq 8 | xargs -P8 -I{} curl -s http://127.0.0.1:18002/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3-coder","messages":[{"role":"user","content":"hi"}],"max_tokens":256}' \
+  -o /dev/null -w "%{http_code} %{time_total}s\n"</code></pre>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">3</span> Troubleshooting（vLLM 常見地雷）</h2>
+    <table>
+      <tr><th>症狀</th><th>解法</th></tr>
+      <tr><td>driver too old (12080)</td><td>vLLM 0.28 綁 cu130，driver 升到 ≥ CUDA 13</td></tr>
+      <tr><td>找不到 nvcc / cuda_home 不存在</td><td>裝完整 CUDA toolkit 到 /usr/local/cuda-13.3，啟動前 <code>export CUDA_HOME</code></td></tr>
+      <tr><td>cuda_toolkit.h incompatible</td><td>CUDA_HOME 用系統的 /usr/local/cuda-13.3 而非 pip 路徑，首編 5-20 分鐘正常</td></tr>
+      <tr><td>FMHA JIT 死：MAX_OVERSIZED_SHARED_MEM 未定義</td><td><code>pip install "flashinfer-python==0.6.18.post1"</code> + 清 /root/.cache/flashinfer 舊 cache</td></tr>
+      <tr><td>啟動停在 pipe_read / 等 flashinfer 編譯</td><td>首次要 10-20 分鐘，看 /root/.cache/flashinfer 有無 .o 產出；趕時間可暫時 --enforce-eager</td></tr>
+      <tr><td>TP≥2 NCCL hang</td><td>見上方「魔鬼細節①」</td></tr>
+      <tr><td>崩潰迴圈殘留 worker 吃 GPU mem（假性 OOM）</td><td><code>systemctl kill -s SIGKILL vllm-&lt;name&gt;</code> → 確認該卡 mem 歸零 → 用 gpu-memory-utilization 0.85 重起</td></tr>
+      <tr><td>HF 下載中斷</td><td>snapshot_download 會 resume，重跑同 script 即可；設 HF_HUB_DISABLE_XET=1</td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="panel" id="tab4">
+  <section class="block">
+    <h2><span class="no">4</span> 30 秒健康檢查（接手第一步）</h2>
+    <pre><code># 1) 所有關鍵 service 是否 active+enabled
+systemctl is-active pa-manager pa-terminal-bridge agent-canvas \
+  vllm-flash vllm-27b vllm-vl vllm-coder
+
+# 2) 4 顆 vLLM endpoint 是否回應
+for p in 18002 18003 18004 18011; do echo "port $p:"; \
+  curl -s --max-time 8 http://127.0.0.1:$p/v1/models | python3 -c "import sys,json;print([m['id'] for m in json.load(sys.stdin)['data']])" 2>/dev/null || echo "  DOWN"; done
+
+# 3) PA 網頁有回應
+curl -s -o /dev/null -w "6969 -> HTTP %{http_code}\n" http://127.0.0.1:6969/
+
+# 4) GPU 記憶體
+nvidia-smi --query-gpu=index,memory.used --format=csv,noheader</code></pre>
+    <p>全部 green = 系統正常。任一 vLLM DOWN → OpenHands 與 PA AI 會受影響，見③ Troubleshooting。</p>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">4</span> 關鍵路徑總表</h2>
+    <table>
+      <tr><th>項目</th><th>路徑</th></tr>
+      <tr><td>PA Manager 程式碼</td><td><code>/root/sheng/manager/pa_manager</code> (git remote → GitHub wistroneq3300/pa-server-manager)</td></tr>
+      <tr><td>PA Manager 生產資料</td><td><code>/srv/pa-manager-prod/data</code>(data.json + telemetry.db)</td></tr>
+      <tr><td>PA 備份 script</td><td><code>/root/sheng/manager/pa_manager/backup_prod.sh</code></td></tr>
+      <tr><td>sutctl（SUT 控制工具）</td><td><code>/root/sheng/sutctl/sutctl</code>（list/status/run/bmc）</td></tr>
+      <tr><td>OpenHands 設定與資料</td><td><code>/root/.openhands/</code>(profiles、settings、agent-profiles、conversations、automations.db)</td></tr>
+      <tr><td>OpenHands 前端</td><td><code>/usr/lib/node_modules/@openhands/agent-canvas/build</code></td></tr>
+      <tr><td>OpenHands 管理 script</td><td><code>/opt/openhands/agent-canvas-ctl.sh</code></td></tr>
+      <tr><td>vLLM venv</td><td><code>/mnt/vllm-venv</code></td></tr>
+      <tr><td>模型權重</td><td><code>/mnt/hf-cache/</code>(deepseek-ai/..., Qwen/...)</td></tr>
+      <tr><td>vLLM systemd unit</td><td><code>/etc/systemd/system/vllm-*.service</code>（含所有啟動參數，已內聯）</td></tr>
+      <tr><td>CUDA Toolkit</td><td><code>/usr/local/cuda-13.3</code></td></tr>
+    </table>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">4</span> 所有 service 一覽與常見指令</h2>
+    <table>
+      <tr><th>service</th><th>port</th><th>作用</th><th>restart 指令</th></tr>
+      <tr><td>pa-manager</td><td>6969</td><td>PA 網頁後端</td><td><code>systemctl restart pa-manager</code></td></tr>
+      <tr><td>pa-terminal-bridge</td><td>6968</td><td>Web terminal</td><td><code>systemctl restart pa-terminal-bridge</code></td></tr>
+      <tr><td>agent-canvas</td><td>3000/3001/18000/18001/19000</td><td>OpenHands 整包</td><td><code>systemctl restart agent-canvas</code></td></tr>
+      <tr><td>vllm-flash</td><td>18011</td><td>deepseek-v4-flash (GPU0-3)</td><td><code>systemctl restart vllm-flash</code></td></tr>
+      <tr><td>vllm-27b</td><td>18003</td><td>qwen3.8-27b (GPU4)</td><td><code>systemctl restart vllm-27b</code></td></tr>
+      <tr><td>vllm-vl</td><td>18004</td><td>qwen3-vl-32b (GPU5)</td><td><code>systemctl restart vllm-vl</code></td></tr>
+      <tr><td>vllm-coder</td><td>18002</td><td>qwen3-coder (GPU6)</td><td><code>systemctl restart vllm-coder</code></td></tr>
+      <tr><td>spx-broker</td><td>18992</td><td>SP-X KVM broker（選配）</td><td><code>systemctl restart spx-broker</code></td></tr>
+    </table>
+    <div class="callout warn"><b>重啟順序建議：</b>先 vLLM（模型要時間載入/JIT）→ 再 agent-canvas → 再 pa-manager（它起動時會去連 vLLM）。若只是改 PA 程式碼，重啟 pa-manager 就好。</div>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">4</span> 交接備忘 / 重要事實</h2>
+    <ul>
+      <li><b>完整備份 =</b> <code>/root/sheng/manager/pa_manager</code>(git 已同步 GitHub，直接 git clone 可還原) + <code>/srv/pa-manager-prod/data</code>(機器資料+telemetry) + <code>/root/.openhands/</code>(OpenHands 靈魂) + <code>/mnt/hf-cache</code>(模型權重 335G，壞了要重抓)+ <code>/etc/systemd/system/{pa-manager,pa-terminal-bridge,agent-canvas,vllm-*,spx-broker}.service</code></li>
+      <li><b>service 的 unit 檔是「實作真相」</b> — vLLM 全部參數、環境變數都以 /etc/systemd/system/ 為準；repo 內的 pa-manager.service 樣本路徑是舊的。</li>
+      <li><b>Ollama 已全面停用</b>(ol-* 皆 inactive)，PA 與 OpenHands 都改用 vLLM。舊 Ollama profile 保留為 .bak-ollama。</li>
+      <li><b>Port 18001</b> 被 openhands-automation 佔用 → vLLM flash 才用 18011（歷史原因）。</li>
+      <li>PA Manager 的 AI 一律走 <code>http://127.0.0.1:18002</code>(qwen3-coder)，影像走 <code>18004</code>，進階走 <code>18011</code>。</li>
+      <li>OpenHands 預設 LLM = <b>deepseek-v4-flash</b>（active profile），agent server 版本 1.47.0。</li>
+      <li>這台沒有 GPU7；B200 NVLS/SYMM_MEM 有 hang 問題，flash 的 TP4 環境變數一行都不能少。</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <h2><span class="no">4</span> 相關既有文件參考</h2>
+    <table>
+      <tr><th>文件</th><th>位置</th><th>內容</th></tr>
+      <tr><td>vLLM 專用 SOP</td><td><code>/mnt/VLLM-SOP.html</code>（副本 /root/VLLM-SOP.html）</td><td>vLLM 安裝/下載/啟動/並發/troubleshooting 全文</td></tr>
+      <tr><td>遷移交接筆記</td><td><code>/mnt/hf-cache/交接檔.md</code></td><td>Ollama→vLLM 遷移全程、NCCL debug 記錄</td></tr>
+      <tr><td>PA 交接</td><td><code>docs/system-handover.html</code>、README.md</td><td>PA 專案交接</td></tr>
+      <tr><td>本機 OpenHands 自帶說明</td><td>README.md / AGENTS.md</td><td>專案知識、CJK 安全規則</td></tr>
+    </table>
+  </section>
+</div>
+
+
+</div>
+<script>
+const tabs=document.querySelectorAll('nav.tabs button');
+const panels=document.querySelectorAll('.panel');
+tabs.forEach(b=>b.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  document.getElementById(b.dataset.tab).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+</script>
+</body>
+</html>
