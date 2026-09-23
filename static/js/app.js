@@ -1099,13 +1099,9 @@ function rackmapHtml(members, pinged) {
 function rackBlockRow(m, u, size, pinged) {
   const n = pinged.find(x => x.name === m.name);
   const up = n ? n.os_alive : null;
-  const bmcUp = n ? n.bmc_alive : null;
   const info = mgxInfo(m);
   const osTitle = up === true ? "OS 在線" : up === false ? "OS 離線" : "OS 未知";
   const led = `<span class="led ${up === true ? "on" : up === false ? "off" : "unk"}" title="${osTitle}"></span>`;
-  const ledBmc = m.bmc_ip
-    ? `<span class="led sm ${bmcUp === true ? "on" : bmcUp === false ? "off" : "unk"}" title="BMC ${bmcUp === true ? "在線" : bmcUp === false ? "離線" : "未知"}"></span>`
-    : "";
   // 點機櫃元件本身一律進「單機詳情」；換位/類型請按右側「⇅」按鈕
   const click = `openMachine('${esc(m.name)}')`;
   const delBtn = `<button class="btn small btn-del" title="從機櫃移除" onclick="rackUnmount('${esc(m.name)}')">✕</button>`;
@@ -1121,9 +1117,9 @@ function rackBlockRow(m, u, size, pinged) {
     <span class="rm-u ${size > 1 ? "rm-u-block" : ""}">${uStack}</span>
     <div class="rm-cell ${info.cls}" onclick="${click}" style="align-items:${size > 1 ? "center" : "stretch"}">
       <div class="rm-cell-inner">
-        <span class="rm-lamps">${led}${ledBmc}</span>
+        <span class="rm-lamps">${led}</span>
         <span class="rm-name">${nm}</span>
-        <span class="rm-ip mono">${esc(m.bmc_ip || m.os_ip || "")}</span>
+        <span class="rm-ip mono">${esc(m.os_ip || "")}</span>
         <span class="rm-actions" onclick="event.stopPropagation()">
           <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
           ${delBtn}
@@ -1184,20 +1180,14 @@ function devicesHtml(members, pinged) {
   members = members.slice().sort(byU);
   const lamp = v => v === true ? `<span class="ping-lamp on">🟢</span>` : v === false ? `<span class="ping-lamp off">🔴</span>` : `<span class="ping-lamp none">⨪</span>`;
   const body = `<div class="card"><div class="table-scroll"><table class="t rack-ping-table">
-    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>OS IP</th><th>BMC IP</th><th>操作</th></tr></thead>
+    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>OS IP</th><th>操作</th></tr></thead>
     <tbody>` + members.map(m => {
       const n = pinged.find(x => x.name === m.name);
-      const isServerLike = (mgxTypeOf(m) !== "switch" && mgxTypeOf(m) !== "pdu" && mgxTypeOf(m) !== "powershelf" && mgxTypeOf(m) !== "cdu");
-      // 其他零件（switch/pdu/powershelf/cdu）只顯示 OS 狀態；server/storage/network 顯示 OS+BMC
       const osUp = n ? n.os_alive : null;
-      const bmcUp = n ? n.bmc_alive : null;
       const info = mgxInfo(m);
       const osCell = m.os_ip
         ? `${lamp(osUp)} <span class="ping-ip mono">${esc(m.os_ip)}</span>`
         : `<span style="color:var(--text-faint)">—</span>`;
-      const bmcCell = !isServerLike
-        ? `<span class="hint" style="color:var(--text-faint)">—</span>`
-        : (m.bmc_ip ? `${lamp(bmcUp)} <span class="ping-ip mono">${esc(m.bmc_ip)}</span>` : `<span style="color:var(--text-faint)">—</span>`);
       // 只有「有 OS IP」的系統才有 Terminal + 開關機（跟 System Manager 清單同一套邏輯）
       const hasOs = !!m.os_ip;
       return `<tr>
@@ -1205,7 +1195,6 @@ function devicesHtml(members, pinged) {
         <td class="mono"><a href="#" class="mach-link" onclick="event.preventDefault();openMachine('${esc(m.name)}')"><b>${esc(m.name)}</b></a></td>
         <td>${info.icon} ${esc(info.label)}</td>
         <td class="mono">${osCell}</td>
-        <td class="mono">${bmcCell}</td>
         <td style="white-space:nowrap">
           <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
           ${hasOs ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
@@ -1639,9 +1628,8 @@ function rackStatusCounts(members, pinged) {
   members.forEach(m => {
     const n = pinged.find(x => x.name === m.name);
     const upOs = n ? n.os_alive : null;
-    const upBmc = n ? n.bmc_alive : null;
-    if (upOs === true || upBmc === true) up++;
-    else if (upOs === false || upBmc === false) down++;
+    if (upOs === true) up++;
+    else if (upOs === false) down++;
     else none++;
   });
   return `狀態：<span class="ping-lamp on">🟢</span> Up ${up} &nbsp;<span class="ping-lamp off">🔴</span> Down ${down} &nbsp;<span class="ping-lamp none">⨪</span> 未 Ping ${none}`;
@@ -2758,6 +2746,7 @@ function pageMachine() {
       <button class="btn small" onclick="openTermDialog('${esc(name)}')">▶ Terminal</button>
       ${m.passive ? "" : `<button class="btn small" onclick="runDiagnose('${esc(name)}')">🩺 系統診斷</button>`}
       <button class="btn small btn-good" onclick="openAssignTask('${esc(name)}')">📋 指派任務</button>
+      <button class="btn small" onclick="openKvmSolo('${esc(name)}')">🖞 KVM</button>
       <button class="btn small" onclick="machineRefresh()">⟳ 重新整理</button>
     </div>
     <div class="mach-grid">
@@ -3759,7 +3748,7 @@ function renderProjectList() {
     const systems = machines.filter(m => m.project === p.name && !isRackItem(m)).length;
     return `<tr><td><b>${esc(p.name)}</b></td><td>${esc(p.desc || "")}</td><td>${p.machine_count}（R${racks}/S${systems}）</td>
       <td style="white-space:nowrap">
-        <button class="btn small" onclick="editProjectStart('${esc(p.name)}')">翮改</button>
+        <button class="btn small" onclick="editProjectStart('${esc(p.name)}')">編輯</button>
         <button class="btn small${canDelete ? "" : " disabled"}" title="${canDelete ? "刪除" : "此專案還有機台，無法刪除"}" ${canDelete ? `onclick="deleteProject('${esc(p.name)}')"` : "disabled"}>刪除</button>
       </td></tr>`;
   }).join("") || `<tr><td colspan="4" style="color:var(--text-faint)">還沒有專案，請先在線新增。</td></tr>`;
@@ -3885,7 +3874,7 @@ function openTermDialog(name) {
           host: ($("td-bmc-host") && $("td-bmc-host").value.trim()) || m.bmc_ip || "",
           user: ($("td-bmc-user") && $("td-bmc-user").value.trim()) || "",
           pass: ($("td-bmc-pass") && $("td-bmc-pass").value) || "",
-          port: m.bmc_port || 623,
+          port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22,
         };
         // 至少要有一組有效 creds
         const osOK = hasOs || (osCreds.host && osCreds.user && osCreds.pass);
@@ -3893,7 +3882,7 @@ function openTermDialog(name) {
         if (!osOK && !bmcOK) { alert("請至少填一組 OS 或 BMC 的 host／帳號／密碼"); return; }
         closeDialog();
         openTermAt(name, hasOs ? { host: m.os_ip, user: m.os_user, pass: m.os_pass, port: m.os_port || 22 } : (osOK ? osCreds : null),
-                  hasBmc ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 623 } : (bmcOK ? bmcCreds : null));
+                  hasBmc ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22 } : (bmcOK ? bmcCreds : null));
       } },
     ]);
 }
@@ -3948,7 +3937,7 @@ function openTerm(name) {
   if (!m) return;
   openTermAt(name,
     (m.os_ip && m.os_user && m.os_pass) ? { host: m.os_ip, user: m.os_user, pass: m.os_pass, port: m.os_port || 22 } : null,
-    (m.bmc_ip && m.bmc_user && m.bmc_pass) ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: m.bmc_port || 623 } : null);
+    (m.bmc_ip && m.bmc_user && m.bmc_pass) ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22 } : null);
 }
 // ⚙ 設定：變更 OS IP / BMC IP（各自獨立，未更動的欄位後端不會動）。
 // OS IP 需 ping 通 + hostname 相符；BMC IP 只要 ping 通即可。
@@ -3966,6 +3955,7 @@ function changeOsIp(name) {
       </p>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">OS IP</label>
       <input class="input" id="new-os-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curOs)}" placeholder="例如 INTERNAL_IP_10">
+      <button class="btn small" id="osip-probe-btn" style="margin-top:8px" onclick="probeChangeOsBmc('${esc(name)}')" title="依新 OS IP + 原 SSH 帳密，先確認 hostname 再用 ipmitool lan print 抓取 BMC IP 自動帶入">🔍 依新 OS 抓取 BMC IP</button>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">BMC IP</label>
       <input class="input" id="new-bmc-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curBmc)}" placeholder="例如 INTERNAL_IP_11">
       <div id="osip-msg" style="margin-top:10px;font-size:12px;white-space:pre-line"></div>
@@ -3974,6 +3964,41 @@ function changeOsIp(name) {
       { txt: "取消", cls: "", fn: () => closeDialog() },
       { txt: "變更 IP", cls: "primary", id: "ip-submit-btn", fn: () => submitChangeOsIp(name) },
     ]);
+}
+// 變更 IP 彈窗：依「新 OS IP + 原機台 SSH 帳密」先確認 hostname，再抓 BMC IP 自動帶入
+async function probeChangeOsBmc(name) {
+  const ipEl = $("new-os-ip-input"), msgEl = $("osip-msg"), btn = $("osip-probe-btn");
+  const ip = ipEl ? ipEl.value.trim() : "";
+  const m = machines.find(x => x.name === name);
+  if (!m) return;
+  if (!ip) { msgEl.textContent = "請先輸入新的 OS IP 再抓取 BMC IP。"; msgEl.style.color = "var(--red)"; return; }
+  if (btn) { btn.disabled = true; btn.textContent = "🔍 抓取中…"; }
+  msgEl.textContent = "正在連線新 OS：確認 hostname 並用 ipmitool 抓取 BMC IP…";
+  msgEl.style.color = "var(--text-faint)";
+  try {
+    const d = await api("/api/machines/probe-bmc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ os_ip: ip, os_user: m.os_user || "", os_pass: m.os_pass || "", os_port: parseInt(m.os_port) || 22, expected_hostname: m.name }),
+    });
+    if (d.ok) {
+      $("new-bmc-ip-input").value = d.bmc_ip;
+      msgEl.textContent = `✅ hostname 相符（${d.hostname}），已抓到 BMC IP：${d.bmc_ip}（可再確認後一起送出）`;
+      msgEl.style.color = "var(--green)";
+    } else {
+      msgEl.style.color = "var(--red)";
+      if (d.ipmitool_ok === false) {
+        msgEl.textContent = "⚠️ 無法自動抓取 BMC IP：OS 內未偵測到 ipmitool。請先在該主機安裝 ipmitool 後再試。";
+      } else {
+        msgEl.textContent = "⚠️ " + (d.error || "抓取 BMC IP 失敗");
+      }
+    }
+  } catch (e) {
+    msgEl.textContent = "❌ 抓取 BMC IP 失敗：" + e.message;
+    msgEl.style.color = "var(--red)";
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🔍 依新 OS 抓取 BMC IP"; }
+  }
 }
 function _ipSetBusy(busy) { const btn = $("ip-submit-btn"); if (btn) { btn.disabled = busy; btn.textContent = busy ? "變更中…" : "變更 IP"; } }
 function _ipSetDone() {
@@ -4029,10 +4054,53 @@ function resetTermGeometry() {
 }
 
 /* ===== 廣播終端（同時控制多台 rack 系統 OS shell；Clusterssh 風格 fan-out） ===== */
-const bcState = { ws: null, order: [], terms: {}, stat: {}, active: null, broadcast: true };
+const bcState = { ws: null, order: [], terms: {}, stat: {}, active: null, broadcast: true, grid: false, gridCols: 2 };
+
+// 一檯機框的可廣播「節點」清單。多 OS 機框（os 陣列長度>1）展開成每個節點，
+// key = "name#slot"（slot=0 主 OS）；單 OS 機台就只有 "name#0"（主 OS=自己）。
+function bcNodes(m) {
+  const arr = (Array.isArray(m.os) && m.os.length > 1) ? m.os : null;
+  if (arr) {
+    return arr.map((e, i) => {
+      const slot = e.slot || (i + 1);
+      return { key: `${m.name}#${slot}`, nm: m.name, slot,
+               label: e.label || ('OS ' + slot), ip: e.ip, node: true };
+    });
+  }
+  return [{ key: `${m.name}#0`, nm: m.name, slot: 0, label: m.name, ip: m.os_ip, node: false }];
+}
+
+// node 廣播 key 可能是 "name#slot"（含 #），不能直接當 DOM id，這裡轉安全 id（#→_）
+function bcId(key) { return String(key).replace(/#/g, '_'); }
+
+// 安全把字串嵌入 HTML attribute / onclick（app.js 沒有 product-detail.js 的 quote）
+function bcQuote(s) { return JSON.stringify(String(s ?? "")).replace(/"/g, "&quot;"); }
+
+// 依 "name#slot" key 取節點 IP（多 OS 節點用 os 陣列，主 OS / 單 OS 用 os_ip）
+function bcNodeIp(key) {
+  const [nm, slot] = String(key).split('#');
+  const m = machines.find(x => x.name === nm);
+  if (!m) return "";
+  if (!slot || slot === '0') return m.os_ip || "";
+  const arr = m.os || [];
+  const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
+  return (e && e.ip) || "";
+}
+
+// 依 "name#slot" key 取節點顯示名稱（單 OS / 主 OS 只顯示機框名，節點顯示「機框 · 節點標籤」）
+function bcRootLabel(key) {
+  const [nm, slot] = String(key).split('#');
+  if (!slot || slot === '0') return nm;
+  const m = machines.find(x => x.name === nm);
+  if (!m) return key;
+  const arr = m.os || [];
+  const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
+  const lbl = e ? (e.label || ('OS ' + slot)) : ('OS ' + slot);
+  return `${nm} / ${lbl}`;
+}
 
 function rackBroadcastDialog(project) {
-  // 只列出該機櫃專案中「有 OS 連線資訊」的系統
+  // 該機櫃專案中「有 OS 連線資訊」的系統（多 OS 機框展開成節點）
   const cands = machines.filter(m => m.project === project && m.level === "rack" && m.os_ip);
   if (!cands.length) {
     const anyCands = machines.filter(m => m.level === "rack" && m.os_ip);
@@ -4043,30 +4111,60 @@ function rackBroadcastDialog(project) {
     }
     return;
   }
-  const rows = cands.map(m =>
-    `<label class="bc-check" style="display:block;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer">
-       <input type="checkbox" class="bc-chk" value="${esc(m.name)}" checked>
-       <b>${esc(m.name)}</b> <span class="mono" style="color:var(--text-dim)">${esc(m.os_ip)}</span>
-     </label>`).join("");
-  showDialog("📡 廣播終端 — 選擇要同時控制的主機", `
+  const nodeMap = {};   // key -> node，供開啟時統計
+  const rows = cands.map(m => {
+    const nodes = bcNodes(m);
+    nodes.forEach(n => { nodeMap[n.key] = n; });
+    const multi = nodes.length > 1;
+    const list = multi
+      ? `<div style="margin-left:18px;border-left:2px solid var(--border);padding-left:8px">${nodes.map(n =>
+          `<label class="bc-check" style="display:flex;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;align-items:center">
+             <input type="checkbox" class="bc-chk" value="${esc(n.key)}" checked>
+             <b>${esc(n.label)}</b><span class="mono" style="color:var(--text-dim)">${esc(n.ip)}</span>
+           </label>`).join('')}</div>`
+      : `<label class="bc-check" style="display:flex;gap:6px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;align-items:center">
+           <input type="checkbox" class="bc-chk" value="${esc(m.name + '#0')}" checked>
+           <b>${esc(m.name)}</b><span class="mono" style="color:var(--text-dim)">${esc(m.os_ip)}</span>
+         </label>`;
+    const header = multi
+      ? `<div style="display:flex;align-items:center;gap:6px;margin:6px 0 4px">
+           <button class="btn small" onclick="bcSetMachineAll(${bcQuote(m.name)}, true)">☑ 整框全選</button>
+           <button class="btn small" onclick="bcSetMachineAll(${bcQuote(m.name)}, false)">☐ 整框全不選</button>
+           <b>${esc(m.name)}</b><span class="hint">${nodes.length} 節點</span>
+         </div>`
+      : '';
+    return `<div style="margin-bottom:8px">${header}${list}</div>`;
+  }).join("");
+  showDialog("📡 廣播終端 — 選擇要同時控制的主機 / 節點", `
     <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:10px">
-      勾選要同步下指令的系統（同一次指令，會同時送到所有勾選的主機 OS shell）。
+      勾選要同步下指令的「節點」（多 OS 機框每顆 OS 各自一節點；同一次指令同時送到所有勾選節點的 OS shell）。
     </label>
     <div class="table-scroll" style="max-height:46vh;overflow:auto;margin-bottom:12px">${rows}</div>
     <div style="display:flex;gap:8px">
       <button class="btn small" onclick="bcSetAll(true)">☑ 全選</button>
       <button class="btn small" onclick="bcSetAll(false)">☐ 全不選</button>
-      <span class="spacer"></span><span class="hint" id="bc-sel-count">已選 ${cands.length} 台</span>
+      <span class="spacer"></span><span class="hint">已選 <span id="bc-sel-count">${Object.keys(nodeMap).length}</span> 節點</span>
     </div>`,
     [
       { txt: "取消", cls: "", fn: () => closeDialog() },
       { txt: "開啟廣播", cls: "primary", fn: () => {
         const sel = [...document.querySelectorAll(".bc-chk:checked")].map(x => x.value);
         closeDialog();
-        if (!sel.length) { alert("請至少勾選一台主機。"); return; }
+        if (!sel.length) { alert("請至少勾選一個節點。"); return; }
         openBroadcast(sel);
       } },
     ]);
+  const upd = () => { const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length; };
+  document.querySelectorAll(".bc-chk").forEach(c => c.addEventListener("change", upd));
+}
+
+// 整框全選/全不選：勾/取消某一檯機框的所有節點
+function bcSetMachineAll(root, on) {
+  document.querySelectorAll('.bc-chk').forEach(c => {
+    const nm = String(c.value).split('#')[0];
+    if (nm === root) c.checked = !!on;
+  });
+  const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length;
 }
 
 // System Manager 的「📡 系統廣播」：依專案把帶 OS 的 L10 系統分組列出，勾選後開啟廣播。
@@ -4101,7 +4199,7 @@ function systemBroadcastDialog() {
     <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:10px">
       勾選要同步下指令的系統（一次指令同時送到所有勾選主機的 OS shell）。依專案分組。
     </label>
-    <div class="table-scroll" style="max-height:52vh;overflow:auto;margin-bottom:12px">${html}</div>
+    <div class="table-scroll" style="max-height:52vh;overflow:auto;margin-bottom:12px;scrollbar-gutter:stable;padding-right:10px;box-sizing:border-box">${html}</div>
     <div style="display:flex;gap:8px">
       <button class="btn small" onclick="bcSetAll(true)">☑ 全選</button>
       <button class="btn small" onclick="bcSetAll(false)">☐ 全不選</button>
@@ -4152,29 +4250,33 @@ function bcLog(cmd) {
 function openBroadcast(names) {
   // 重置狀態
   bcState.ws = null; bcState.order = names.slice(); bcState.terms = {}; bcState.stat = {}; bcState.ack = {}; bcState.active = names[0] || null;
+  bcState.grid = false; bcState.gridCols = 2;
   const tabsEl = $("bc-tabs"), panesEl = $("bc-panes");
   tabsEl.innerHTML = ""; panesEl.innerHTML = "";
+  const gbtn = $("bc-grid-btn"); if (gbtn) gbtn.classList.remove("active");
+  const panes = $("bc-panes"); if (panes) panes.classList.remove("grid"); panes && panes.style.removeProperty("--bc-cols");
   $("bc-title-hint").textContent = `${names.length} 台`;
   names.forEach(nm => {
+    const dKey = bcId(nm), disp = bcRootLabel(nm);
     // tab
     const tab = document.createElement("div");
     tab.className = "bc-tab" + (nm === bcState.active ? " active" : "");
-    tab.id = "bc-tab-" + nm;
-    tab.innerHTML = `<span class="lamp none" id="lamp-${nm}"></span><span class="tname">${esc(nm)}</span><span class="bc-ack" id="bc-ack-${nm}"></span><span class="x" title="關閉此主機">✕</span>`;
+    tab.id = "bc-tab-" + dKey;
+    tab.innerHTML = `<span class="lamp none" id="lamp-${dKey}"></span><span class="tname">${esc(disp)}</span><span class="bc-ack" id="bc-ack-${dKey}"></span><span class="x" title="關閉此主機">✕</span>`;
     tab.querySelector(".tname").onclick = () => bcSelect(nm);
     tab.querySelector(".x").onclick = (e) => { e.stopPropagation(); bcCloseHost(nm); };
     tabsEl.appendChild(tab);
     // pane
     const pane = document.createElement("div");
     pane.className = "bc-pane" + (nm === bcState.active ? " active" : "");
-    pane.id = "bc-pane-" + nm;
-    pane.innerHTML = `<div class="bc-pane-label"><span>${esc(nm)}</span><span class="mono" style="color:var(--text-dim);font-size:10px">${esc((machines.find(m=>m.name===nm)||{}).os_ip||"")}</span></div><div class="bc-box" id="bc-box-${nm}"></div>`;
+    pane.id = "bc-pane-" + dKey;
+    pane.innerHTML = `<div class="bc-pane-label"><span>${esc(disp)}</span><span class="mono" style="color:var(--text-dim);font-size:10px">${esc(bcNodeIp(nm))}</span></div><div class="bc-box" id="bc-box-${dKey}"></div>`;
     panesEl.appendChild(pane);
     // xterm
     const t = new Terminal({ ...XTERM_COMMON });
     const fit = new FitAddon.FitAddon();
     t.loadAddon(fit);
-    t.open($("bc-box-" + nm));
+    t.open($("bc-box-" + dKey));
     try { fit.fit(); } catch {}
     t.onData(d => {
       if (!bcState.ws || bcState.ws.readyState !== 1) return;
@@ -4202,15 +4304,15 @@ function openBroadcast(names) {
 function bcStatus(txt) { const el = $("bc-status-txt"); if (el) el.textContent = txt; }
 
 function bcSetAllLamp(state) {
-  bcState.order.forEach(nm => { const l = $("lamp-" + nm); if (l) { l.className = "lamp " + (state || (bcState.stat[nm] || "none")); } });
+  bcState.order.forEach(nm => { const l = $("lamp-" + bcId(nm)); if (l) { l.className = "lamp " + (state || (bcState.stat[nm] || "none")); } });
 }
-function bcLamp(nm, st) { bcState.stat[nm] = st; const l = $("lamp-" + nm); if (l) l.className = "lamp " + st; }
+function bcLamp(nm, st) { bcState.stat[nm] = st; const l = $("lamp-" + bcId(nm)); if (l) l.className = "lamp " + st; }
 
 function bcSelect(nm) {
   if (!bcState.order.includes(nm)) return;
   bcState.active = nm;
   bcState.order.forEach(n => {
-    const tab = $("bc-tab-" + n), pane = $("bc-pane-" + n);
+    const tab = $("bc-tab-" + bcId(n)), pane = $("bc-pane-" + bcId(n));
     if (tab) tab.classList.toggle("active", n === nm);
     if (pane) pane.classList.toggle("active", n === nm);
   });
@@ -4222,7 +4324,7 @@ function bcCloseHost(nm) {
   bcState.ws.send(JSON.stringify({ type: "closeOne", name: nm })); // 後端可忽略，前端直接關
   delete bcState.terms[nm]; delete bcState.stat[nm];
   bcState.order = bcState.order.filter(x => x !== nm);
-  const t = $("bc-tab-" + nm), p = $("bc-pane-" + nm); if (t) t.remove(); if (p) p.remove();
+  const t = $("bc-tab-" + bcId(nm)), p = $("bc-pane-" + bcId(nm)); if (t) t.remove(); if (p) p.remove();
   if (bcState.active === nm) bcState.active = bcState.order[0] || null;
   if (bcState.order.length === 0) closeBroadcast();
   else if (bcState.active) bcSelect(bcState.active);
@@ -4233,6 +4335,26 @@ function bcSetBroadcast(v) {
   $("bc-bcast-on").classList.toggle("active", v);
   $("bc-bcast-off").classList.toggle("active", !v);
   bcStatus(v ? "廣播模式：指令列會送到全部主機" : "目前主機模式：只送到目前「" + (bcState.active||"") + "」");
+}
+
+// 切換「🔲 全部顯示」方形網格（監控牆）：N 台自動排成近似方形（4台=2x2、9台=3x3…），總 modal 大小不變。
+function bcSetGrid(v) {
+  bcState.grid = !!v;
+  const btn = $("bc-grid-btn"), panes = $("bc-panes");
+  if (btn) btn.classList.toggle("active", bcState.grid);
+  if (panes) {
+    panes.classList.toggle("grid", bcState.grid);
+    if (bcState.grid) {
+      const n = bcState.order.length || 0;
+      const cols = Math.max(1, Math.ceil(Math.sqrt(n)));
+      bcState.gridCols = cols;
+      panes.style.setProperty("--bc-cols", cols);
+    } else {
+      panes.style.removeProperty("--bc-cols");
+    }
+  }
+  // DOM 排好後再 fit 每一格並逐台 resize
+  setTimeout(() => { try { bcFitAll(); } catch {} }, 60);
 }
 
 function bcWsMsg(raw) {
@@ -4258,9 +4380,19 @@ function bcAppend(nm, txt) {
 }
 
 function bcFitAll() { Object.values(bcState.terms).forEach(t => { try { t.fit.fit(); } catch {} }); bcSendResize(); }
-function bcFitOne(nm) { const t = bcState.terms[nm]; if (t) { try { t.fit.fit(); } catch {} } bcSendResize(); }
-function bcSendResize() {
+function bcFitOne(nm) { const t = bcState.terms[nm]; if (t) { try { t.fit.fit(); } catch {} } bcSendResize(nm); }
+function bcSendResize(nm) {
   if (!bcState.ws || bcState.ws.readyState !== 1) return;
+  // 網格模式：對每一台各自 propose 尺寸並逐台 resize（後端支援 per-name resize）
+  if (bcState.grid) {
+    bcState.order.forEach(n => {
+      const t = bcState.terms[n]; if (!t || !t.fit) return;
+      let d; try { d = t.fit.proposeDimensions(); } catch { return; }
+      if (d) bcState.ws.send(JSON.stringify({ type: "resize", name: n, cols: d.cols, rows: d.rows }));
+    });
+    return;
+  }
+  // 單一模式：只對目前 active 送 resize（無 name，向後相容 → 後端套所有 shell）
   const t = bcState.terms[bcState.active]; if (!t) return;
   const d = t.fit.proposeDimensions(); if (!d) return;
   bcState.ws.send(JSON.stringify({ type: "resize", cols: d.cols, rows: d.rows }));
@@ -4287,7 +4419,7 @@ function bcSendInput() {
 function bcMarkAck(nm, state) {
   bcState.ack = bcState.ack || {};
   bcState.ack[nm] = state;
-  const a = $("bc-ack-" + nm);
+  const a = $("bc-ack-" + bcId(nm));
   if (a) {
     a.textContent = state === "ok" ? "✓" : state === "send" ? "…" : "";
     a.classList.toggle("ok", state === "ok");
@@ -4298,7 +4430,9 @@ function bcMarkAck(nm, state) {
 function closeBroadcast() {
   try { bcState.ws && bcState.ws.close(); } catch {}
   bcState.ws = null; bcState.order = []; bcState.terms = {}; bcState.stat = {}; bcState.active = null;
+  bcState.grid = false; bcState.gridCols = 2;
   $("bc-modal").style.display = "none";
+  const panes = $("bc-panes"); if (panes) panes.classList.remove("grid");
 }
 
 let bcMax = false;
@@ -4499,8 +4633,36 @@ function buildNav() {
 }
 $("theme-toggle")?.addEventListener("click", () => applyTheme(root.dataset.theme === "dark" ? "light" : "dark"));
 window.addEventListener("keydown", (e) => { if (e.key === "Escape") { closeAdd(); closeProjectModal(); } });
+function initRowMenuGuard() {
+  // 「•••」列選單：開啟時若面板超出右側捲動容器/視窗右緣，就向左校正，避免破框溢出。
+  // 注意 toggle 事件不冒泡，只能用 capture phase（第三參數 true）在 document 層捕獲。
+  document.addEventListener("toggle", (ev) => {
+    const details = ev.target;
+    if (!details || !details.classList || !details.classList.contains("p-row-menu")) return;
+    const panel = details.querySelector(":scope > div");
+    if (!panel) return;
+    if (details.open) {
+      const pr = panel.getBoundingClientRect();
+      const dr = details.getBoundingClientRect();
+      const scroll = details.closest(".proj-table-scroll");
+      const cr = scroll ? scroll.getBoundingClientRect() : { left: 0, right: window.innerWidth };
+      const wantRight = cr.right - 8;
+      if (pr.right > wantRight) {
+        // 面板左緣移到「容器右緣-8 - 面板寬」的視窗座標，換算為相對 details 的 left
+        panel.style.left = (wantRight - pr.width - dr.left) + "px";
+        panel.style.right = "auto";
+      } else {
+        panel.style.left = "";
+        panel.style.right = "";
+      }
+    } else {
+      panel.style.left = "";
+      panel.style.right = "";
+    }
+  }, true);
+}
 document.addEventListener("DOMContentLoaded", async () => {
-  loadTheme(); buildNav(); initTermDrag(); initBcDrag();
+  loadTheme(); buildNav(); initTermDrag(); initBcDrag(); initRowMenuGuard();
   parseHash();                      // 讀取 URL hash，指定初始分頁
   window.addEventListener("resize", () => { fitAll(); bcFitAll(); });
   window.addEventListener("hashchange", () => { parseHash(); setView(state.view); });

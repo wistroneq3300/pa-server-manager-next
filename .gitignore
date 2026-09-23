@@ -1,7 +1,38 @@
+# 執行期資料（不進版本控制）
+telemetry.db
+data.json
+prod-data.json
+server.log
+server.pid
+backup/
+
+# 資料備份與暫存檔（不進版本控制）
+*.bak_*
+123.txt
+data/11.RestAPI/
+data/12.RestAPI/
+
+# Python 暫存
 __pycache__/
-*.py[cod]
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-qa/artifacts/failure-*.png
+*.pyc
+
+# node terminal bridge
+node_modules/
+terminal_bridge/node_modules/
+
+# 執行期資料目錄（含機台帳密 / 大型 db，不進版本控制）
+prod-data/
+
+# 所有備份檔（不分開頭/結尾）
+*.bak
+*.bak.*
+*.pre_*
+*.pre-*
+
+# 所有 SQLite 資料庫
+*.db
+
+# runtime logs
+server7000.log
+bridge7001.log
+*.log

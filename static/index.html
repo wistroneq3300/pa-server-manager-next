@@ -5,14 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Wistron PA Server Manager</title>
 <link rel="icon" type="image/svg+xml" href="/static/img/wistron-official.svg">
-<link rel="stylesheet" href="/static/css/style.css?v=20260918m">
+<link rel="stylesheet" href="/static/css/style.css?v=20260921a">
 <link rel="stylesheet" href="/static/vendor/xterm/xterm.css">
-<link rel="stylesheet" href="/static/css/product.css">
+<link rel="stylesheet" href="/static/css/product.css?v=20260922bm">
 <link rel="stylesheet" href="/static/css/product-detail.css">
 <link rel="stylesheet" href="/static/css/cinematic.css">
 <link rel="stylesheet" href="/static/css/workspace-cinematic.css">
 <link rel="stylesheet" href="/static/css/wistron-light.css">
-<script src="/static/js/preview-fixtures.js"></script>
 </head>
 <body>
 
@@ -251,6 +250,7 @@
     <div class="bc-topbar">
       <div class="bc-tabs" id="bc-tabs"></div>
       <div class="bc-ctrl">
+        <button class="btn small" id="bc-grid-btn" onclick="bcSetGrid(!bcState.grid)" title="同時顯示全部主機（方形網格，幾台就排幾格）"><span class="bc-chk-box"></span>全部顯示</button>
         <button class="btn small active" id="bc-bcast-on" onclick="bcSetBroadcast(true)" title="廣播模式">📡 廣播全部</button>
         <button class="btn small" id="bc-bcast-off" onclick="bcSetBroadcast(false)" title="只操作目前選取主機">◈ 目前主機</button>
       </div>
@@ -272,7 +272,7 @@
 <script src="/static/vendor/xterm/xterm.js"></script>
 <script src="/static/vendor/xterm/addon-fit.js"></script>
 <script src="/static/vendor/chartjs/chart.umd.min.js"></script>
-<script src="/static/js/app.js?v=20260918n"></script>
+<script src="/static/js/app.js?v=20260922bmg"></script>
 <script src="/static/js/userguide.js?v=20260905b"></script>
 <script>
 // KVM 自動登入（Plan A）：launch_id 由 broker mint，route 是 Portal origin 提供
@@ -284,10 +284,11 @@ window.SPX_KVM_LAUNCH_API =
   (location.origin + "/api/kvm/launch");
 </script>
 <script src="/static/js/product.js"></script>
-<script src="/static/js/product-detail.js"></script>
+<script src="/static/js/product-detail.js?v=20260922x"></script>
 <script src="/static/js/core-scene.js"></script>
 <script src="/static/js/cinematic.js"></script>
 <script src="/static/js/workspace-cinematic.js"></script>
+<script type="module" src="/static/js/kvm_broadcast.js?v=20260921j"></script>
 <div id="guide-root"></div>
 
 
