@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-23T18:01:46.765Z",
-  "baseURL": "http://127.0.0.1:8769",
+  "generatedAt": "2026-09-23T18:57:25.127Z",
+  "baseURL": "http://127.0.0.1:8879",
   "browser": "131.0.6778.205",
   "results": [
     {
       "name": "01 Dashboard desktop and fixture identity",
       "status": "passed",
-      "durationMs": 1817,
+      "durationMs": 1840,
       "details": {
         "machines": 47,
         "projects": 6,
@@ -17,42 +17,42 @@
     {
       "name": "02 L10 / L11 separation and OS/BMC columns",
       "status": "passed",
-      "durationMs": 469
+      "durationMs": 493
     },
     {
       "name": "03 System/project search and no-results recovery",
       "status": "passed",
-      "durationMs": 69
+      "durationMs": 84
     },
     {
       "name": "04 Project collapse, expand and drag order",
       "status": "passed",
-      "durationMs": 146
+      "durationMs": 148
     },
     {
       "name": "05 Project create, rename and empty-project delete",
       "status": "passed",
-      "durationMs": 538
+      "durationMs": 620
     },
     {
       "name": "06 Add system, scan, settings and delete",
       "status": "passed",
-      "durationMs": 1642
+      "durationMs": 1919
     },
     {
       "name": "07 Single-system five tabs, hardware and operations",
       "status": "passed",
-      "durationMs": 1648
+      "durationMs": 2083
     },
     {
       "name": "08 Sensors and diagnosis produce reports",
       "status": "passed",
-      "durationMs": 348
+      "durationMs": 389
     },
     {
       "name": "09 All thirteen telemetry canvases and eight GPU series",
       "status": "passed",
-      "durationMs": 238,
+      "durationMs": 314,
       "details": [
         {
           "id": "tel-cpu",
@@ -150,7 +150,7 @@
     {
       "name": "10 Test library six categories and 3112 cases",
       "status": "passed",
-      "durationMs": 2338,
+      "durationMs": 2292,
       "details": [
         {
           "sheet": "Functionality",
@@ -181,47 +181,47 @@
     {
       "name": "11 48U rack placement, multi-U and topology",
       "status": "passed",
-      "durationMs": 1773
+      "durationMs": 2314
     },
     {
       "name": "12 Rack component move, unmount, remount and add passive",
       "status": "passed",
-      "durationMs": 3116
+      "durationMs": 3710
     },
     {
       "name": "13 Rack list, telemetry kinds and time range",
       "status": "passed",
-      "durationMs": 747
+      "durationMs": 934
     },
     {
       "name": "14 Terminal preview modes and close",
       "status": "passed",
-      "durationMs": 1299
+      "durationMs": 1459
     },
     {
       "name": "15 Live KVM shell with isolated RFB stub and Broadcast preview",
       "status": "passed",
-      "durationMs": 2532
+      "durationMs": 2966
     },
     {
       "name": "16 Fixture mutations respect API contracts",
       "status": "passed",
-      "durationMs": 320
+      "durationMs": 333
     },
     {
       "name": "17 Empty, loading and recoverable error states",
       "status": "passed",
-      "durationMs": 4058
+      "durationMs": 4341
     },
     {
       "name": "18 Deep links and reload",
       "status": "passed",
-      "durationMs": 3757
+      "durationMs": 5083
     },
     {
       "name": "19 Desktop 1440 / 1600 / 1920 widths",
       "status": "passed",
-      "durationMs": 10921,
+      "durationMs": 12448,
       "details": [
         {
           "width": 1440,
@@ -300,17 +300,17 @@
     {
       "name": "20 Reduced-motion style and stable tables",
       "status": "passed",
-      "durationMs": 544
+      "durationMs": 747
     },
     {
       "name": "21 WebGL unavailable: static fallback remains usable",
       "status": "passed",
-      "durationMs": 464
+      "durationMs": 606
     },
     {
       "name": "22 Failed WebGL restoration stays in fallback without draw errors",
       "status": "passed",
-      "durationMs": 489
+      "durationMs": 582
     },
     {
       "name": "23 Browser errors and external requests",

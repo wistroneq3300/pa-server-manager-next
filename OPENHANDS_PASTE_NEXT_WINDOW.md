@@ -1,3 +1,5 @@
+> 2026-09-24 local follow-up: R1-R3 and MAC changes are documented in SESSION_HANDOFF_RELIABILITY_MAC_20260924.md. The user authorized publishing this increment to Next main; it is not deployed; the review below records the earlier baseline. Cabling is a layout preview only.
+
 *** LATEST MAIN INTEGRATION 2026-09-24: Read SESSION_HANDOFF_ENGINEERING_MAIN_20260924.md and CODE_REVIEW_20260924.md FIRST. User now authorizes integration/push to pa-server-manager-next/main; original pa-server-manager remains OUT OF SCOPE. Integration branch preserves origin/main 93bcc09 plus UI 03c9b5e, adds engineering information design and sensor fixes. Do not overwrite production data. Full fixture acceptance 23/23 passed; real FastAPI/hardware not verified, full pytest unavailable. Review report contains open backend defects, not claims that they were fixed. ***
 
 Previous 3D work: SESSION_HANDOFF_GB300_INSERTION_20260924.md and SESSION_HANDOFF_GB300_RACK_20260924.md. Homepage: 41 components / 48U with U9-5 covered by a 5U Blanking Panel. Operational mixed-U demo unchanged. Only serve.py injects fixtures.

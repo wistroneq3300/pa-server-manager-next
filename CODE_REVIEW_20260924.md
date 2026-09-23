@@ -1,3 +1,5 @@
+> 2026-09-24 local follow-up: R1-R3 and MAC changes are documented in SESSION_HANDOFF_RELIABILITY_MAC_20260924.md. The user authorized publishing this increment to Next main; it is not deployed; the review below records the earlier baseline. Cabling is a layout preview only.
+
 # PA Server Manager Next — 整合版程式審查
 
 日期：2026-09-24。範圍只限 `wistroneq3300/pa-server-manager-next`。

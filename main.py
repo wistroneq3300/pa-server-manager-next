@@ -11,8 +11,12 @@
 - 目前密碼以明文存在記憶體(僅運行期間)。正式上線前必須加密存放或接秘密管理。
 """
 import asyncio
+import copy
+import tempfile
+from functools import wraps
 import json
 import kvm_bridge
+import network_identity
 import os
 import re
 import subprocess
@@ -89,15 +93,92 @@ def _reindex_projects():
     for i, n in enumerate(sorted(projects, key=lambda k: projects[k].get("order", 0))):
         projects[n]["order"] = i
 
+_DATA_LOCK = threading.RLock()
+
+
+def _data_transaction(fn):
+    """Serialize inventory writers and restore memory on validation/save failure.
+
+    This JSON store supports one application process, as before. A multi-worker
+    deployment requires a shared transactional store, not a per-process lock.
+    """
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        global _seq
+        with _DATA_LOCK:
+            before = copy.deepcopy((machines, projects, links, _seq))
+            try:
+                return fn(*args, **kwargs)
+            except Exception:
+                machines.clear()
+                machines.update(before[0])
+                projects.clear()
+                projects.update(before[1])
+                links[:] = before[2]
+                _seq = before[3]
+                raise
+    return wrapped
+
+
 def _save_data():
-    try:
-        tmp = DATA_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"machines": machines, "projects": projects, "links": links, "seq": _seq}, f,
-                      ensure_ascii=False, indent=2)
-        os.replace(tmp, DATA_FILE)
-    except Exception as e:
-        print("儲存 data.json 失敗：", e)
+    tmp = None
+    with _DATA_LOCK:
+        try:
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
+                    dir=os.path.dirname(os.path.abspath(DATA_FILE)),
+                    prefix=".pa-data-", suffix=".tmp", delete=False) as f:
+                tmp = f.name
+                if os.path.exists(DATA_FILE):
+                    os.chmod(tmp, os.stat(DATA_FILE).st_mode & 0o777)
+                json.dump({"machines": machines, "projects": projects,
+                           "links": links, "seq": _seq}, f,
+                          ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp, DATA_FILE)
+        except Exception as exc:
+            raise HTTPException(503, "Data could not be saved; no changes committed") from exc
+        finally:
+            if tmp and os.path.exists(tmp):
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+
+
+def _rack_integer(value, field, low, high):
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise HTTPException(400, f"{field} must be an integer in {low}..{high}")
+    return value
+
+
+def _validate_rack(candidate, name):
+    if candidate.get("level") != "rack":
+        return
+    u = _rack_integer(candidate.get("rack_u", 0), "rack_u", 0, 48)
+    size = _rack_integer(candidate.get("rack_size", 1), "rack_size", 1, 48)
+    if candidate.get("rack_side", "front") not in ("front", "rear"):
+        raise HTTPException(400, "rack_side must be front or rear")
+    project = candidate.get("project") or ""
+    if project and project not in projects:
+        raise HTTPException(400, "Project does not exist")
+    if not u:
+        return
+    if not project or u - size + 1 < 1:
+        raise HTTPException(400, "Placed components require a project and a complete U1..U48 range")
+    # No depth metadata exists: both faces share the same physical U occupancy.
+    for other_name, other in machines.items():
+        if other_name == name or other.get("level") != "rack" or other.get("project") != project:
+            continue
+        top = other.get("rack_u", 0)
+        height = other.get("rack_size", 1)
+        if not isinstance(top, int) or top <= 0:
+            continue
+        if not isinstance(height, int) or height < 1 or top > 48 or top-height+1 < 1:
+            raise HTTPException(409, f"Existing rack placement is invalid: {other_name}")
+        if max(u-size+1, top-height+1) <= min(u, top):
+            raise HTTPException(409, f"Rack U range overlaps {other_name}")
+
 
 machines = {}    # hostname -> dict
 projects = {}    # name -> {name, desc}
@@ -398,6 +479,7 @@ def ssh_login_ok(host, user, password, port=22, timeout=8):
 
 
 @app.post("/api/machines")
+@_data_transaction
 def add_machine(body: AddMachine):
     global _seq
     if not body.os_ip or not body.os_user or not body.os_pass:
@@ -469,7 +551,7 @@ def add_machine(body: AddMachine):
         "bmc_port": body.bmc_port,
         "project": body.project,
         "level": body.level if body.level in ("system", "rack") else "system",
-        "rack_size": body.rack_size if body.level == "rack" and 0 < body.rack_size <= 48 else 1,
+        "rack_size": body.rack_size if body.level == "rack" else 1,
         "rack_u": 0,   # L11 新增時一律不指定 U（0=未放上機櫃），由 Rack Manager 的＋手動放置
         "use_c17": True,
         "order": max([x.get("order", 0) for x in machines.values()] or [-1]) + 1,
@@ -497,6 +579,7 @@ def add_machine(body: AddMachine):
             _sync_active_os(rec)
 
     _seq += 1
+    _validate_rack(rec, name)
     machines[name] = rec
     _save_data()
     return {"ok": True, "machine": rec}
@@ -561,6 +644,7 @@ def probe_bmc(body: ProbeBMC):
 
 
 @app.post("/api/rack/passive")
+@_data_transaction
 def add_rack_passive(body: AddRackPassive):
     """新增一個『純機櫃元件』（switch / power shelf / CDU / PDU / Storage / Network）。
     這類元件通常沒有 OS / BMC IP，無法用 SSH 加入；只需名稱 + 類型 + U 槽（+可選管理 IP）。
@@ -583,27 +667,29 @@ def add_rack_passive(body: AddRackPassive):
         "project": body.project or "",
         "level": "rack",
         "mgx_type": body.mgx_type,
-        "rack_u": body.rack_u if 0 < body.rack_u <= 48 else 0,   # 0 = 未放上機櫃（不佔 U、不顯示在 rack），由 Rack Manager 的＋手動放置
-        "rack_side": body.rack_side if body.rack_side in ("front", "rear") else "front",
-        "rack_size": body.rack_size if 0 < body.rack_size <= 48 else 1,
+        "rack_u": body.rack_u,   # 0 = 未放上機櫃（不佔 U、不顯示在 rack），由 Rack Manager 的＋手動放置
+        "rack_side": body.rack_side,
+        "rack_size": body.rack_size,
         "use_c17": True,
         "passive": True,
         "order": max([x.get("order", 0) for x in machines.values()] or [-1]) + 1,
         "created": datetime.datetime.now().isoformat(timespec="seconds"),
     }
     _seq += 1
+    _validate_rack(rec, name)
     machines[name] = rec
     _save_data()
     return {"ok": True, "machine": _bmc_safe(rec)}
 
 
 @app.patch("/api/machines/{name}")
+@_data_transaction
 def edit_machine(name: str, body: dict):
     """移動機台：可指定 project 與 order。{project, order}
     order 只在同專案內有意義；此處不重新編號，保留各機台手動排定的順序。"""
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
-    m = machines[name]
+    m = copy.deepcopy(machines[name])
     if "project" in body:
         tgt = body["project"]
         if tgt and tgt not in projects:
@@ -617,21 +703,13 @@ def edit_machine(name: str, body: dict):
     if "mgx_type" in body:
         t = str(body["mgx_type"])
         m["mgx_type"] = t if t in ("server", "switch", "nvlink", "pdu", "powershelf", "cdu", "storage", "network", "blanking") else "server"
-    if "rack_u" in body:
-        try:
-            m["rack_u"] = int(body["rack_u"])
-            if m["rack_u"] < 0 or m["rack_u"] > 48:
-                m["rack_u"] = 0
-        except Exception:
-            pass
+    for field, low in (("rack_u", 0), ("rack_size", 1)):
+        if field in body:
+            m[field] = _rack_integer(body[field], field, low, 48)
     if "rack_side" in body:
-        side = str(body["rack_side"])
-        m["rack_side"] = side if side in ("front", "rear") else "front"
-    if "rack_size" in body:
-        try:
-            m["rack_size"] = max(1, min(48, int(body["rack_size"])))
-        except Exception:
-            pass
+        if body["rack_side"] not in ("front", "rear"):
+            raise HTTPException(400, "rack_side must be front or rear")
+        m["rack_side"] = body["rack_side"]
     for f in ("power_on_cmd", "power_off_cmd", "aux_cmd"):
         if f in body:
             m[f] = str(body[f] or "").strip()
@@ -648,6 +726,8 @@ def edit_machine(name: str, body: dict):
             m["bmc_port"] = int(body["bmc_port"]) or 623
         except Exception:
             pass
+    _validate_rack(m, name)
+    machines[name] = m
     _save_data()
     return {"ok": True, "machine": _bmc_safe(m)}
 
@@ -657,6 +737,7 @@ class ChangeOsIp(BaseModel):
 
 
 @app.post("/api/machines/{name}/change-os-ip")
+@_data_transaction
 def change_os_ip(name: str, body: ChangeOsIp):
     """變更機台的 OS IP（因 DHCP 有時會漂移）。
 
@@ -706,6 +787,7 @@ class ChangeBmcIp(BaseModel):
 
 
 @app.post("/api/machines/{name}/change-bmc-ip")
+@_data_transaction
 def change_bmc_ip(name: str, body: ChangeBmcIp):
     """變更機台的 BMC IP。只要新 IP ping 得通就允許變更（無hostname驗證）。"""
     if name not in machines:
@@ -771,6 +853,7 @@ def _os_conflict(m_name, m, ip):
 
 
 @app.post("/api/machines/{name}/os")
+@_data_transaction
 def machine_add_os(name: str, body: AddOs):
     """為機框新增一個 OS slot。IP/帳號必填，密碼可空（之後用 PATCH 補）。
     不做 SSH 強驗證（方便先註冊 slot 再補帳密）；實際 SSH 連線驗證在開終端時才做。"""
@@ -838,6 +921,7 @@ def machine_add_os(name: str, body: AddOs):
 
 
 @app.patch("/api/machines/{name}/os/{slot}")
+@_data_transaction
 def machine_update_os(name: str, slot: int, body: UpdateOs):
     """更新某 OS slot 的帳密（只改有填的欄位）。"""
     if name not in machines:
@@ -874,6 +958,7 @@ def machine_update_os(name: str, slot: int, body: UpdateOs):
 
 
 @app.delete("/api/machines/{name}/os/{slot}")
+@_data_transaction
 def machine_delete_os(name: str, slot: int):
     """移除某 OS slot。OS 1（主 OS）不可移除；移除後 slot 重新編號。"""
     if name not in machines:
@@ -904,6 +989,7 @@ def machine_delete_os(name: str, slot: int):
 
 
 @app.post("/api/machines/{name}/select-os")
+@_data_transaction
 def machine_select_os(name: str, body: SelectOs):
     """切換機框「目前選定 OS」。把該 slot 的帳密同步到 os_ip/...（成為終端/SSH 目標）。
     切換時清除該機台所有 OS/BMC/感測器快取，確保下一次 detail/sensors 用『新選定 OS』
@@ -1146,6 +1232,7 @@ def list_machines(force_scan: bool = False):
 
 
 @app.delete("/api/machines/{name}")
+@_data_transaction
 def delete_machine(name: str):
     if name in machines:
         del machines[name]
@@ -1497,6 +1584,7 @@ def list_links():
 
 
 @app.post("/api/links")
+@_data_transaction
 def add_link(body: dict):
     """新增連線 {a, a_port, b, b_port, type}。type: eth/ib/power/coolant。"""
     a = str(body.get("a", "")).strip()
@@ -1518,6 +1606,7 @@ def add_link(body: dict):
 
 
 @app.delete("/api/links")
+@_data_transaction
 def delete_link(body: dict):
     """刪除連線 {a, b}。"""
     a = str(body.get("a", "")).strip()
@@ -1806,6 +1895,40 @@ _bmc_pwr_cache = {}          # name -> (ts, power_str)
 _BMC_TTL = 60                # 秒
 _bmc_pending = set()         # name -> 背景抓取進行中
 
+_network_identity_cache = {}
+_network_identity_pending = set()
+_network_identity_lock = threading.Lock()
+
+
+def _network_identity(m, refresh=False):
+    # Bind evidence to the selected slot and exact addresses, never just the name.
+    key = (m.get("name"), m.get("active_os"), m.get("os_ip"),
+           m.get("os_port"), m.get("bmc_ip"))
+    empty = {"os": None, "bmc": None}
+    with _network_identity_lock:
+        cached = _network_identity_cache.get(key)
+        if key in _network_identity_pending:
+            return {**empty, "loading": True}
+        if cached and not refresh and time.monotonic() - cached[0] < 60:
+            return cached[1]
+        _network_identity_pending.add(key)
+
+    def collect():
+        result = dict(empty)
+        try:
+            result = network_identity.collect(m, ssh_run)
+        except Exception:
+            pass
+        result["checked_at"] = datetime.datetime.now().isoformat(timespec="seconds")
+        with _network_identity_lock:
+            if len(_network_identity_cache) >= 256:
+                _network_identity_cache.pop(next(iter(_network_identity_cache)))
+            _network_identity_cache[key] = (time.monotonic(), result)
+            _network_identity_pending.discard(key)
+    threading.Thread(target=collect, daemon=True).start()
+    return {**empty, "loading": True}
+
+
 @app.get("/api/machine/{name}/detail")
 def machine_detail(name: str, refresh: int = 0):
     """單機詳細頁：BMC/OS 資訊（只讀，不做開關機）。
@@ -1815,6 +1938,7 @@ def machine_detail(name: str, refresh: int = 0):
     m = machines[name]
     base = _bmc_safe(m)
     out = {"machine": base}
+    out["network_identity"] = _network_identity(copy.deepcopy(m), bool(refresh))
     now = datetime.datetime.now()
 
     # ---- OS / 硬體資訊（SSH） ----
@@ -2002,6 +2126,7 @@ def _sensor_summary(s):
 
 # ---- 專案分類 ----
 @app.post("/api/projects")
+@_data_transaction
 def add_project(body: AddProject):
     name = body.name.strip()
     if not name:
@@ -2026,6 +2151,7 @@ def list_projects():
 
 
 @app.post("/api/machines/reorder")
+@_data_transaction
 def reorder_machines(body: dict):
     """批次設定機台順序：{names: [hostname...]} 依序寫入 order，只存檔一次。
     用於 System Manager 拖曳換位，避免逐台 PATCH 多次寫檔。"""
@@ -2040,6 +2166,7 @@ def reorder_machines(body: dict):
 
 
 @app.post("/api/projects/reorder")
+@_data_transaction
 def reorder_projects(body: dict):
     names = body.get("names", [])
     if not names:
@@ -2053,6 +2180,7 @@ def reorder_projects(body: dict):
 
 
 @app.delete("/api/projects/{name}")
+@_data_transaction
 def delete_project(name: str):
     # 有機台的專案不可刪除（避免誤刪整批）；若一定要刪得先移走機台
     count = sum(1 for m in machines.values() if m.get("project") == name)
@@ -2065,6 +2193,7 @@ def delete_project(name: str):
 
 
 @app.patch("/api/projects/{name}")
+@_data_transaction
 def edit_project(name: str, body: AddProject):
     if name not in projects:
         raise HTTPException(404, f"專案不存在: {name}")

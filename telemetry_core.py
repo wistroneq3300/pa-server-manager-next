@@ -887,9 +887,14 @@ def get_rack_series(project, minutes):
         # 歷史聚合：每 metric 一個時間點的「整櫃平均/總和」折線
         for metric, by_m in metrics.items():
             all_pts = {}
+            # One mean per device-minute, then equal-weight aggregation.
+            # Missing minutes stay missing; never carry forward or zero-fill.
             for nm, pts in by_m.items():
+                device_minutes = {}
                 for t, v in pts:
-                    all_pts.setdefault(int(t // 60 * 60), []).append(v)
+                    device_minutes.setdefault(int(t // 60 * 60), []).append(v)
+                for minute, values in device_minutes.items():
+                    all_pts.setdefault(minute, []).append(sum(values) / len(values))
             ts = sorted(all_pts)
             if not ts:
                 continue
@@ -900,6 +905,8 @@ def get_rack_series(project, minutes):
                 "unit": mdef.get("unit", ""),
                 "color": mdef.get("color", "#2563eb"),
                 "agg": agg,
+                "device_bucket": "mean",
+                "contributors": [len(all_pts[t]) for t in ts],
                 "ts": ts,
                 "values": [round(sum(all_pts[t]) / len(all_pts[t]), 2) if agg == "avg" else round(sum(all_pts[t]), 2) for t in ts],
             }

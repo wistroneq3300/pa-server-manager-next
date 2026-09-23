@@ -2733,7 +2733,7 @@ function pageMachine() {
   }
 
   // BMC 背景抓取進行中 → 數秒後自動重打 detail（不打 refresh，讀快取）更新
-  if (d.bmc_loading) {
+  if (d.bmc_loading || d.network_identity?.loading) {
     setTimeout(() => {
       if (_activeMachine === name && state.view === "machine") {
         delete machineDetailCache[name];
@@ -2758,8 +2758,8 @@ function pageMachine() {
         <table class="t mach-info">
           <tr><td>專案</td><td>${esc(base.project || "未分類")}</td></tr>
           <tr><td>層級</td><td>${lvlBadge}</td></tr>
-          <tr><td>OS IP</td><td class="mono">${esc(base.os_ip)} (${esc(base.os_user||"")}) — <b>${osState}</b></td></tr>
-          <tr><td>BMC IP</td><td class="mono">${esc(base.bmc_ip||"—")} (${esc(base.bmc_user||"")}) — <b>${bmcState}</b></td></tr>
+          <tr><td>OS IP</td><td class="mono">${esc(base.os_ip)} (${esc(base.os_user||"")}) — <b>${osState}</b><br><span class="hint">MAC: ${esc((d.network_identity?.os?.ip === base.os_ip && d.network_identity?.os?.mac) || "\u672a\u53d6\u5f97")}</span></td></tr>
+          <tr><td>BMC IP</td><td class="mono">${esc(base.bmc_ip||"—")} (${esc(base.bmc_user||"")}) — <b>${bmcState}</b><br><span class="hint">MAC: ${esc((d.network_identity?.bmc?.ip === base.bmc_ip && d.network_identity?.bmc?.mac) || "\u672a\u53d6\u5f97")}</span></td></tr>
           <tr><td>BMC 電源</td><td>${base.bmc_alive ? powerBadge(d.power) : "—"}</td></tr>
         </table>
         ${base.bmc_ip ? `
