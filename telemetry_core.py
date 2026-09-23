@@ -95,6 +95,8 @@ def _load_machines():
 # 每種 kind 定義要收集的 metric，收集器依此派發（目前 switch/powershelf/pdu/cdu/storage/network
 # 尚未有真實系統與憑證，收集器為占位：有 os_ip+os_user+os_pass 才嘗試，否則回空並記錄）。
 RACK_METRIC_DEF = {
+    # Independent fabric equipment. No metrics until a real collector is defined.
+    "nvlink": {},
     "server": {
         # Linux OS (CPU/DIMM/SSD/NIC) + GPU → 沿用現有 os_metrics/gpu_metrics/rack_os 彙總
         "cpu_used":       {"label": "CPU 使用率",   "unit": "%",  "color": "#2563eb"},
@@ -150,6 +152,7 @@ def kind_of(m, name=None):
         return t
     if "blank" in n or "blk" in n or "擋" in n:
         return "blanking"
+    if "nvlink" in n or "nvswitch" in n: return "nvlink"
     if n.startswith("sw") or n.startswith("switch"): return "switch"
     if n.startswith("ps") or "power" in n or n.startswith("pdu"): return "powershelf"
     if n.startswith("cdu"): return "cdu"

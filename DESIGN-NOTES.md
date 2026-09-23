@@ -1,5 +1,49 @@
 # PA Server Manager Next — cinematic engineering workspace
 
+## 2026-09-24 operational rack and equipment identity update
+
+This section supersedes the historical fixture-only scope below. The branch includes
+the user's current FastAPI application; only `serve.py` injects isolated sample data.
+The production `static/index.html` does not load fixtures. The original repository
+and Next `main` are not modified by this feature branch.
+
+- Operational rack: original native-WebGL, data-driven enclosures using saved top-U
+  and height. The model, plane editor and component list share the same records.
+- Material rule (latest user revision): champagne compute and NVLink tray fronts;
+  silver tray bodies/rears, graphite management switches and power modules,
+  neutral silver CDU, dark blanking and PDU enclosures.
+- Each device owns its fixed-pitch service details. Increasing height adds chassis
+  panels/vent bands rather than stretching connectors or creating fake inventory.
+- GB300-inspired compute faces, NVLink closed service panels, six-module power
+  shelves, rails, fasteners, rear connectors and liquid fittings are authored geometry.
+  This is not NVIDIA CAD, certified manufacturing geometry or a real-product SKU claim.
+- The requested sample rack is custom: 4U + 3U + 2U compute examples above 9 NVLink
+  trays and 9 one-U servers; top/bottom power sections, 5U blank and bottom 4U CDU.
+  It has 35 components occupying 48U, not an assertion of an official NVL72 population.
+- `NVLink Switch Tray` is a separate `nvlink` kind. Existing API fields are unchanged;
+  backend allowlists/classification accept the additive type. No real NVLink metrics
+  are invented: its collector/metric definitions remain explicitly unimplemented.
+- Orbit, front/rear views, selected-component inspection, expanded viewport, keyboard
+  control and the original 48U edit workflow coexist. There is no continuous idle
+  render loop, and WebGL failure leaves the plane editor available.
+- All nine static detail illustrations use the same device vocabulary and correct
+  non-stretched U heights. Their connector arrangements remain reference-inspired
+  illustrations; reported inventory remains the authority for installed hardware.
+
+References consulted (reference images are not redistributed):
+
+- [NVIDIA DGX GB rack hardware](https://docs.nvidia.com/dgx/dgxgb200-user-guide/hardware.html)
+  including GB300 compute front, NVLink tray and power shelf figures.
+- [NVIDIA SN2000 hardware](https://networking-docs.nvidia.com/sn2000hw/latest/introduction)
+  for SN2700-style Ethernet connector organization.
+- [Vertiv CoolChip CDU 100](https://go.vertiv.com/CoolChip-CDU-100) for a generic in-rack
+  CDU silhouette; [Eaton horizontal rack PDU](https://www.eaton.com/us/en-us/skuPage.EHMAL620N.html)
+  for the outlet form factor.
+
+No new frontend/runtime dependencies, downloaded models or external texture services.
+Desktop/fixture checks live in `qa/gb300-rack.cjs`, `qa/equipment-workspace.cjs` and
+`qa/acceptance.cjs`. They do not validate real BMC/SSH connectivity.
+
 ## Scope and branch
 
 - Repository: `wistroneq3300/pa-server-manager-next` only.

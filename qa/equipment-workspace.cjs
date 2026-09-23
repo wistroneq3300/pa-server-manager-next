@@ -18,22 +18,27 @@ const results=[];
   await page.goto(base+'/#/rack/proj_k');
   await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas')?.dataset.rackState==='ready');
   const state=()=>page.evaluate(()=>document.querySelector('#ew-rack-canvas').paRackScene.getState());
-  const initial=await state();assert.equal(initial.count,13);assert.equal(initial.occupiedU,44);
+  const initial=await state();assert.equal(initial.count,35);assert.equal(initial.occupiedU,48);
+  for(const [name,top,bottom,size]of [['SERVER-04U',40,37,4],['SERVER-03U',36,34,3],['SERVER-02U',33,32,2],['BLANK-RESERVE-05U',9,5,5],['CDU-01',4,1,4]]){
+   const part=initial.placements.find(p=>p.name===name);assert.ok(part,name);assert.equal(part.top,top);assert.equal(part.bottom,bottom);assert.equal(part.size,size);
+  }
+  assert.equal(initial.placements.filter(p=>p.type==='nvlink'&&p.size===1).length,9);
   await page.screenshot({path:path.join(out,'equipment-rack-dark.png'),fullPage:true});
   await page.getByRole('button',{name:'Rear',exact:true}).click();assert.equal((await state()).view,'rear');
   await page.getByRole('button',{name:'Front',exact:true}).click();assert.equal((await state()).yaw,0);
   await page.locator('#ew-rack-canvas').press('ArrowLeft');assert.notEqual((await state()).yaw,0);
   await page.getByRole('button',{name:'Reset',exact:true}).click();assert.equal((await state()).view,'perspective');
-  const choices=await page.evaluate(()=>machines.filter(m=>m.project==='proj_k').map(m=>({name:m.name,label:m.mgx_type})));
-  for(const term of ['Switch','CDU','PDU']) {
-   const item=choices.find(x=>x.label.toLowerCase().includes(term.toLowerCase()));assert.ok(item,term);
+  for(const kind of ['switch','nvlink','powershelf','cdu','blanking','server','pdu','storage','network']) {
+   const scaleOnly=['pdu','storage','network'].includes(kind),project=scaleOnly?'L11-Rack-01':'proj_k';
+   await page.goto(base+'/'+(scaleOnly?'?preview=scale':'')+'#/rack/'+project);await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas')?.dataset.rackState==='ready');
+   const item=await page.evaluate(({project,kind})=>machines.filter(m=>m.project===project).find(m=>m.mgx_type===kind),{project,kind});assert.ok(item,kind);
    await page.locator('#ew-rack-component').selectOption(item.name);
    assert.equal((await state()).selected,item.name);
    await page.getByRole('button',{name:'Open component',exact:true}).click();
    await page.waitForSelector('.pd-workspace');
-   assert.equal(await page.locator('.pd-hardware-stage svg').getAttribute('data-hardware-type'),term.toLowerCase());
-   await page.goto(base+'/#/rack/proj_k');await page.waitForSelector('#ew-rack-canvas');
+   assert.equal(await page.locator('.pd-hardware-stage svg').getAttribute('data-hardware-type'),kind);
   }
+  await page.goto(base+'/#/rack/proj_k');await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas')?.dataset.rackState==='ready');
   for(const width of [1440,1600,1920]) {
    await page.setViewportSize({width,height:1000});
    for(const theme of ['light','dark']) {
@@ -43,7 +48,7 @@ const results=[];
    }
   }
   await page.getByRole('button',{name:'48U placement',exact:true}).click();await page.waitForSelector('.rm-rack');assert.equal(await page.locator('.rm-u .mono').count(),48);
-  results.push('3D geometry: 13 components / 44U, camera, selection, type identity, 48U edit, 3 widths / 2 themes');
+  results.push('3D geometry: 35 components / 48U, mixed 1/2/3/4/5U heights, camera, selection, all 9 type identities, 48U edit, 3 widths / 2 themes');
   await page.goto(base+'/?preview=scale#/dashboard');await page.waitForFunction(()=>window.PA_PREVIEW&&machines.length>50);
   const scale=await page.evaluate(()=>({systems:machines.filter(m=>m.level!=='rack').length,racks:projects.filter(p=>p.level==='rack').length}));assert.equal(scale.systems,50);assert.equal(scale.racks,3);
   results.push(scale);

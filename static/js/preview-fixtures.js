@@ -2,6 +2,7 @@
  * QA query: ?preview=empty (empty workspace), loading (1.6s detail delay),
  * error (detail fails once per machine, then succeeds when retried),
  * scale (10 L10 projects × 5 systems, plus 3 mixed-component 48U racks).
+ * Default rack is a custom GB300-inspired layout, not an exact vendor SKU.
  * All mutations reset on reload. No credentials are recorded in diagnostics. */
 (() => {
   const nativeFetch = window.fetch.bind(window);
@@ -23,7 +24,17 @@
       machines.push({name:['host_a','host_g','host_f','host_b'][i] && p===0 ? ['host_a','host_g','host_f','host_b'][i] : projects[p].name+'-'+String(i+1).padStart(2,'0'), project:projects[p].name,level:'system',mgx_type:'server',os_ip:'192.0.2.'+(20+n),bmc_ip:'198.51.100.'+(20+n),os_user:'demo',os_pass:'preview-only',bmc_user:'demo',bmc_pass:'preview-only',os_port:22,bmc_port:22,os_alive:n!==4&&n!==9,bmc_alive:n!==9,power:n===9?'OFF':'ON',order:i,rack_u:0,rack_size:1});
     }
   });
-  const rack=[['SW-01','switch',48,2],['SW-02','switch',46,2],['GPU-01','server',44,4],['GPU-02','server',40,4],['GPU-03','server',36,4],['GPU-04','server',32,4],['GPU-05','server',28,4],['GPU-06','server',24,4],['PS-01','powershelf',20,3],['PS-02','powershelf',17,3],['PDU-01','pdu',14,2],['CDU-01','cdu',12,6],['BLANK-01','blanking',6,2]];
+  // The U value is the top occupied slot. Physical height always comes from data.
+  const rack=[
+    ['BLANK-TOP-01','blanking',48,1],['BLANK-TOP-02','blanking',47,1],
+    ['SW-01','switch',46,1],['SW-02','switch',45,1],
+    ...Array.from({length:4},(_,i)=>['PS-'+String(i+1).padStart(2,'0'),'powershelf',44-i,1]),
+    ['SERVER-04U','server',40,4],['SERVER-03U','server',36,3],['SERVER-02U','server',33,2],
+    ...Array.from({length:9},(_,i)=>['NVLINK-'+String(i+1).padStart(2,'0'),'nvlink',31-i,1]),
+    ...Array.from({length:9},(_,i)=>['SERVER-'+String(i+1).padStart(2,'0'),'server',22-i,1]),
+    ...Array.from({length:4},(_,i)=>['PS-'+String(i+5).padStart(2,'0'),'powershelf',13-i,1]),
+    ['BLANK-RESERVE-05U','blanking',9,5],['CDU-01','cdu',4,4]
+  ];
   rack.forEach(([name,kind,u,size],i)=>machines.push({name,project:'proj_k',level:'rack',mgx_type:kind,rack_u:u,rack_size:size,order:i,os_ip:kind==='blanking'?'':'192.0.2.'+(100+i),os_user:'demo',os_pass:'preview-only',os_port:22,bmc_ip:kind==='server'?'198.51.100.'+(100+i):'',bmc_user:'demo',bmc_pass:'preview-only',os_alive:kind==='blanking'?null:i!==6,bmc_alive:kind==='server',power:kind==='blanking'?null:'ON',passive:kind==='blanking'}));
   let links=machines.filter(m=>m.project==='proj_k'&&m.mgx_type==='server').slice(0,3).map((m,i)=>({a:m.name,b:'SW-01',type:'eth',a_port:'eth0',b_port:'1/'+(i+1)}));
   if(scenario==='scale'){
@@ -59,7 +70,7 @@
   const gpuCount=m=>isCompute(m)?(m.preview_gpu===false?0:8):0;
   function fixtureDetail(m){
     if(!isCompute(m)){
-      const models={switch:'網路交換器',network:'網路設備',cdu:'液冷 CDU',pdu:'Rack PDU',powershelf:'Power Shelf',storage:'Storage enclosure',blanking:'Blanking panel'};
+      const models={nvlink:'NVLink Switch Tray',switch:'網路交換器',network:'網路設備',cdu:'液冷 CDU',pdu:'Rack PDU',powershelf:'Power Shelf',storage:'Storage enclosure',blanking:'Blanking panel'};
       return {machine:m,power:m.power?powerStatus(m):'',fw:[],os_info:{fetched_at:'Design preview',os:{},hw:{system:{model:(models[m.mgx_type]||'Rack component')+' · sample inventory'}}}};
     }
     return {machine:m,power:powerStatus(m),fw:[{key:'Firmware Revision',value:'2.10.0 (sample)'},{key:'IPMI Version',value:'2.0'},{key:'Manufacturer',value:'Wistron'}],os_info:{fetched_at:'Design preview',os:{distro:'Ubuntu 24.04 LTS',uptime:'12 days',cpu:'384',mem:'1536 GB'},hw:{cpu:{model:'AMD EPYC 9654 · sample inventory',sockets:2,cores:96,threads:2},dimm:{count:24,types:['DDR5'],speeds:['4800 MT/s'],parts:['64 GB ECC RDIMM']},ssd:[{name:'nvme0n1',model:'Enterprise NVMe',size:'3.84 TB'},{name:'nvme1n1',model:'Enterprise NVMe',size:'3.84 TB'}],gpu:Array.from({length:gpuCount(m)},(_,i)=>({name:'NVIDIA H100 · GPU '+i,mem:'80 GB',util:'Sample'})),nic:['01:00.0 Ethernet controller: Mellanox Technologies ConnectX-7'],firmware:{bios:{vendor:'AMI',version:'1.20 (sample)'},gpu:gpuCount(m)?[{index:'0–7',fw:'Sample VBIOS'}]:[]}}}};
@@ -104,7 +115,8 @@
     if(path.includes('/copilot'))return response({reply:'[Design preview] L10 System Level and L11 Rack Level are separate project groups. Choose a project to review its systems, telemetry and operations.',answer:'[Design preview] Select a project to inspect its managed systems.'});
     if(path.includes('/rack/')&&path.endsWith('/telemetry')){
       const members=machines.filter(m=>m.project===path.split('/')[3]&&m.mgx_type!=='blanking'),kinds=[...new Set(members.map(m=>m.mgx_type))],data={};
-      kinds.forEach(k=>{const d=defs[k]||defs.server;data[k]={defs:d,machines:members.filter(m=>m.mgx_type===k).map(m=>({name:m.name,...Object.fromEntries(Object.keys(d).map((key,i)=>[key,Math.round(20+i*12)]))})),history:Object.fromEntries(Object.entries(d).map(([key,v],i)=>[key,{...v,agg:'avg',ts,values:wave(20+i*12,3)}]))};});
+      // Unknown/unimplemented equipment never inherits fabricated compute metrics.
+      kinds.forEach(k=>{const d=defs[k]||{};data[k]={defs:d,machines:Object.keys(d).length?members.filter(m=>m.mgx_type===k).map(m=>({name:m.name,...Object.fromEntries(Object.keys(d).map((key,i)=>[key,Math.round(20+i*12)]))})):[],history:Object.fromEntries(Object.entries(d).map(([key,v],i)=>[key,{...v,agg:'avg',ts,values:wave(20+i*12,3)}]))};});
       return response({project:path.split('/')[3],window_min:minutes,kinds,kinds_count:Object.fromEntries(kinds.map(k=>[k,members.filter(m=>m.mgx_type===k).length])),components:members,data});
     }
     if(path.startsWith('/api/machine/')){

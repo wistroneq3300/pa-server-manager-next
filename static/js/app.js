@@ -13,7 +13,7 @@ let _flashActiveProject = false;  // 只在 parseHash deep-link 時設 true（�
 const $ = (id) => document.getElementById(id);
 const RACK_U = 48;          // 機櫃總 U 數（改 48U 標準）
 const ROW_TOP = RACK_U + 1; // CSS grid 第 1 列在最上方（U48）；topRow = ROW_TOP - u
-const RACK_SIZES = [1,2,3,4,6,8,12,16,24,32,48]; // 可選元件高度
+const RACK_SIZES = Array.from({ length: RACK_U }, (_, i) => i + 1); // 可選元件高度
 let machines = [];
 let projects = [];
 // KVM 廣播（static/js/kvm_broadcast.js，type=module）需要這隻 callback 取機台清單
@@ -637,6 +637,7 @@ function rackPingNode(m) {
 const MGX_TYPES = {
   server:      { icon: "🖥", label: "Server 伺服器",    cls: "mgx-server" },
   switch:      { icon: "🔀", label: "Switch 交換器",    cls: "mgx-switch" },
+  nvlink:      { icon: "\u21c4", label: "NVLink Switch Tray", cls: "mgx-nvlink" },
   powershelf:  { icon: "⚡", label: "Power Shelf 電源", cls: "mgx-ps" },
   pdu:         { icon: "🔌", label: "PDU 電源分配器",   cls: "mgx-ps" },
   cdu:         { icon: "💧", label: "CDU 冷卻分配單元", cls: "mgx-cdu" },
@@ -665,6 +666,7 @@ function mgxTypeOf(m) {
   if (!m) return "server"; // 防呆：若資料缺項（undefined/null）不崩潰，回退為 server
   if (m.mgx_type && MGX_TYPES[m.mgx_type]) return m.mgx_type;
   const n = (m.name || "").toLowerCase();
+  if (n.includes("nvlink") || n.includes("nvswitch")) return "nvlink";
   if (n.includes("sw")) return "switch";
   if (n.includes("ps") || n.includes("pdu") || n.includes("power")) return "powershelf";
   if (n.includes("cdu")) return "cdu";
@@ -693,8 +695,8 @@ function rackMoveDialog(name) {
   const curU = (typeof m.rack_u === "number" && m.rack_u > 0) ? m.rack_u : RACK_U;
   const occupied = new Set();
   members.forEach(x => {
-    if (x.name === name) return;
-    const xu = (typeof x.rack_u === "number" && x.rack_u > 0) ? x.rack_u : RACK_U;
+    if (x.name === name || !Number.isInteger(Number(x.rack_u)) || Number(x.rack_u) <= 0 || Number(x.rack_u) > RACK_U) return;
+    const xu = Number(x.rack_u);
     const xs = clampU(x.rack_size || 1);
     for (let k = xu; k >= Math.max(xu - xs + 1, 1); k--) occupied.add(k);
   });
@@ -1217,6 +1219,7 @@ let _rackTelLoading = false;
 const RACK_KIND_INFO = {
   server:     { icon: "🖥", label: "Server 伺服器" },
   switch:     { icon: "🔀", label: "Switch 交換器" },
+  nvlink:     { icon: "\u21c4", label: "NVLink Switch Tray" },
   powershelf: { icon: "⚡", label: "Power Shelf 電源" },
   pdu:        { icon: "🔌", label: "PDU 電源分配" },
   cdu:        { icon: "💧", label: "CDU 冷卻分配" },
@@ -3705,11 +3708,11 @@ async function rackUnmount(name) {
     await api("/api/machines/" + encodeURIComponent(name), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rack_u: 0, rack_size: 1 })
+      body: JSON.stringify({ rack_u: 0 })
     });
     // 即時顯示：本地同步 + 只重繪目前視圖（留在機櫃頁，不跳走、不整頁重整）
     const m = machines.find(x => x.name === name);
-    if (m) { m.rack_u = 0; m.rack_size = 1; }
+    if (m) { m.rack_u = 0; }
     setView("rack");
   } catch (e) { alert("移除失敗：" + e.message); }
 }

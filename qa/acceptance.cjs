@@ -56,7 +56,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await go();assert.equal(await page.locator('.p-brand-logo').count(),1);
     await page.waitForFunction(()=>document.querySelector('#system-core')?.dataset.coreState==='ready');
     const fixture=await page.evaluate(()=>({machines:PA_PREVIEW.machines.length,projects:PA_PREVIEW.projects.length}));
-    assert.deepEqual(fixture,{machines:25,projects:6});assert.match(await page.locator('#content').innerText(),/L10/);assert.match(await page.locator('#content').innerText(),/L11/);await noOverflow('Dashboard');await page.screenshot({path:path.join(OUT,'dashboard-desktop-1600.png'),animations:'disabled'});
+    assert.deepEqual(fixture,{machines:47,projects:6});assert.match(await page.locator('#content').innerText(),/L10/);assert.match(await page.locator('#content').innerText(),/L11/);await noOverflow('Dashboard');await page.screenshot({path:path.join(OUT,'dashboard-desktop-1600.png'),animations:'disabled'});
     const core=await page.locator('#system-core').elementHandle();
     for(const progress of [.45,.535]){
       await page.evaluate(p=>{const story=document.getElementById('core-story'),stage=document.getElementById('core-stage');window.scrollTo({top:story.getBoundingClientRect().top+scrollY-76+p*(story.offsetHeight-stage.offsetHeight),behavior:'instant'});},progress);
@@ -70,7 +70,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
   await check('02 L10 / L11 separation and OS/BMC columns',async()=>{
     await projects('system');assert.equal(await visibleRows().count(),12);
     assert.match(await page.locator('#proj-sort-list').innerText(),/192\.0\.2\.21/);assert.match(await page.locator('#proj-sort-list').innerText(),/198\.51\.100\.21/);
-    await projects('rack');assert.equal(await visibleRows().count(),13);assert.equal(await page.locator('#sys-btn-addcomp').isVisible(),true);
+    await projects('rack');assert.equal(await visibleRows().count(),35);assert.equal(await page.locator('#sys-btn-addcomp').isVisible(),true);
     await projects('system');assert.equal(await page.locator('#sys-btn-broadcast').isVisible(),true);
   });
   await check('03 System/project search and no-results recovery',async()=>{
@@ -136,22 +136,34 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     return meta.sheets.map(s=>({sheet:s.sheet,count:s.count}));
   });
   await check('11 48U rack placement, multi-U and topology',async()=>{
-    await go('rack/proj_k');await page.getByRole('button',{name:'48U placement',exact:true}).click();await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/44\/48/);
-    assert.equal(await page.locator('.rm-row[data-u]').count(),13);assert.equal(await page.locator('.rm-empty-slot').count(),4);
+    await go('rack/proj_k');await page.getByRole('button',{name:'48U placement',exact:true}).click();await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/48\/48/);
+    assert.equal(await page.locator('.rm-row[data-u]').count(),35);assert.equal(await page.locator('.rm-empty-slot').count(),0);
+    for(const [top,height]of [[40,4],[36,3],[33,2],[9,5],[4,4]])assert.equal(await page.locator('.rm-row[data-u="'+top+'"]').evaluate(e=>{const s=getComputedStyle(e);return Number(s.gridRowEnd)-Number(s.gridRowStart);}),height);
     await page.waitForSelector('.topo-svg');assert.equal(await page.locator('.topo-svg .topo-edge-group').count(),3);assert.equal(await page.locator('.topo-svg .topo-svg-node').count(),4);
     await screenshot('rack-workspace-1600');
   });
   await check('12 Rack component move, unmount, remount and add passive',async()=>{
-    await page.locator('.rm-row[data-u="6"] button[title="換位/類型"]').click();await page.locator('#rm-move-u').selectOption('4');await page.locator('#rm-dialog-foot').getByRole('button',{name:'儲存位置'}).click();await page.waitForSelector('.rm-row[data-u="4"] .rm-name');
-    await page.locator('.rm-row[data-u="4"] button[title="從機櫃移除"]').click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('42/48'));
-    await page.locator('.rm-empty-slot[onclick="rackEmptyClick(4)"]').click();await page.locator('#rm-add-m').selectOption('BLANK-01');await page.locator('#rm-add-size').selectOption('2');await page.locator('#rm-add-u').selectOption('4');await page.locator('#rm-dialog-foot').getByRole('button',{name:'加入',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('44/48'));
-    await projects('rack');await page.locator('#sys-btn-addcomp').click();await page.locator('#rm-dialog-foot').getByRole('button',{name:/SW \/ PDU \/ CDU/}).click();await page.locator('#rp-name').fill('QA-STORAGE');await page.locator('#rp-type').selectOption('storage');await page.locator('#rp-u').selectOption('2');await page.locator('#rm-dialog-foot').getByRole('button',{name:'建立並加入'}).click();await page.waitForFunction(()=>document.querySelector('#content').textContent.includes('QA-STORAGE'));
-    const created=(await api('/api/machines')).data.machines.find(m=>m.name==='QA-STORAGE');assert.equal(created.mgx_type,'storage');
+    await page.locator('.rm-row[data-u="9"] button[title="從機櫃移除"]').click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('43/48'));
+    for(const [from,to]of [[48,9],[9,48]]){
+      await page.locator('.rm-row[data-u="'+from+'"] button[title="換位/類型"]').click();await page.locator('#rm-move-u').selectOption(String(to));await page.locator('#rm-dialog-foot').getByRole('button',{name:'儲存位置'}).click();await page.waitForSelector('.rm-row[data-u="'+to+'"] .rm-name');
+      assert.equal((await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-TOP-01').rack_u,to);
+    }
+    // Unmount only releases the position; its actual device height must survive.
+    assert.equal((await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-RESERVE-05U').rack_size,5);
+    await page.locator('.rm-empty-slot[onclick="rackEmptyClick(9)"]').click();await page.locator('#rm-add-m').selectOption('BLANK-RESERVE-05U');assert.equal(await page.locator('#rm-add-size').inputValue(),'5');await page.locator('#rm-add-u').selectOption('9');await page.locator('#rm-dialog-foot').getByRole('button',{name:'加入',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('48/48'));
+    const restored=(await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-RESERVE-05U');assert.equal(restored.rack_size,5);assert.equal(restored.rack_u,9);
+    assert.equal((await api('/api/projects','POST',{name:'qa-components',desc:'Isolated component creation QA',level:'rack'})).status,200);await page.evaluate(()=>loadProjects());
+    for(const [name,type,top,size]of [['QA-STORAGE','storage',48,1],['QA-NVLINK','nvlink',47,1],['QA-BLANK','blanking',46,5]]){
+      await projects('rack');await page.locator('#sys-btn-addcomp').click();await page.locator('#rcp-proj').selectOption('qa-components');await page.locator('#rm-dialog-foot').getByRole('button',{name:/SW \/ PDU \/ CDU/}).click();await page.locator('#rp-name').fill(name);await page.locator('#rp-type').selectOption(type);assert.equal(await page.locator('#rp-size option').count(),48);assert.equal(await page.locator('#rp-type option[value="nvlink"]').textContent(),'\u21c4 NVLink Switch Tray');await page.locator('#rp-size').selectOption(String(size));await page.locator('#rp-u').selectOption(String(top));await page.locator('#rm-dialog-foot').getByRole('button',{name:'建立並加入'}).click();await page.waitForFunction(n=>machines.some(m=>m.name===n),name);
+      const created=(await api('/api/machines')).data.machines.find(m=>m.name===name);assert.equal(created.mgx_type,type);assert.equal(created.rack_size,size);assert.equal(created.rack_u,top);assert.equal(created.project,'qa-components');
+    }
   });
   await check('13 Rack list, telemetry kinds and time range',async()=>{
-    await go('rack/proj_k');await action("devicesSetView('list')").first().click();assert.match(await page.locator('#content').innerText(),/GPU-01/);assert.match(await page.locator('#content').innerText(),/BLANK-01/);
+    await go('rack/proj_k');await action("devicesSetView('list')").first().click();assert.match(await page.locator('#content').innerText(),/SERVER-04U/);assert.match(await page.locator('#content').innerText(),/BLANK-RESERVE-05U/);assert.match(await page.locator('#content').innerText(),/NVLINK-01/);
     await action("devicesSetView('telemetry')").first().click();await page.waitForSelector('#racktel-grid canvas');assert.equal(await page.locator('#racktel-grid .rt-kind').count(),5);
     assert.ok(await page.locator('#racktel-grid canvas').count()>5);await page.locator('#racktel-select').selectOption('360');await page.waitForFunction(()=>document.querySelector('#racktel-window')?.textContent.includes('6'));
+    assert.deepEqual((await page.locator('#racktel-grid .rt-kind').evaluateAll(es=>es.map(e=>e.dataset.kind))).sort(),['cdu','nvlink','powershelf','server','switch']);
+    assert.equal(await page.locator('.rt-kind[data-kind="nvlink"] canvas').count(),0);assert.equal(await page.locator('.rt-kind[data-kind="nvlink"] .rt-kind-empty').isVisible(),true);
   });
   await check('14 Terminal preview modes and close',async()=>{
     await detail();await action('openTermDialog',page.locator('.pd-operations')).click();await page.locator('#rm-dialog-foot').getByRole('button',{name:'連接終端'}).click();await page.locator('#term-modal').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#term-os-status')?.textContent.includes('已連線'));
@@ -172,8 +184,8 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await api('/api/machine/host_a/power','POST',{on:true});
     assert.equal((await api('/api/projects/fleet_l','DELETE')).status,409);
     const rename=await api('/api/projects/fleet_l','PATCH',{name:'fleet-renamed'});assert.equal(rename.status,200);assert.equal((await api('/api/machine/host_a/detail')).data.machine.project,'fleet-renamed');await api('/api/projects/fleet-renamed','PATCH',{name:'fleet_l'});
-    assert.equal((await api('/api/machines/BLANK-01','PATCH',{rack_u:44,rack_size:2})).status,409);
-    assert.equal((await api('/api/links','POST',{a:'GPU-01',b:'SW-01'})).status,501);
+    assert.equal((await api('/api/machines/BLANK-RESERVE-05U','PATCH',{rack_u:44,rack_size:2})).status,409);
+    assert.equal((await api('/api/links','POST',{a:'SERVER-04U',b:'SW-01'})).status,501);
     const tel=(await api('/api/machine/host_a/telemetry?minutes=360')).data;assert.equal(tel.gpu.series.length,8);assert.equal(tel.os.os.at(-1).ts-tel.os.os[0].ts,21600);
   });
   await check('17 Empty, loading and recoverable error states',async()=>{

@@ -1,0 +1,61 @@
+{
+  "passed": true,
+  "results": [
+    "Exact approved 35-component / 48U arrangement; mixed 1/2/3/4U and 5U blank; 9 independent NVLink trays",
+    "Front/rear/orbit views, selection/focus and both material themes rendered",
+    "Drag gestures, full-rack reset, expanded-view Escape, cleanup and arbitrary 6U/7U models verified",
+    {
+      "deviceIllustrations": [
+        {
+          "type": "server",
+          "rendered": "server",
+          "shapes": 185
+        },
+        {
+          "type": "switch",
+          "rendered": "switch",
+          "shapes": 237
+        },
+        {
+          "type": "nvlink",
+          "rendered": "nvlink",
+          "shapes": 114
+        },
+        {
+          "type": "powershelf",
+          "rendered": "powershelf",
+          "shapes": 164
+        },
+        {
+          "type": "pdu",
+          "rendered": "pdu",
+          "shapes": 118
+        },
+        {
+          "type": "cdu",
+          "rendered": "cdu",
+          "shapes": 142
+        },
+        {
+          "type": "storage",
+          "rendered": "storage",
+          "shapes": 125
+        },
+        {
+          "type": "network",
+          "rendered": "network",
+          "shapes": 109
+        },
+        {
+          "type": "blanking",
+          "rendered": "blanking",
+          "shapes": 34
+        }
+      ]
+    },
+    "Single-device illustrations and captions fully contained at 1440/1600/1920; compute, switch, NVLink, power and CDU verified",
+    "WebGL restoration and 48U edit fallback remain functional"
+  ],
+  "errors": [],
+  "external": []
+}

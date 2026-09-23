@@ -571,7 +571,7 @@ def add_rack_passive(body: AddRackPassive):
         raise HTTPException(400, "請填元件名稱")
     if name in machines:
         raise HTTPException(400, f"名稱已存在: {name}")
-    valid = ("server", "switch", "powershelf", "pdu", "cdu", "storage", "network", "blanking")
+    valid = ("server", "switch", "nvlink", "powershelf", "pdu", "cdu", "storage", "network", "blanking")
     if body.mgx_type not in valid:
         raise HTTPException(400, f"元件類型無效: {body.mgx_type}")
     rec = {
@@ -616,7 +616,7 @@ def edit_machine(name: str, body: dict):
     # Rack Manager 擴充欄位：MGX 元件類型 + 機櫃位置（U 數 & 前後排）
     if "mgx_type" in body:
         t = str(body["mgx_type"])
-        m["mgx_type"] = t if t in ("server", "switch", "pdu", "powershelf", "cdu", "storage", "network", "blanking") else "server"
+        m["mgx_type"] = t if t in ("server", "switch", "nvlink", "pdu", "powershelf", "cdu", "storage", "network", "blanking") else "server"
     if "rack_u" in body:
         try:
             m["rack_u"] = int(body["rack_u"])
@@ -3034,7 +3034,7 @@ def rack_telemetry(project: str, minutes: int = 60):
     from collections import Counter
     kinds_count = dict(Counter(c["kind"] for c in components))
     # 指定呈現順序：server 一定最上面靠左、switch 靠右，其後 powershelf/pdu/cdu/storage/network 依序往下。
-    _RACK_KIND_ORDER = ["server", "switch", "powershelf", "pdu", "cdu", "storage", "network"]
+    _RACK_KIND_ORDER = ["server", "switch", "nvlink", "powershelf", "pdu", "cdu", "storage", "network"]
     ordered_kinds = sorted(kinds_count.keys(), key=lambda k: _RACK_KIND_ORDER.index(k) if k in _RACK_KIND_ORDER else len(_RACK_KIND_ORDER))
     kinds_count = {k: kinds_count[k] for k in ordered_kinds}
     data = telemetry_core.get_rack_series(proj, int(minutes))
@@ -3069,7 +3069,7 @@ def rack_telemetry_analyze(project: str, minutes: int = 60):
 
     # 依各類型最新值組成精簡摘要
     summaries = []
-    order = ["server", "switch", "powershelf", "pdu", "cdu", "storage", "network"]
+    order = ["server", "switch", "nvlink", "powershelf", "pdu", "cdu", "storage", "network"]
     has_any = False
     for kind in sorted(data.keys(), key=lambda k: order.index(k) if k in order else len(order)):
         m = data[kind]

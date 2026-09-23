@@ -1,7 +1,7 @@
 {
   "passed": true,
   "results": [
-    "3D geometry: 13 components / 44U, camera, selection, type identity, 48U edit, 3 widths / 2 themes",
+    "3D geometry: 35 components / 48U, mixed 1/2/3/4/5U heights, camera, selection, all 9 type identities, 48U edit, 3 widths / 2 themes",
     {
       "systems": 50,
       "racks": 3

@@ -52,20 +52,45 @@
 
   let scene = null, canvas = null;
   let mode = '3d';
+  let expanded = false;
   const selectedByProject = new Map();
   const baseLayout = rackLayoutHtml;
   function rackMembers() { return projectMembers(rackView.project).filter(isRackItem); }
   window.equipmentRackMode = value => { mode = value === 'plane' ? 'plane' : '3d'; setView('rack'); };
   window.equipmentRackCamera = value => { if (value === 'reset') scene?.resetOrbit(); else scene?.setView(value); };
   window.equipmentRackZoom = factor => scene?.zoomBy(factor);
+  window.equipmentRackFocus = () => scene?.focusSelection?.();
+  window.equipmentRackPlacement = name => {if(expanded)equipmentRackExpand(false);rackMoveDialog(name);};
+  window.equipmentRackExpand = value => {
+    expanded = typeof value === 'boolean' ? value : !expanded;
+    const deck = document.querySelector('.ew-rack-deck');
+    deck?.classList.toggle('is-expanded',expanded);
+    const button = deck?.querySelector('.ew-expand');
+    if(button){button.setAttribute('aria-pressed',String(expanded));button.textContent=expanded?'Exit expanded view':'Expand view';}
+    scene?.resize();
+  };
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&expanded){equipmentRackExpand(false);document.querySelector('.ew-expand')?.focus();}
+    if(event.key==='Tab'&&expanded){
+      const deck=document.querySelector('.ew-rack-deck.is-expanded');
+      const targets=deck?[...deck.querySelectorAll('button:not(:disabled),select:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length):[];
+      if(targets.length&&event.shiftKey&&(document.activeElement===targets[0]||!deck.contains(document.activeElement))){event.preventDefault();targets.at(-1).focus();}
+      else if(targets.length&&!event.shiftKey&&(document.activeElement===targets.at(-1)||!deck.contains(document.activeElement))){event.preventDefault();targets[0].focus();}
+    }
+  });
   function inspector(name) {
     const target = document.getElementById('ew-rack-inspector');
     if (!target) return;
     const m = rackMembers().find(item => item.name === name);
     if (!m) {target.innerHTML = '<div class="ew-inspector-empty">Select a component to inspect its placement and management interfaces.</div>';return;}
     const type = PAHardwareVisuals.typeOf(m);
-    target.innerHTML = `<span class="pd-eyebrow">COMPONENT / ${esc(type.toUpperCase())}</span><h2>${esc(m.name)}</h2>${PAHardwareVisuals.render(m)}<p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>PLACEMENT</dt><dd>${m.rack_u ? `U${Number(m.rack_u)} / ${Number(m.rack_size)||1}U` : 'Unplaced'}</dd></div><div><dt>OS / MANAGEMENT</dt><dd>${esc(m.os_ip || 'Not configured')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || 'Not configured')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">Open component</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">Placement / type</button></div>`;
+    const top=Number(m.rack_u)||0,size=Number(m.rack_size)||1;
+    const placed=PAWorkspaceReliability.validatePlacements(rackMembers()).valid.some(item=>item.name===m.name);
+    const range=top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'Unplaced';
+    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${size}U</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${PAHardwareVisuals.render(m,{view:'front'})}<span>FRONT ELEVATION / ${size}U</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>Inspect in 3D</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>PLACEMENT</dt><dd>${range}<small>${placed?'Saved rack position':top?'Check placement conflict':'Not installed in rack'}</small></dd></div><div><dt>OS / MANAGEMENT</dt><dd>${esc(m.os_ip || 'Not configured')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || 'Not configured')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">Open component</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">Placement / type</button></div>`;
     const status=value=>value===true?'Online':value===false?'Offline':'Unknown';
+    target.querySelector('.ew-inspector-actions .btn:not(.primary)').onclick=()=>equipmentRackPlacement(m.name);
+    if(!scene?.supported)target.querySelector('.ew-focus').disabled=true;
     target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>CONNECTION / POWER</dt><dd>OS ${m.os_ip?status(m.os_alive):'Not configured'}<br>BMC ${m.bmc_ip?status(m.bmc_alive):'Not configured'}<br>Power ${esc(m.power_state ?? m.power ?? 'Unknown')}</dd></div>`);
   }
   window.equipmentRackSelect = name => {
@@ -82,7 +107,15 @@
     const controls = `<div class="ew-view-switch"><button aria-pressed="${mode==='3d'}" class="btn ${mode==='3d'?'primary':''}" onclick="equipmentRackMode('3d')">3D equipment</button><button aria-pressed="${mode==='plane'}" class="btn ${mode==='plane'?'primary':''}" onclick="equipmentRackMode('plane')">48U placement</button>${tabs.innerHTML}</div>`;
     if (mode === 'plane') return controls + old;
     const warnings = [...placement.issues.map(x=>`${x.name}: ${x.message}`),...placement.pending.map(x=>`${x.name}: unplaced`)];
-    return `${controls}<section class="ew-rack-deck p-surface"><div class="ew-rack-stage"><header><div><span class="pd-eyebrow">L11 / EQUIPMENT VIEW</span><h2>${esc(rackView.project)}</h2></div><span>${placement.usedU} / 48U</span></header><canvas id="ew-rack-canvas" tabindex="0" aria-label="3D rack. Drag to orbit; arrow keys rotate; Home resets. Use component selector for keyboard selection."></canvas><div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">Perspective</button><button class="btn small" onclick="equipmentRackCamera('front')">Front</button><button class="btn small" onclick="equipmentRackCamera('rear')">Rear</button><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="Zoom in">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="Zoom out">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">Reset</button></div><p class="ew-orbit-hint">Drag to orbit / click to select · Geometry follows saved U positions</p></div><aside class="ew-rack-aside"><label for="ew-rack-component">COMPONENT SELECTOR</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">Select component</option>${members.map(m=>`<option value="${esc(m.name)}">${esc(m.name)} · ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside></section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>Placement requires attention</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">Review placement</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
+    return `${controls}<section class="ew-rack-deck p-surface ${expanded?'is-expanded':''}">
+      <div class="ew-rack-stage">
+        <header><div><span class="pd-eyebrow">L11 / RACK ENGINEERING</span><h2>${esc(rackView.project)}</h2></div><button class="btn small ew-expand" aria-pressed="${expanded}" onclick="equipmentRackExpand()">${expanded?'Exit expanded view':'Expand view'}</button></header>
+        <div class="ew-rack-summary"><span><b>${placement.valid.length}</b> installed components</span><span><b>${placement.usedU}</b> / 48U occupied</span><span><b>${48-placement.usedU}</b>U available</span></div>
+        <div class="ew-rack-viewport"><canvas id="ew-rack-canvas" tabindex="0" aria-label="3D rack. Drag to orbit; arrow keys rotate; Home resets. Use component selector for keyboard selection."></canvas><span class="ew-stage-mark" aria-hidden="true">48U<br><small>CONFIGURATION MODEL</small></span></div>
+        <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">Perspective</button><button class="btn small" onclick="equipmentRackCamera('front')">Front</button><button class="btn small" onclick="equipmentRackCamera('rear')">Rear</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="Zoom in">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="Zoom out">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">Reset</button></div><p class="ew-orbit-hint">Drag to orbit / click to select \u00b7 Home: full rack \u00b7 Esc: exit expanded view</p>
+      </div>
+      <aside class="ew-rack-aside"><label for="ew-rack-component">COMPONENT / SAVED POSITION</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">Select component</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'Unplaced'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
+    </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>Placement requires attention</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">Review placement</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
   };
   const baseRack = RENDERERS.rack;
   RENDERERS.rack = function() {
@@ -109,7 +142,8 @@
     next.addEventListener('pa-rack-ready',()=>next.parentElement?.querySelector('.ew-gl-fallback')?.remove());
     scene = PARackScene.mount(canvas,{components:valid.map(m=>({...m,mgx_type:PAHardwareVisuals.typeOf(m)})),theme:document.documentElement.dataset.theme,onSelect:window.equipmentRackSelect});
     if (!scene.supported) fallback();
-    equipmentRackSelect(selectedByProject.get(rackView.project)||valid[0]?.name||'');
+    const remembered=selectedByProject.get(rackView.project);
+    equipmentRackSelect(rackMembers().some(m=>m.name===remembered)?remembered:valid.find(m=>PAHardwareVisuals.typeOf(m)==='server')?.name||valid[0]?.name||'');
   }
   const baseRender = _renderMachine;
   _renderMachine = function(...args) {dispose(); const result=baseRender(...args); mount(); return result;};

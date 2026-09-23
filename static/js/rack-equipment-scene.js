@@ -1,5 +1,8 @@
 /* PA Rack Engineering — original procedural equipment illustrations, not vendor CAD.
  * Live placement uses the application's 48U, top-U + occupied-U convention.
+ * Compute / NVLink / power front-panel vocabulary: NVIDIA DGX GB300 hardware guide
+ * https://docs.nvidia.com/dgx/dgxgb200-user-guide/hardware.html (GB300 tabs).
+ * Larger-U enclosures are generic derivatives, not claims of a vendor SKU.
  * Switch vocabulary: NVIDIA SN2000 / SN2700 (32 QSFP28), not an installed-SKU claim.
  * CDU vocabulary: in-rack liquid-to-liquid CDU with HMI / rear fluid connections.
  * No external model, texture, runtime dependency, network request or idle animation.
@@ -7,8 +10,10 @@
 (() => {
   'use strict';
   const U=.30, HALF=48*U/2, FRONT=3.05, TAU=Math.PI*2;
-  const TYPES=new Set(['server','switch','powershelf','pdu','cdu','storage','network','blanking']);
-  const C={silver:[.49,.54,.59],edge:[.79,.78,.71],steel:[.25,.31,.36],dark:[.045,.066,.082],black:[.013,.021,.029],blue:[.01,.36,.48],green:[.42,.66,.19],gold:[.69,.59,.39],copper:[.45,.28,.17],amber:[.84,.48,.16],unknown:[.27,.34,.39]};
+  const TYPES=new Set(['server','switch','nvlink','powershelf','pdu','cdu','storage','network','blanking']);
+  // Approved finish: compute and NVLink front panels use champagne; all other
+  // device faces, chassis shells, rack rails and rear fittings remain neutral.
+  const C={silver:[.43,.47,.51],lid:[.50,.53,.57],edge:[.66,.69,.71],steel:[.26,.31,.35],dark:[.048,.065,.077],black:[.013,.023,.030],socket:[.026,.038,.044],blue:[0,.28,.39],green:[.40,.62,.16],gold:[.53,.48,.39],goldEdge:[.74,.69,.58],darkGold:[.24,.22,.18],copper:[.38,.23,.13],amber:[.72,.39,.12],unknown:[.24,.30,.34],label:[.54,.59,.61]};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const identity=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
   function multiply(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o;}
@@ -21,6 +26,7 @@
   function rotation(y,x){const cy=Math.cos(y),sy=Math.sin(y),cx=Math.cos(x),sx=Math.sin(x);return new Float32Array([cy,0,-sy,0,sy*sx,cx,cy*sx,0,sy*cx,-sx,cy*cx,0,0,0,0,1]);}
   function translation(x=0,y=0,z=0){const m=identity();m[12]=x;m[13]=y;m[14]=z;return m;}
   function ortho(w,h){return new Float32Array([1/w,0,0,0,0,1/h,0,0,0,0,-2/100,0,0,0,-1,1]);}
+  function perspective(fov,aspect,near=.1,far=120){const f=1/Math.tan(fov/2),nf=1/(near-far);return new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,2*far*near*nf,0]);}
   function lookAt(eye){let [zx,zy,zz]=eye,l=Math.hypot(...eye);zx/=l;zy/=l;zz/=l;const xl=Math.hypot(zz,zx),xx=zz/xl,xz=-zx/xl,yx=zy*xz,yy=zz*xx-zx*xz,yz=-zy*xx;return new Float32Array([xx,yx,zx,0,0,yy,zy,0,xz,yz,zz,0,-(xx*eye[0]+xz*eye[2]),-(yx*eye[0]+yy*eye[1]+yz*eye[2]),-l,1]);}
   function inspectPlacement(components){
     const valid=[],invalid=[],unplaced=[],occupied=new Set(),names=new Set();
@@ -56,30 +62,50 @@
       const axis=b.map((n,i)=>n-a[i]),length=Math.hypot(...axis);if(length<.00001)return;const n=axis.map(v=>v/length),ref=Math.abs(n[1])<.85?[0,1,0]:[1,0,0];let u=[n[1]*ref[2]-n[2]*ref[1],n[2]*ref[0]-n[0]*ref[2],n[0]*ref[1]-n[1]*ref[0]];const ul=Math.hypot(...u);u=u.map(v=>v/ul);const v=[n[1]*u[2]-n[2]*u[1],n[2]*u[0]-n[0]*u[2],n[0]*u[1]-n[1]*u[0]],normal=t=>u.map((q,i)=>q*Math.cos(t)+v[i]*Math.sin(t)),point=(p,d)=>p.map((q,i)=>q+d[i]*r);
       for(let i=0;i<segments;i++){const na=normal(i/segments*TAU),nb=normal((i+1)/segments*TAU),p=point(a,na),q=point(a,nb),s=point(b,na),t=point(b,nb);vertex(p,na,color,metal);vertex(q,nb,color,metal);vertex(t,nb,color,metal);vertex(p,na,color,metal);vertex(t,nb,color,metal);vertex(s,na,color,metal);vertex(a,n.map(v=>-v),color,metal);vertex(q,n.map(v=>-v),color,metal);vertex(p,n.map(v=>-v),color,metal);vertex(b,n,color,metal);vertex(s,n,color,metal);vertex(t,n,color,metal);}
     }
-    return {data,box,bevel,tube};
+    // Smooth circular grille rings in the face plane. Actual normals, not decals.
+    function ring(x,y,z,r,wire,color,segments=18){
+      for(let i=0;i<segments;i++)for(let j=0;j<4;j++){
+        const at=(a,b)=>{const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b);return {p:[x+(r+wire*cb)*ca,y+(r+wire*cb)*sa,z+wire*sb],n:[cb*ca,cb*sa,sb]};},a=i/segments*TAU,b=(i+1)/segments*TAU,c=j/4*TAU,d=(j+1)/4*TAU,q=[at(a,c),at(b,c),at(b,d),at(a,d)];
+        for(const k of [0,1,2,0,2,3])vertex(q[k].p,q[k].n,color,.9);
+      }
+    }
+    function disc(x,y,z,r,color,metal=.5,segments=18){
+      for(let i=0;i<segments;i++){vertex([x,y,z],[0,0,1],color,metal);for(const a of [i/segments*TAU,(i+1)/segments*TAU])vertex([x+Math.cos(a)*r,y+Math.sin(a)*r,z],[0,0,1],color,metal);}
+    }
+    function face(x,y,z,w,h,color,metal=.2,front=1){quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],[0,0,front],color,metal);}
+    return {data,box,bevel,tube,ring,disc,face};
   }
   // Embossed U numbers are actual geometry; no canvas texture or CSS projection.
   const SEGMENTS={0:[0,1,2,3,4,5],1:[1,2],2:[0,1,6,4,3],3:[0,1,2,3,6],4:[5,6,1,2],5:[0,5,6,2,3],6:[0,5,6,4,2,3],7:[0,1,2],8:[0,1,2,3,4,5,6],9:[0,1,2,3,5,6]};
   function digit(m,n,x,y,z){const s=.066,t=.009;for(const k of SEGMENTS[n]){const loc=[[0,s,s,t],[s/2,s/2,t,s],[s/2,-s/2,t,s],[0,-s,s,t],[-s/2,-s/2,t,s],[-s/2,s/2,t,s],[0,0,s,t]][k];m.box(x+loc[0],y+loc[1],z,loc[2],loc[3],.006,C.edge,.15);}}
   function createFrame(){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube;
+    // Numbers sit on an opaque measuring rail: their reverse faces must not
+    // appear as mirrored floating text when inspecting the rear of the rack.
+    B(-2.355,0,3.140,.224,14.46,.061,C.dark,.65);
     for(const side of [-1,1]){
       for(const end of [-1,1])V(side*2.17,0,end*3.15,.21,15.00,.21,C.dark,.035);
       for(const y of [-7.45,7.45])V(side*2.17,y,0,.21,.21,6.48,C.steel,.028);
-      B(side*2.085,0,3.14,.075,14.5,.08,C.gold);B(side*2.085,0,-3.11,.075,14.5,.08,C.steel);
+      B(side*2.085,0,3.14,.075,14.5,.08,C.steel);B(side*2.085,0,-3.11,.075,14.5,.08,C.steel);
       for(let u=1;u<=48;u++){const y=(u-.5)*U-HALF;B(side*2.087,y,3.191,.038,.072,.012,C.black,.1);B(side*2.087,y,-3.16,.038,.072,.012,C.black,.1);if(side===-1){const num=String(u).padStart(2,'0');digit(m,+num[0],-2.41,y,3.18);digit(m,+num[1],-2.30,y,3.18);}}
       // Open side structure: depth is legible and arbitrary hardware stays visible.
-      for(const y of [-7.18,-3.6,3.6,7.18])B(side*2.19,y,0,.075,.095,6.2,C.dark);
+      for(const y of [-7.18,-3.6,3.6,7.18]){B(side*2.19,y,0,.075,.095,6.2,C.dark);for(const z of [-2.8,2.8])T([side*2.235,y,z],[side*2.25,y,z],.028,C.edge,8);}
+      B(side*2.20,0,-2.72,.10,14.65,.14,C.steel);B(side*2.21,0,2.76,.025,14.64,.15,C.edge);
+      // Rear frame cable-management rails. No invented network connections.
+      for(let i=0;i<9;i++){const y=-6.45+i*1.62;B(side*1.99,y,-3.29,.12,.055,.29,C.dark);B(side*1.92,y,-3.42,.22,.055,.045,C.steel);}
       for(const z of [-2.64,2.64]){V(side*1.72,-7.65,z,.36,.18,.50,C.black,.04);T([side*1.72,-7.55,z],[side*1.72,-7.78,z],.085,C.steel);}
     }
     V(0,7.50,0,4.56,.20,6.52,C.dark,.03);V(0,-7.48,0,4.56,.19,6.52,C.dark,.03);
+    for(const side of [-1,1]){V(side*2.14,7.65,-2.7,.16,.28,.13,C.dark,.045);V(side*2.14,7.65,2.7,.16,.28,.13,C.dark,.045);}
     V(0,7.31,3.22,4.39,.31,.12,C.steel,.025);B(0,7.451,3.287,4.26,.009,.017,C.edge);B(-1.6,7.31,3.29,.37,.028,.008,C.edge,.1);B(1.83,7.31,3.29,.028,.024,.008,C.blue,0,.7);
     V(0,-7.29,3.22,4.38,.32,.12,C.dark,.025);B(0,-7.14,3.29,4.16,.007,.012,C.edge);
     return m;
   }
   function chassis(m,h,depth,color=C.silver){
-    const z=FRONT-depth/2; m.bevel(0,0,z,3.94,h,depth,color,.02);m.box(0,h/2+.005,z,3.90,.015,depth-.04,C.silver);
-    for(const side of [-1,1]){m.box(side*1.988,-h*.30,z,.028,.042,Math.max(.2,depth-.18),C.edge);m.bevel(side*2.002,0,FRONT+.016,.126,h+.008,.105,C.steel,.014);m.tube([side*2.004,0,FRONT+.07],[side*2.004,0,FRONT+.075],.022,C.black,8);}
+    const z=FRONT-depth/2; m.bevel(0,0,z,3.94,h,depth,color,.023);m.bevel(0,h/2-.002,z,3.90,.015,Math.max(.05,depth-.04),color===C.dark?C.dark:C.lid,.006);
+    for(const side of [-1,1]){m.box(side*1.988,-h*.30,z,.028,.042,Math.max(.08,depth-.18),C.edge);m.bevel(side*2.002,0,FRONT+.016,.126,h+.008,.105,C.steel,.014);for(const y of [-1,1]){const sy=y*Math.min(h*.35,.30);m.tube([side*2.004,sy,FRONT+.07],[side*2.004,sy,FRONT+.081],.022,C.edge,8);m.box(side*2.004,sy,FRONT+.085,.026,.006,.004,C.black);}
+      if(depth>.5){m.box(side*1.976,h/2-.027,z,.008,.009,depth-.07,C.dark);for(let i=0;i<5;i++){const sz=FRONT-.25-(depth-.50)*i/4;m.tube([side*1.977,h*.16,sz],[side*1.984,h*.16,sz],.020,C.steel,8);m.box(side*1.986,h*.16,sz,.003,.006,.021,C.black);m.tube([side*1.78,h/2+.006,sz],[side*1.78,h/2+.012,sz],.019,C.edge,8);}}}
+    if(depth>.5){m.box(0,h/2+.010,FRONT-.45,3.69,.003,.012,C.steel);m.bevel(.88,h/2+.012,z,.30,.017,.20,C.steel,.018);m.bevel(.88,h/2+.022,z,.22,.007,.13,C.dark,.012);}
     return z;
   }
   function led(m,item,x,y,z){
@@ -89,32 +115,87 @@
     m.box(x,y,z,.022,.020,.009,color,.05,alive||power==='on'?.9:0);
   }
   function vent(m,x,y,z,w,h,rows=2,cols=10){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)m.box(x-w/2+w*(c+.5)/cols,y-h/2+h*(r+.5)/rows,z,w/cols*.58,h/rows*.28,.013,C.black,.1);}
-  function qsfp(m,x,y,z,w=.18,h=.079){m.box(x,y,z,w,h,.030,C.edge);m.box(x,y,z+.02,w-.025,h-.018,.020,C.black,.05);m.box(x,y-h*.41,z+.037,w*.67,.009,.008,C.gold);}
+  function qsfp(m,x,y,z,w=.18,h=.079,front=1,frameColor=C.edge){m.box(x,y,z,w,h,.030,frameColor);m.box(x,y,z+front*.02,w-.025,h-.018,.020,C.black,.05);m.box(x,y-h*.41,z+front*.037,w*.67,.009,.008,frameColor===C.edge?C.steel:frameColor);}
   function handle(m,x,y,h,z=FRONT+.08){const dy=Math.max(.027,h*.28);m.tube([x,y-dy,z],[x,y-dy,z+.11],.019,C.edge,8);m.tube([x,y-dy,z+.11],[x,y+dy,z+.11],.019,C.edge,8);m.tube([x,y+dy,z+.11],[x,y+dy,z],.019,C.edge,8);}
+  function grille(m,x,y,z,w,h,color=C.steel,front=1){
+    m.box(x,y,z,w,h,.010,color,.80);const cols=Math.max(2,Math.round(w/.042)),rows=Math.max(2,Math.round(h/.038));
+    for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)m.face(x-w/2+(c+.5)*w/cols,y-h/2+(r+.5)*h/rows,z+front*.006,w/cols*.70,h/rows*.73,C.black,.08,front);
+  }
+  function screw(m,x,y,z,front=1){m.tube([x,y,z],[x,y,z+front*.007],.015,C.edge,8);m.box(x,y,z+front*.012,.018,.004,.004,C.dark);}
+  function fan(m,x,y,z,r){
+    m.disc(x,y,z,r,C.black,.05);m.ring(x,y,z+.004,r*.94,.005,C.steel,20);m.ring(x,y,z+.008,r*.65,.004,C.steel,18);
+    for(let i=0;i<7;i++){const a=i/7*TAU;m.tube([x+Math.cos(a)*r*.23,y+Math.sin(a)*r*.23,z+.010],[x+Math.cos(a+.34)*r*.78,y+Math.sin(a+.34)*r*.78,z+.010],r*.085,C.steel,5,.6);}
+    m.disc(x,y,z+.018,r*.24,C.steel,.75);m.ring(x,y,z+.023,r*.23,.004,C.edge,12);
+  }
+  function fluidPort(m,x,y,z,r,front=-1){
+    const Z=d=>z+front*d;m.tube([x,y,z],[x,y,Z(.10)],r,C.steel,12);m.tube([x,y,Z(.07)],[x,y,Z(.15)],r*.83,C.edge,12);m.tube([x,y,Z(.15)],[x,y,Z(.19)],r*.66,C.steel,12);m.tube([x,y,Z(.19)],[x,y,Z(.196)],r*.47,C.black,12);
+    for(let i=0;i<3;i++)m.ring(x,y,Z(.08+i*.018),r*.86,.004,C.edge,12);
+  }
   function createEquipment(item){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube,h=item.height,type=item.mgx_type,f=FRONT+.028;
-    const depths={server:5.85,switch:4.40,powershelf:3.60,pdu:1.02,cdu:5.95,storage:5.50,network:3.10,blanking:.13},depth=depths[type];
+    const depths={server:5.85,switch:4.40,nvlink:5.95,powershelf:3.60,pdu:1.02,cdu:5.95,storage:5.50,network:3.10,blanking:.13},depth=depths[type];
     chassis(m,h,depth,type==='blanking'?C.dark:C.silver);
     if(type==='server'){
-      V(0,0,f,3.90,h-.015,.11,C.gold,.016);B(0,h/2-.024,f+.061,3.75,.013,.013,C.edge);
-      const rows=Math.min(4,Math.max(1,Math.floor(item.size/2))),bayH=Math.min(.21,(h-.06)/rows);
-      for(let r=0;r<rows;r++)for(let c=0;c<8;c++){const x=-1.19+c*.31,y=(r-(rows-1)/2)*Math.min(.29,h/rows);V(x,y,f+.07,.276,bayH,.045,C.steel,.012);B(x,y,f+.098,.220,bayH*.72,.010,C.black,.2);B(x,y-bayH*.32,f+.111,.193,.017,.022,C.silver);}
-      for(const side of [-1,1])handle(m,side*1.79,0,Math.min(.43,h));qsfp(m,1.49,h*.18,f+.06,.16,Math.min(.07,h*.22));led(m,item,1.51,-h*.2,f+.078);
-      const rear=FRONT-depth-.035;V(0,0,rear,3.75,h*.86,.085,C.steel,.015);
-      for(let i=0;i<4;i++)qsfp(m,-.85+i*.57,0,rear-.068,.43,Math.min(.12,h*.49));
-      for(const s of [-1,1]){T([s*1.62,0,rear],[s*1.62,0,rear-.14],.072,C.edge);T([s*1.62,0,rear-.14],[s*1.62,0,rear-.145],.041,C.black);}
+      V(0,0,f,3.90,h-.008,.115,C.gold,.022);B(0,h/2-.010,f+.066,3.74,.012,.018,C.goldEdge);B(0,-h/2+.010,f+.066,3.74,.012,.018,C.goldEdge);
+      // Fixed-pitch GB300-inspired service band. Taller enclosures add vented
+      // panels underneath, not vertically stretched RJ45 / OSFP connectors.
+      const bandY=h/2-.139,fh=.225;
+      grille(m,-1.22,bandY,f+.064,1.04,fh,C.goldEdge);grille(m,1.18,bandY,f+.064,.93,fh,C.goldEdge);
+      B(-.05,bandY,f+.069,1.13,fh,.023,C.darkGold);
+      for(let i=0;i<8;i++){const x=-.542+i*.141;V(x,bandY,f+.089,.117,.213,.037,C.goldEdge,.010);B(x,bandY,f+.113,.083,.160,.012,C.gold);B(x,bandY+.075,f+.124,.074,.009,.007,C.darkGold);B(x,bandY-.071,f+.125,.059,.015,.014,C.goldEdge);B(x+.045,bandY,f+.123,.008,.149,.006,C.black);}
+      // The left/right NIC carrier plates and port frames share the champagne
+      // front finish. Only the recessed connector openings remain dark.
+      for(const x of [-1.51,-1.12,.96,1.34])qsfp(m,x,bandY-.065,f+.082,.249,.068,1,C.goldEdge);
+      qsfp(m,-.78,bandY-.062,f+.086,.098,.075,1,C.goldEdge);qsfp(m,.62,bandY-.014,f+.079,.093,.069,1,C.goldEdge);
+      B(.61,bandY-.075,f+.102,.10,.022,.018,C.black);B(.62,bandY+.065,f+.086,.114,.039,.011,C.steel);
+      qsfp(m,.94,bandY+.066,f+.086,.10,.064,1,C.goldEdge);qsfp(m,1.21,bandY+.061,f+.086,.19,.043,1,C.goldEdge);qsfp(m,1.44,bandY+.061,f+.086,.19,.043,1,C.goldEdge);
+      for(const y of [-.065,0,.065])B(.725,bandY+y,f+.112,.030,.021,.014,C.edge);led(m,item,.726,bandY+.085,f+.121);
+      if(item.size>1){const extra=h-.285,rows=Math.min(12,item.size-1),rh=extra/rows;for(let r=0;r<rows;r++){const y=-h/2+.014+(r+.5)*rh;grille(m,0,y,f+.065,3.34,Math.min(rh-.030,.24),C.goldEdge);B(0,y-rh/2+.005,f+.069,3.48,.010,.013,C.darkGold);}}
+      for(const side of [-1,1]){V(side*1.865,0,f+.055,.20,h-.003,.15,C.gold,.025);T([side*1.848,-h/2+.031,f+.155],[side*1.848,h/2-.031,f+.155],.045,C.goldEdge,16);B(side*1.94,0,f+.14,.019,h*.72,.026,C.edge);for(const y of [-1,1])screw(m,side*1.96,y*Math.min(h*.37,.42),f+.152);}
+      const rear=FRONT-depth-.035;V(0,0,rear,3.75,h-.024,.085,C.steel,.015);
+      const rearY=item.size===1?0:bandY;for(let i=0;i<4;i++){const x=-1.04+i*.69;B(x,rearY,rear-.058,.60,.205,.059,C.black,.15);B(x,rearY,rear-.092,.51,.13,.031,C.steel);for(let p=0;p<10;p++)B(x-.206+p*.046,rearY,rear-.112,.012,.104,.009,C.copper);B(x,rearY+.099,rear-.091,.57,.017,.038,C.edge);}
+      for(const side of [-1,1]){fluidPort(m,side*1.64,rearY,rear,.068);B(side*1.83,rearY,rear-.075,.055,.185,.045,C.copper);}
+      if(item.size>1)grille(m,0,-.13,rear-.062,2.85,Math.min(.46,h-.35),C.steel,-1);
     }else if(type==='switch'){
-      V(0,0,f,3.90,h-.01,.10,C.gold,.015);const rowH=Math.min(.082,(h-.07)/2),dy=Math.min(.055,h*.22);
-      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=-1.70+c*.205+(c>=8?.18:0),y=row?dy:-dy;qsfp(m,x,y,f+.056,.170,rowH);}
-      handle(m,-1.88,0,h*.65);handle(m,1.88,0,h*.65);led(m,item,1.67,h*.35,f+.074);
+      V(0,0,f,3.90,h-.01,.10,C.dark,.015);const rowH=.073,dy=.052,cy=item.size>1?h/2-.14:0;
+      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=-1.67+c*.205+(c>=8?.16:0),y=cy+(row?dy:-dy);qsfp(m,x,y,f+.056,.167,rowH);}
+      grille(m,0,cy,f+.059,.18,.18,C.steel);handle(m,-1.88,0,Math.min(h*.65,.42));handle(m,1.88,0,Math.min(h*.65,.42));led(m,item,1.72,cy+.086,f+.096);B(0,h/2-.008,f+.060,3.74,.010,.019,C.edge);
+      if(item.size>1)grille(m,0,-.12,f+.059,3.32,h-.32,C.steel);
       const rear=FRONT-depth-.04;for(let i=0;i<2;i++){V(-1.36+i*.76,0,rear,.67,h*.86,.09,C.steel,.015);vent(m,-1.36+i*.76,0,rear-.052,.56,h*.66,2,7);B(-1.36+i*.76,-h*.22,rear-.069,.25,.025,.035,C.edge);}
-      for(let i=0;i<4;i++){const x=.18+i*.43;B(x,0,rear,.36,h*.85,.09,C.dark);vent(m,x,0,rear-.051,.29,h*.63,3,4);}
+      for(let i=0;i<4;i++){const x=.18+i*.43;B(x,0,rear,.36,h*.85,.09,C.dark);fan(m,x,0,rear-.060,Math.min(.095,h*.34));B(x+.13,0,rear-.082,.03,Math.min(h*.68,.22),.028,C.blue);}
+    }else if(type==='nvlink'){
+      V(0,0,f,3.9,h-.008,.108,C.gold,.021);B(0,h/2-.012,f+.064,3.73,.012,.018,C.goldEdge);B(0,-h/2+.012,f+.064,3.73,.009,.017,C.goldEdge);
+      // The supplied front-on rack reference shows a CLOSED champagne panel.
+      // Its top-view pull-handle cutouts do not belong on the front face.
+      // Keep the small left service cluster generic: not an installed-port claim.
+      const cy=item.size>1?h/2-.146:0;
+      V(-1.383,cy,f+.067,.95,.207,.019,C.goldEdge,.009);B(-.891,cy,f+.082,.008,.208,.008,C.darkGold);
+      for(let i=0;i<4;i++){const x=-1.718+i*.192;V(x,cy-.017,f+.083,.119,.073,.013,C.steel,.006);B(x,cy-.017,f+.094,.084,.047,.009,C.black,.05);B(x,cy-.046,f+.100,.073,.006,.009,C.goldEdge);}
+      qsfp(m,-.947,cy-.014,f+.083,.078,.061);led(m,item,-.947,cy+.069,f+.100);
+      // Folded lower lip and sparse fixings preserve the calm, nearly solid
+      // face at 1U. A larger-U tray remains one larger closed panel.
+      B(.477,-h/2+.037,f+.071,2.70,.011,.018,C.darkGold);B(.477,-h/2+.025,f+.083,2.70,.012,.029,C.goldEdge);
+      for(const x of [-.22,.93]){B(x,-h/2+.044,f+.092,.033,.023,.025,C.gold);screw(m,x,-h/2+.044,f+.110);}
+      for(const side of [-1,1]){V(side*1.883,0,f+.067,.077,h-.013,.084,C.gold,.013);B(side*1.905,0,f+.115,.012,h*.78,.017,C.goldEdge);for(const sy of [-1,1])screw(m,side*1.865,sy*(h/2-.041),f+.113);}
+      const rear=FRONT-depth-.030;V(0,0,rear,3.76,h-.015,.07,C.steel,.014);for(let c=0;c<9;c++){const x=-1.33+c*.333;B(x,cy,rear-.061,.27,.18,.073,C.black);B(x,cy,rear-.102,.22,.12,.023,C.steel);for(let p=0;p<5;p++)B(x-.083+p*.04,cy,rear-.117,.013,.095,.006,C.copper);}
+      for(const side of [-1,1])fluidPort(m,side*1.73,cy,rear,.063);
     }else if(type==='cdu'){
-      V(0,0,f,3.9,h-.008,.105,C.silver,.025);B(0,-h*.27,f+.062,3.69,.014,.011,C.steel);const displayH=Math.min(.40,h*.53);
-      V(.94,h*.10,f+.070,1.08,displayH,.040,C.black,.018);B(.94,h*.10,f+.095,.93,displayH*.78,.012,C.blue,.15,.15);B(.7,h*.1,f+.104,.22,.013,.009,C.edge,.1,.5);B(1.10,h*.1,f+.104,.17,.013,.009,C.green,.1,.7);
-      for(let i=0;i<3;i++)B(-1.35+i*.35,h*.1,f+.07,.235,Math.min(.10,h*.25),.018,C.steel);handle(m,-1.72,0,Math.min(h*.70,.68));handle(m,1.72,0,Math.min(h*.70,.68));led(m,item,.41,h*.34,f+.087);
+      V(0,0,f,3.9,h-.008,.105,C.silver,.025);V(0,0,f+.059,3.37,h-.047,.023,C.lid,.011);
+      const displayH=Math.min(.43,h-.092),grilleH=h-.086;
+      for(const side of [-1,1]){
+        grille(m,side*1.13,0,f+.080,.965,grilleH,C.steel);
+        for(let gy=-grilleH/2+.048;gy<grilleH/2;gy+=.081)B(side*1.13,gy,f+.092,.91,.007,.009,C.edge);
+        V(side*1.77,0,f+.054,.145,h-.013,.11,C.steel,.020);
+        const grip=Math.max(.026,h/2-.060);T([side*1.77,-grip,f+.109],[side*1.77,-grip,f+.196],.025,C.edge,10);T([side*1.77,-grip,f+.196],[side*1.77,grip,f+.196],.027,C.edge,14);T([side*1.77,grip,f+.196],[side*1.77,grip,f+.109],.025,C.edge,10);
+        for(const sy of [-1,1])screw(m,side*1.62,sy*(h/2-.05),f+.086);
+      }
+      V(0,0,f+.087,1.025,displayH+.040,.039,C.steel,.019);V(0,0,f+.111,.952,displayH,.020,C.black,.012);B(0,0,f+.125,.859,displayH-.042,.010,C.socket,.15,.15);
+      // Non-numeric display markings are illustrative, not live telemetry.
+      B(-.235,displayH*.25,f+.135,.25,.013,.007,C.label,.15,.3);B(-.192,displayH*.11,f+.135,.34,.007,.007,C.steel,.1,.2);
+      if(displayH>.24){const line=[[-.34,-.10],[-.24,-.072],[-.13,-.084],[-.04,-.020],[.065,-.048],[.18,.005],[.32,-.004]];for(let i=0;i<line.length-1;i++)T([line[i][0],line[i][1],f+.139],[line[i+1][0],line[i+1][1],f+.139],.004,C.label,5,.15);B(0,-.145,f+.137,.68,.004,.005,C.steel,.15);}
+      led(m,item,.427,-Math.min(h*.35,displayH/2+.055),f+.095);
       const rear=FRONT-depth-.035;V(0,0,rear,3.8,h*.90,.08,C.steel,.02);
-      for(const x of [-1.24,-.48,.48,1.24]){const radius=Math.min(.125,h*.23);T([x,0,rear],[x,0,rear-.21],radius,C.edge,14);T([x,0,rear-.20],[x,0,rear-.27],radius*.84,x<0?C.blue:C.green,14);T([x,0,rear-.27],[x,0,rear-.275],radius*.64,C.black,14);}
+      for(const x of [-1.24,-.48,.48,1.24]){const radius=Math.min(.125,h*.23);T([x,0,rear],[x,0,rear-.21],radius,C.edge,14);T([x,0,rear-.20],[x,0,rear-.27],radius*.84,x<0?C.blue:[.43,.17,.13],14);T([x,0,rear-.27],[x,0,rear-.275],radius*.64,C.black,14);}
       for(const x of [-1.71,1.71])B(x,0,rear-.075,.14,h*.58,.08,C.black);
     }else if(type==='pdu'){
       V(0,0,f,3.91,h-.014,.11,C.dark,.014);const outletH=Math.min(.15,h*.63),rows=item.size>=2?2:1;
@@ -122,7 +203,14 @@
       V(1.62,0,f+.072,.37,Math.min(.17,h*.72),.050,C.steel,.01);B(1.62,0,f+.10,.29,Math.min(.12,h*.48),.009,C.blue,.1,.2);led(m,item,1.85,h*.27,f+.075);
       T([1.62,0,FRONT-depth],[1.62,0,FRONT-depth-.19],Math.min(.075,h*.23),C.black);B(-1.45,0,FRONT-depth-.018,.51,h*.43,.044,C.steel);
     }else if(type==='powershelf'){
-      V(0,0,f,3.91,h-.01,.11,C.dark,.014);for(let i=0;i<6;i++){const x=-1.56+i*.626;V(x,0,f+.077,.588,h*.84,.070,C.steel,.02);vent(m,x,0,f+.12,.46,h*.52,Math.min(5,item.size+1),6);B(x,h*.30,f+.127,.32,.025,.03,C.edge);led(m,item,x+.21,-h*.30,f+.125);B(x,0,FRONT-depth-.04,.45,h*.68,.09,C.black);B(x,0,FRONT-depth-.094,.19,h*.37,.026,C.copper);}
+      V(0,0,f,3.91,h-.01,.11,C.dark,.014);B(-1.79,0,f+.068,.19,h-.03,.035,C.black);qsfp(m,-1.79,0,f+.097,.10,.09);led(m,item,-1.79,-Math.min(.09,h*.31),f+.129);
+      const rows=Math.max(1,Math.min(8,item.size)),moduleH=(h-.022)/rows;
+      for(let row=0;row<rows;row++)for(let i=0;i<6;i++){
+        const x=-1.39+i*.586,y=(row-(rows-1)/2)*moduleH,r=Math.min(.108,moduleH*.40);V(x,y,f+.077,.554,moduleH-.012,.073,C.dark,.012);B(x,y,f+.117,.454,moduleH-.032,.013,C.black,.08);
+        fan(m,x-.027,y,f+.132,r);for(let col=0;col<12;col++)B(x-.215+col*.038,y,f+.157,.005,moduleH-.043,.008,C.steel);for(let q=0;q<6;q++)B(x-.009,y-moduleH*.36+q*moduleH*.144,f+.159,.44,.005,.009,C.steel);
+        V(x+.25,y,f+.140,.058,moduleH-.015,.073,C.dark,.011);B(x+.255,y,f+.182,.010,moduleH*.70,.014,C.edge);led(m,item,x-.212,y+moduleH*.30,f+.164);
+        B(x,y,FRONT-depth-.04,.45,moduleH*.75,.09,C.black);B(x,y,FRONT-depth-.094,.19,moduleH*.42,.026,C.copper);
+      }
     }else if(type==='storage'){
       V(0,0,f,3.9,h-.015,.10,C.dark,.015);const rows=Math.max(1,Math.min(4,item.size)),bh=(h-.045)/rows;
       for(let row=0;row<rows;row++)for(let c=0;c<8;c++){const x=-1.56+c*.446,y=(row-(rows-1)/2)*(h-.018)/rows;V(x,y,f+.071,.409,bh*.91,.07,C.silver,.012);B(x,y,f+.111,.334,bh*.68,.027,C.black);B(x,y-bh*.23,f+.128,.259,.025,.021,C.edge);if(row===0&&c===7)led(m,item,x+.155,y+bh*.24,f+.135);}
@@ -131,17 +219,32 @@
       V(0,0,f,3.90,h-.01,.10,C.steel,.015);const rows=item.size>=2?2:1,ph=Math.min(.10,h*.55/rows);
       for(let row=0;row<rows;row++)for(let c=0;c<12;c++){const x=-1.64+c*.231,y=(row-(rows-1)/2)*Math.min(.21,h*.45);qsfp(m,x,y,f+.059,.185,ph);}qsfp(m,1.45,0,f+.06,.27,ph);led(m,item,1.78,0,f+.073);vent(m,0,0,FRONT-depth-.031,3.10,h*.62,2,18);
     }else{
-      V(0,0,f,3.92,h-.012,.066,C.dark,.018);B(0,h/2-.025,f+.038,3.70,.013,.009,C.steel);for(const s of [-1,1])T([s*1.88,0,f+.03],[s*1.88,0,f+.045],.025,C.edge,8);
+      V(0,0,f,3.92,h-.012,.066,C.dark,.018);B(0,h/2-.025,f+.038,3.70,.013,.009,C.steel);B(0,-h/2+.023,f+.038,3.70,.010,.009,C.steel);for(const s of [-1,1])for(const sy of [-1,1])screw(m,s*1.88,sy*Math.min(h*.32,.46),f+.04);
+      if(item.size>1)for(let i=1;i<item.size;i++)B(0,-h/2+i*U-.013,f+.035,3.68,.005,.007,C.steel,.45);
     }
     return {mesh:m,depth,min:[-2.07,-h/2,FRONT-depth-.33],max:[2.07,h/2,FRONT+.28]};
   }
-  const VERTEX=`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aMaterial;uniform mat4 uViewProjection;uniform mat4 uModel;uniform mat4 uPart;varying vec3 vPosition;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;void main(){mat4 m=uModel*uPart;vec4 p=m*vec4(aPosition,1.0);vPosition=p.xyz;vNormal=mat3(m)*aNormal;vColor=aColor;vMaterial=aMaterial;gl_Position=uViewProjection*p;}`;
-  const FRAGMENT=`precision highp float;varying vec3 vPosition;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;uniform vec3 uEye;uniform float uLight;uniform float uSelected;void main(){vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.55,.82,.76));float diff=max(dot(n,key),0.0),metal=vMaterial.x;vec3 c=vColor*(.32+diff*.78+max(dot(n,normalize(vec3(.7,.2,-.5))),0.0)*.19);float spec=pow(max(dot(n,normalize(key+v)),0.0),76.0),rim=pow(1.0-max(dot(n,v),0.0),4.0);c+=vec3(.77,.87,.92)*(spec*.42+pow(max(dot(r,normalize(vec3(-.6,.65,-.49))),0.0),18.0)*.28)*metal;c+=vec3(.1,.43,.51)*rim*.10*metal;c+=vColor*uLight*.12;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.02,.12,.14)*uSelected+vec3(.21,.34,.16)*rim*uSelected*.24;gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.83)),1.0);}`;
+  const VERTEX=`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aMaterial;uniform mat4 uViewProjection;uniform mat4 uModel;uniform mat4 uPart;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;void main(){mat4 m=uModel*uPart;vec4 p=m*vec4(aPosition,1.0);vPosition=p.xyz;vLocal=aPosition;vNormal=mat3(m)*aNormal;vColor=aColor;vMaterial=aMaterial;gl_Position=uViewProjection*p;}`;
+  const FRAGMENT=`
+    precision highp float;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;
+    uniform vec3 uEye;uniform float uLight;uniform float uSelected;
+    void main(){
+      vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.58,.88,.72)),fill=normalize(vec3(.74,.40,-.35));
+      float metal=vMaterial.x,hemisphere=.22+.17*(n.y*.5+.5),diff=max(dot(n,key),0.0),brush=.992+.008*sin(vLocal.z*440.0+vLocal.x*17.0);
+      vec3 c=vColor*(hemisphere+diff*.86+max(dot(n,fill),0.0)*.20)*brush;
+      float overhead=pow(max(dot(r,normalize(vec3(-.46,.67,-.59))),0.0),18.0),side=pow(max(dot(r,normalize(vec3(-.83,.30,.42))),0.0),24.0),back=pow(max(dot(r,normalize(vec3(.72,.42,-.65))),0.0),22.0);
+      float spec=pow(max(dot(n,normalize(key+v)),0.0),95.0),rim=pow(1.0-max(dot(n,v),0.0),4.0);
+      c+=vec3(.88,.92,.94)*(overhead*.42+side*.30+spec*.38)*metal;
+      vec3 ceiling=vPosition+r*((16.0-vPosition.y)/max(r.y,.08));float softbox=(1.0-smoothstep(4.0,7.0,abs(ceiling.x+7.0)))*(1.0-smoothstep(9.0,15.0,abs(ceiling.z+19.0)));
+      c+=vec3(.83,.89,.92)*softbox*smoothstep(.10,.30,r.y)*metal*.15;c+=vec3(.35,.60,.69)*(back*.30+rim*.055)*metal;
+      c+=vColor*uLight*.075;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.015,.017,.019)*uSelected+vec3(.16,.25,.27)*rim*uSelected*.23;
+      gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),1.0);
+    }`;
   function mount(canvas,options={}){
-    const noop={supported:false,setComponents(){},setTheme(){},select(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
+    const noop={supported:false,setComponents(){},setTheme(){},select(){},focusSelection(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
     if(!canvas||typeof canvas.getContext!=='function')return noop;
     let gl,program,frameMesh,components=[],placement=inspectPlacement(options.components),frame=0,disposed=false,lost=false,ready=false;
-    let yaw=-.34,pitch=.055,view='perspective',zoom=1,selected='',drag=null,light=options.theme==='light'||options.theme===true?1:0,inverseMvp=null,maxSize=4096;
+    let yaw=-.25,pitch=.025,view='perspective',zoom=1,selected='',focus='',targetY=0,drag=null,light=options.theme==='light'||options.theme===true?1:0,inverseMvp=null,maxSize=4096;
     const shaders=[],attrib={},uniform={},onSelect=typeof options.onSelect==='function'?options.onSelect:()=>{};
     const fail=reason=>{canvas.dataset.rackState='fallback';canvas.dataset.rackError=String(reason||'WebGL unavailable');canvas.dispatchEvent(new CustomEvent('pa-rack-fallback',{bubbles:true,detail:{reason:String(reason||'WebGL unavailable')}}));};
     try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:false,powerPreference:'low-power'});}catch(error){fail(error.message);return noop;}if(!gl){fail();return noop;}
@@ -155,11 +258,20 @@
     }
     function release(){if(!lost){components.forEach(p=>gl.deleteBuffer(p.buffer));if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];frameMesh=null;program=null;shaders.length=0;}
     try{setup();}catch(error){release();fail(error.message);return noop;}
-    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);}
+    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.reduce((sum,p)=>sum+p.count,frameMesh?.count||0));}
     function requestDraw(){if(!disposed&&!lost&&program&&!frame)frame=requestAnimationFrame(draw);}
     function draw(){
       frame=0;if(disposed||lost||!program)return;const rect=canvas.getBoundingClientRect();if(rect.width<1||rect.height<1)return;const dpr=Math.min(window.devicePixelRatio||1,1.65,maxSize/Math.max(rect.width,rect.height)),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-      const model=rotation(yaw,pitch),aspect=w/h,eye=[0,0,34],vertical=8.40/zoom,horizontal=Math.max(vertical*aspect,4.42/zoom),vp=multiply(ortho(horizontal,horizontal/aspect),lookAt(eye));inverseMvp=inverse(multiply(vp,model));
+      const rotationMatrix=rotation(yaw,pitch),model=multiply(rotationMatrix,translation(0,-targetY,0)),aspect=w/h,eye=[0,0,34];
+      // Fit the projected orbit envelope at every angle. Device inspection uses
+      // the selected part's own bounds; selection near U48 is not clipped away.
+      const focused=focus?components.find(p=>p.item.name===focus):null;
+      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[-2.49,-7.82,-3.48],max:[2.30,7.83,3.39]};
+      let maxX=0,maxY=0,required=0;const tan=Math.tan(.55/2),marginX=focused?.83:.92,marginY=focused?.78:.94;
+      for(const x of [bounds.min[0],bounds.max[0]])for(const y of [bounds.min[1],bounds.max[1]])for(const z of [bounds.min[2],bounds.max[2]]){const p=transform(rotationMatrix,[x,y,z,1]);maxX=Math.max(maxX,Math.abs(p[0]));maxY=Math.max(maxY,Math.abs(p[1]));required=Math.max(required,p[2]+Math.abs(p[0])/(tan*aspect*marginX),p[2]+Math.abs(p[1])/(tan*marginY));}
+      const vertical=Math.max(maxY/marginY,maxX/(aspect*marginX),focused?1.10:0)/zoom,horizontal=vertical*aspect,isPlan=view==='front'||view==='rear';
+      if(!isPlan)eye[2]=Math.max(5.1,required/zoom);const vp=multiply(isPlan?ortho(horizontal,vertical):perspective(.55,aspect),lookAt(eye));inverseMvp=inverse(multiply(vp,model));
+      canvas.dataset.rackCameraDistance=eye[2].toFixed(3);
       gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);
       function part(mesh,matrix,isSelected){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);let offset=0;[['aPosition',3],['aNormal',3],['aColor',3],['aMaterial',2]].forEach(([name,size])=>{gl.enableVertexAttribArray(attrib[name]);gl.vertexAttribPointer(attrib[name],size,gl.FLOAT,false,44,offset);offset+=size*4;});gl.uniformMatrix4fv(uniform.uPart,false,matrix);gl.uniform1f(uniform.uSelected,isSelected?1:0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
       part(frameMesh,identity(),false);for(const p of components)part(p,translation(0,p.item.y,p.item.name===selected?.22:0),p.item.name===selected);
@@ -172,8 +284,9 @@
       for(const p of components){const pull=p.item.name===selected?.22:0,min=[p.min[0],p.min[1]+p.item.y,p.min[2]+pull],max=[p.max[0],p.max[1]+p.item.y,p.max[2]+pull];let enter=0,exit=1;for(let axis=0;axis<3;axis++){if(Math.abs(dir[axis])<1e-9){if(origin[axis]<min[axis]||origin[axis]>max[axis]){exit=-1;break;}}else{const t1=(min[axis]-origin[axis])/dir[axis],t2=(max[axis]-origin[axis])/dir[axis];enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));}}if(enter<=exit&&enter<nearest){nearest=enter;hit=p.item.name;}}
       return hit;
     }
-    function select(name){const next=String(name??'');selected=placement.valid.some(p=>p.name===next)?next:'';sync();requestDraw();}
-    function setView(next){if(next==='front'){yaw=0;pitch=0;}else if(next==='rear'){yaw=Math.PI;pitch=0;}else{next='perspective';yaw=-.34;pitch=.055;}view=next;sync();requestDraw();}
+    function select(name){const next=String(name??'');selected=placement.valid.some(p=>p.name===next)?next:'';if(focus){const item=placement.valid.find(p=>p.name===selected);focus=item?.name||'';targetY=item?.y||0;}sync();requestDraw();}
+    function focusSelection(){const item=placement.valid.find(p=>p.name===selected);if(!item)return;focus=item.name;targetY=item.y;zoom=1;view='inspect';sync();requestDraw();}
+    function setView(next){focus='';targetY=0;zoom=1;if(next==='front'){yaw=0;pitch=0;}else if(next==='rear'){yaw=Math.PI;pitch=0;}else{next='perspective';yaw=-.25;pitch=.025;}view=next;sync();requestDraw();}
     function resetOrbit(){zoom=1;setView('perspective');}
     function onDown(event){if(event.button!==0||event.isPrimary===false||!ready)return;drag={id:event.pointerId,x:event.clientX,y:event.clientY,yaw,pitch,moved:false};try{canvas.setPointerCapture(event.pointerId);}catch{}canvas.focus({preventScroll:true});sync();}
     function onMove(event){if(!drag||event.pointerId!==drag.id)return;const dx=event.clientX-drag.x,dy=event.clientY-drag.y;if(Math.hypot(dx,dy)>4)drag.moved=true;if(drag.moved)orbit(drag.yaw+dx*.008,drag.pitch+dy*.006);}
@@ -185,11 +298,11 @@
     const oldTouchAction=canvas.style.touchAction;canvas.style.touchAction='none';const listeners=[['pointerdown',onDown],['pointermove',onMove],['pointerup',onUp],['pointercancel',onCancel],['lostpointercapture',onCancel],['keydown',onKey],['webglcontextlost',onLost],['webglcontextrestored',onRestored]];listeners.forEach(([name,fn])=>canvas.addEventListener(name,fn));
     const ro=typeof ResizeObserver!=='undefined'?new ResizeObserver(requestDraw):null;if(ro)ro.observe(canvas);else window.addEventListener('resize',requestDraw,{passive:true});
     const api={supported:true,
-      setComponents(items){if(disposed)return;placement=inspectPlacement(items);if(!placement.valid.some(p=>p.name===selected))selected='';if(!lost)rebuild();sync();requestDraw();},
-      setTheme(value){const next=value==='light'||value===true?1:0;if(light!==next){light=next;requestDraw();}},select,setView,resetOrbit,
+      setComponents(items){if(disposed)return;placement=inspectPlacement(items);if(!placement.valid.some(p=>p.name===selected))selected='';if(focus){const item=placement.valid.find(p=>p.name===focus);focus=item?.name||'';targetY=item?.y||0;}if(!lost)rebuild();sync();requestDraw();},
+      setTheme(value){const next=value==='light'||value===true?1:0;if(light!==next){light=next;requestDraw();}},select,focusSelection,setView,resetOrbit,
       zoomBy(factor){const f=Number(factor);if(!Number.isFinite(f)||f<=0)return;zoom=clamp(zoom*f,.75,2.10);sync();requestDraw();},
       resize:requestDraw,
-      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size})),geometryBuffers:components.length+(frameMesh?1:0)};},
+      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size})),geometryBuffers:components.length+(frameMesh?1:0),vertices:components.reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
       destroy(){if(disposed)return;disposed=true;if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';delete canvas.paRackScene;}
     };canvas.paRackScene=api;sync();requestDraw();return api;
   }
