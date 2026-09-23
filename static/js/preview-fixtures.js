@@ -1,6 +1,7 @@
 /* Isolated browser-only fixtures. No API request or terminal reaches a host.
  * QA query: ?preview=empty (empty workspace), loading (1.6s detail delay),
- * error (detail fails once per machine, then succeeds when retried).
+ * error (detail fails once per machine, then succeeds when retried),
+ * scale (10 L10 projects × 5 systems, plus 3 mixed-component 48U racks).
  * All mutations reset on reload. No credentials are recorded in diagnostics. */
 (() => {
   const nativeFetch = window.fetch.bind(window);
@@ -25,6 +26,27 @@
   const rack=[['SW-01','switch',48,2],['SW-02','switch',46,2],['GPU-01','server',44,4],['GPU-02','server',40,4],['GPU-03','server',36,4],['GPU-04','server',32,4],['GPU-05','server',28,4],['GPU-06','server',24,4],['PS-01','powershelf',20,3],['PS-02','powershelf',17,3],['PDU-01','pdu',14,2],['CDU-01','cdu',12,6],['BLANK-01','blanking',6,2]];
   rack.forEach(([name,kind,u,size],i)=>machines.push({name,project:'proj_k',level:'rack',mgx_type:kind,rack_u:u,rack_size:size,order:i,os_ip:kind==='blanking'?'':'192.0.2.'+(100+i),os_user:'demo',os_pass:'preview-only',os_port:22,bmc_ip:kind==='server'?'198.51.100.'+(100+i):'',bmc_user:'demo',bmc_pass:'preview-only',os_alive:kind==='blanking'?null:i!==6,bmc_alive:kind==='server',power:kind==='blanking'?null:'ON',passive:kind==='blanking'}));
   let links=machines.filter(m=>m.project==='proj_k'&&m.mgx_type==='server').slice(0,3).map((m,i)=>({a:m.name,b:'SW-01',type:'eth',a_port:'eth0',b_port:'1/'+(i+1)}));
+  if(scenario==='scale'){
+    projects.length=0;machines.length=0;links=[];
+    for(let p=1;p<=10;p++){
+      const project='L10-Project-'+String(p).padStart(2,'0');
+      projects.push({name:project,desc:'Scale fixture / 5 systems / synthetic inventory',level:'system',order:p-1});
+      for(let i=1;i<=5;i++){
+        const id=(p-1)*5+i;
+        machines.push({name:project+'-SYS-'+String(i).padStart(2,'0'),project,level:'system',mgx_type:'server',os_ip:'192.0.2.'+(20+id),bmc_ip:'198.51.100.'+(20+id),os_user:'demo',os_pass:'preview-only',bmc_user:'demo',bmc_pass:'preview-only',os_port:22,bmc_port:22,os_alive:id%13!==0,bmc_alive:true,power:id%13===0?'OFF':'ON',order:i-1,rack_u:0,rack_size:1,preview_gpu:id%2===0});
+      }
+    }
+    const composition=[['SW','switch',48,1],['NET','network',47,1],['SYS-A','server',46,2],['SYS-B','server',44,4],['SYS-C','server',40,4],['STORAGE','storage',36,4],['PS','powershelf',32,3],['PDU','pdu',29,2],['CDU','cdu',27,6],['BLANK','blanking',21,2],['SYS-D','server',19,2]];
+    for(let p=1;p<=3;p++){
+      const project='L11-Rack-'+String(p).padStart(2,'0');
+      projects.push({name:project,desc:'Scale fixture / compute, network, storage, power and cooling',level:'rack',order:9+p});
+      composition.forEach(([suffix,kind,u,size],i)=>{
+        const name=project+'-'+suffix,id=100+(p-1)*20+i,passive=kind==='blanking';
+        machines.push({name,project,level:'rack',mgx_type:kind,rack_u:u,rack_size:size,order:i,os_ip:passive?'':'203.0.113.'+id,bmc_ip:kind==='server'?'198.51.100.'+id:'',os_user:'demo',os_pass:'preview-only',bmc_user:'demo',bmc_pass:'preview-only',os_port:22,bmc_port:22,os_alive:passive?null:true,bmc_alive:kind==='server',power:passive?null:'ON',passive,preview_gpu:suffix==='SYS-B'});
+        if(kind==='server')links.push({a:name,b:project+'-SW',type:'eth',a_port:'eth0',b_port:'1/'+i});
+      });
+    }
+  }
   if(scenario==='empty'){projects.length=0;machines.length=0;links=[];}
   const now=Math.floor(Date.now()/1000);
   let library,lastScan=now,newMachineSequence=1;
@@ -33,6 +55,20 @@
   const projectList=()=>projects.map(p=>({...p,machine_count:machines.filter(m=>m.project===p.name).length})).sort((a,b)=>a.order-b.order);
   const machineList=()=>[...machines].sort((a,b)=>a.order-b.order);
   const powerStatus=m=>'Chassis Power is '+(m.power==='ON'?'on':'off');
+  const isCompute=m=>!m.mgx_type||m.mgx_type==='server';
+  const gpuCount=m=>isCompute(m)?(m.preview_gpu===false?0:8):0;
+  function fixtureDetail(m){
+    if(!isCompute(m)){
+      const models={switch:'網路交換器',network:'網路設備',cdu:'液冷 CDU',pdu:'Rack PDU',powershelf:'Power Shelf',storage:'Storage enclosure',blanking:'Blanking panel'};
+      return {machine:m,power:m.power?powerStatus(m):'',fw:[],os_info:{fetched_at:'Design preview',os:{},hw:{system:{model:(models[m.mgx_type]||'Rack component')+' · sample inventory'}}}};
+    }
+    return {machine:m,power:powerStatus(m),fw:[{key:'Firmware Revision',value:'2.10.0 (sample)'},{key:'IPMI Version',value:'2.0'},{key:'Manufacturer',value:'Wistron'}],os_info:{fetched_at:'Design preview',os:{distro:'Ubuntu 24.04 LTS',uptime:'12 days',cpu:'384',mem:'1536 GB'},hw:{cpu:{model:'AMD EPYC 9654 · sample inventory',sockets:2,cores:96,threads:2},dimm:{count:24,types:['DDR5'],speeds:['4800 MT/s'],parts:['64 GB ECC RDIMM']},ssd:[{name:'nvme0n1',model:'Enterprise NVMe',size:'3.84 TB'},{name:'nvme1n1',model:'Enterprise NVMe',size:'3.84 TB'}],gpu:Array.from({length:gpuCount(m)},(_,i)=>({name:'NVIDIA H100 · GPU '+i,mem:'80 GB',util:'Sample'})),nic:['01:00.0 Ethernet controller: Mellanox Technologies ConnectX-7'],firmware:{bios:{vendor:'AMI',version:'1.20 (sample)'},gpu:gpuCount(m)?[{index:'0–7',fw:'Sample VBIOS'}]:[]}}}};
+  }
+  function fixtureSensors(m){
+    const byKind={server:['CPU1 Temp | 48 degrees C | ok','CPU2 Temp | 46 degrees C | ok','Inlet Temp | 24 degrees C | ok','Fan1 | 8400 RPM | ok','PSU1 | 230 Volts | ok','PSU2 | 230 Volts | ok'],switch:['Inlet Temp | 25 degrees C | ok','ASIC Temp | 51 degrees C | ok','PSU1 | 230 Volts | ok'],network:['Inlet Temp | 25 degrees C | ok'],cdu:['Coolant Inlet | 25 degrees C | ok','Coolant Outlet | 31 degrees C | ok','Flow | 80 L/min | ok'],pdu:['Input Voltage | 230 Volts | ok','Input Current | 12 Amps | ok'],powershelf:['Output Voltage | 54 Volts | ok','Output Current | 80 Amps | ok'],storage:['Enclosure Temp | 29 degrees C | ok'],blanking:[]};
+    const entries=byKind[m.mgx_type||'server']||[];
+    return {sensors:{total:entries.length,ok:entries.length,critical:0,warning:0,ns:0,entries}};
+  }
   function placementError(m){
     if(m.level!=='rack'||!m.rack_u)return '';
     const top=Number(m.rack_u),height=Number(m.rack_size)||1,bottom=top-height+1;
@@ -76,10 +112,10 @@
       if(!m)return fail('找不到這台系統。',404);
       if(action==='detail'&&scenario==='loading')await pause(1600);
       if(action==='detail'&&scenario==='error'&&!failedDetails.has(name)){failedDetails.add(name);return fail('模擬暫時無法取得資料，請重新載入。',503);}
-      if(action==='detail')return response({machine:m,power:'Chassis Power is '+(m.power==='ON'?'on':'off'),fw:[{key:'Firmware Revision',value:'2.10.0 (sample)'},{key:'IPMI Version',value:'2.0'},{key:'Manufacturer',value:'Wistron'}],os_info:{fetched_at:'Design preview',os:{distro:'Ubuntu 24.04 LTS',uptime:'12 days',cpu:'384',mem:'1536 GB'},hw:{cpu:{model:'AMD EPYC 9654 · sample inventory',sockets:2,cores:96,threads:2},dimm:{count:24,types:['DDR5'],speeds:['4800 MT/s'],parts:['64 GB ECC RDIMM']},ssd:[{name:'nvme0n1',model:'Enterprise NVMe',size:'3.84 TB'},{name:'nvme1n1',model:'Enterprise NVMe',size:'3.84 TB'}],gpu:Array.from({length:8},(_,i)=>({name:'NVIDIA H100 · GPU '+i,mem:'80 GB',util:'Sample'})),nic:['01:00.0 Ethernet controller: Mellanox Technologies ConnectX-7'],firmware:{bios:{vendor:'AMI',version:'1.20 (sample)'},gpu:[{index:'0–7',fw:'Sample VBIOS'}]}}}});
-      if(action==='sensors')return response({sensors:{total:6,ok:6,critical:0,warning:0,ns:0,entries:['CPU1 Temp | 48 degrees C | ok','CPU2 Temp | 46 degrees C | ok','Inlet Temp | 24 degrees C | ok','Fan1 | 8400 RPM | ok','PSU1 | 230 Volts | ok','PSU2 | 230 Volts | ok']}});
-      if(action==='telemetry')return response({os:{os:ts.map((t,i)=>({ts:t,cpu_used:wave(45,9)[i],cpu_temp_c:wave(48,3)[i],load1:4,load5:3,load15:2,mem_used_pct:38,mem_total_gb:1536,mem_used_gb:583.68,mem_avail_gb:952.32})),disk:[{mount:'/',ts,pct:wave(26,1),used_gb:wave(180,2)}],net:[{iface:'eth0',points:ts.map((t,i)=>({ts:t,rx:wave(20e6,3e6)[i],tx:wave(10e6,2e6)[i]}))}]},gpu:{series:Array.from({length:8},(_,i)=>({gpu:i,name:'NVIDIA H100',ts,util:wave(45+i*6,6),mem_used:wave(30+i,2),temp:wave(55+i,3),power:wave(310+i*10,15)}))}});
-      if(action==='diagnose'){await pause(240);return response({ok:true,report:'[模擬診斷]\nOS：'+(m.os_alive?'可連線':'離線')+'\nBMC：'+(m.bmc_alive?'可連線':'未連線')+'\n電源：'+m.power+'\n此報告使用預覽資料，沒有執行設備指令。',collected_at:new Date().toISOString(),collect:{os:'Sample Ubuntu / AMD EPYC / 8 GPUs',bmc:'Sample SEL: no critical entries',bmc_mode:'preview'}});}
+      if(action==='detail')return response(fixtureDetail(m));
+      if(action==='sensors')return response(fixtureSensors(m));
+      if(action==='telemetry')return response(!isCompute(m)?{os:{os:[],disk:[],net:[]},gpu:{series:[]}}:{os:{os:ts.map((t,i)=>({ts:t,cpu_used:wave(45,9)[i],cpu_temp_c:wave(48,3)[i],load1:4,load5:3,load15:2,mem_used_pct:38,mem_total_gb:1536,mem_used_gb:583.68,mem_avail_gb:952.32})),disk:[{mount:'/',ts,pct:wave(26,1),used_gb:wave(180,2)}],net:[{iface:'eth0',points:ts.map((t,i)=>({ts:t,rx:wave(20e6,3e6)[i],tx:wave(10e6,2e6)[i]}))}]},gpu:{series:Array.from({length:gpuCount(m)},(_,i)=>({gpu:i,name:'NVIDIA H100',ts,util:wave(45+i*6,6),mem_used:wave(30+i,2),temp:wave(55+i,3),power:wave(310+i*10,15)}))}});
+      if(action==='diagnose'){await pause(240);return response({ok:true,report:'[模擬診斷]\nOS：'+(m.os_alive?'可連線':'離線')+'\nBMC：'+(m.bmc_alive?'可連線':'未連線')+'\n電源：'+m.power+'\n此報告使用預覽資料，沒有執行設備指令。',collected_at:new Date().toISOString(),collect:{os:isCompute(m)?'Sample Ubuntu / AMD EPYC / '+gpuCount(m)+' GPUs':'Sample '+(m.mgx_type||'component')+' inventory; no compute data reported',bmc:m.bmc_ip?'Sample SEL: no critical entries':'No BMC inventory',bmc_mode:'preview'}});}
       if(method==='POST'&&['power','reboot','aux'].includes(action)){await pause(150);m.power=action==='power'&&(body.action==='off'||body.on===false)?'OFF':'ON';m.os_alive=Boolean(m.power==='ON'&&m.os_ip);return response({ok:true,output:'Preview only; no command executed.',power:m.power,power_status:powerStatus(m),info:'模擬操作完成'});}
     }
     if(path==='/api/machines/probe-bmc')return response({ok:true,bmc_ip:'198.51.100.250',hostname:'demo-new-system'});
