@@ -14,7 +14,12 @@
   perforations, caddies, ports, screws, rails, power-supply fans and rear fittings.
 - Final user color revision: **Server and NVLink Switch Tray fronts are champagne
   gold**. Their chassis and rear stay silver/gray. Switch/Power Shelf/PDU are dark;
-  CDU and Storage use neutral metal. Do not revert NVLink to silver-front.
+  CDU is charcoal with silver handles; Storage uses neutral metal. Do not revert
+  NVLink to silver-front or the CDU to the superseded silver-front concept.
+- The final CDU refinement follows the user's black front-panel photograph in both
+  WebGL and SVG: silver rounded handles, recessed double-bezel black HMI, right
+  circular button/three connector collars and dense lower geometric perforations.
+  No Cooler Master logo or invented live readings; actual U height remains data-driven.
 - Latest user-supplied rack-front crop is the NVLink face authority: closed flat
   champagne fascia, left compact I/O, pressed horizontal lip and small fixings.
   Do not put the open-tray top view's two large oblong handles on this front face.
@@ -85,6 +90,10 @@ GB300-specific suite passed, with no page/console errors or external data reques
 - `node qa/gb300-rack.cjs`: exact U arrangement; focus/orbit/front/rear; arbitrary6/7U;
   geometry cleanup; WebGL loss/restore/fallback; all nine SVG types and uncropped
   System Detail illustrations. Screenshots/reports are under `qa/artifacts`.
+- CDU refinement: automated 1/2/3/4/5/48U placement and SVG checks; all 1..48U
+  front/perspective SVG variants independently parsed (96 variants). Server and CDU
+  detail captures include dark/light; screenshots wait for the correct machine
+  identity and disable transient CSS animations to avoid stale/dim captures.
 - Syntax checks for changed JS/Python and `git diff --check`.
 
 These are local fixture/UI checks, not real-hardware, long-duration or production-load

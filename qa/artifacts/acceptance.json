@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-09-23T16:24:58.771Z",
+  "generatedAt": "2026-09-23T16:37:06.350Z",
   "baseURL": "http://127.0.0.1:8769",
   "browser": "131.0.6778.205",
   "results": [
     {
       "name": "01 Dashboard desktop and fixture identity",
       "status": "passed",
-      "durationMs": 2112,
+      "durationMs": 1909,
       "details": {
         "machines": 47,
         "projects": 6,
@@ -17,42 +17,42 @@
     {
       "name": "02 L10 / L11 separation and OS/BMC columns",
       "status": "passed",
-      "durationMs": 544
+      "durationMs": 450
     },
     {
       "name": "03 System/project search and no-results recovery",
       "status": "passed",
-      "durationMs": 101
+      "durationMs": 79
     },
     {
       "name": "04 Project collapse, expand and drag order",
       "status": "passed",
-      "durationMs": 150
+      "durationMs": 140
     },
     {
       "name": "05 Project create, rename and empty-project delete",
       "status": "passed",
-      "durationMs": 373
+      "durationMs": 287
     },
     {
       "name": "06 Add system, scan, settings and delete",
       "status": "passed",
-      "durationMs": 1382
+      "durationMs": 1143
     },
     {
       "name": "07 Single-system five tabs, hardware and operations",
       "status": "passed",
-      "durationMs": 1769
+      "durationMs": 1491
     },
     {
       "name": "08 Sensors and diagnosis produce reports",
       "status": "passed",
-      "durationMs": 379
+      "durationMs": 350
     },
     {
       "name": "09 All thirteen telemetry canvases and eight GPU series",
       "status": "passed",
-      "durationMs": 261,
+      "durationMs": 189,
       "details": [
         {
           "id": "tel-cpu",
@@ -150,7 +150,7 @@
     {
       "name": "10 Test library six categories and 3112 cases",
       "status": "passed",
-      "durationMs": 1211,
+      "durationMs": 1094,
       "details": [
         {
           "sheet": "Functionality",
@@ -181,47 +181,47 @@
     {
       "name": "11 48U rack placement, multi-U and topology",
       "status": "passed",
-      "durationMs": 2650
+      "durationMs": 2646
     },
     {
       "name": "12 Rack component move, unmount, remount and add passive",
       "status": "passed",
-      "durationMs": 1774
+      "durationMs": 1323
     },
     {
       "name": "13 Rack list, telemetry kinds and time range",
       "status": "passed",
-      "durationMs": 834
+      "durationMs": 573
     },
     {
       "name": "14 Terminal preview modes and close",
       "status": "passed",
-      "durationMs": 1110
+      "durationMs": 1006
     },
     {
       "name": "15 Live KVM shell with isolated RFB stub and Broadcast preview",
       "status": "passed",
-      "durationMs": 2380
+      "durationMs": 2067
     },
     {
       "name": "16 Fixture mutations respect API contracts",
       "status": "passed",
-      "durationMs": 326
+      "durationMs": 321
     },
     {
       "name": "17 Empty, loading and recoverable error states",
       "status": "passed",
-      "durationMs": 4609
+      "durationMs": 3968
     },
     {
       "name": "18 Deep links and reload",
       "status": "passed",
-      "durationMs": 3583
+      "durationMs": 3228
     },
     {
       "name": "19 Desktop 1440 / 1600 / 1920 widths",
       "status": "passed",
-      "durationMs": 9619,
+      "durationMs": 8722,
       "details": [
         {
           "width": 1440,
@@ -300,22 +300,22 @@
     {
       "name": "20 Reduced-motion style and stable tables",
       "status": "passed",
-      "durationMs": 515
+      "durationMs": 428
     },
     {
       "name": "21 WebGL unavailable: static fallback remains usable",
       "status": "passed",
-      "durationMs": 433
+      "durationMs": 320
     },
     {
       "name": "22 Failed WebGL restoration stays in fallback without draw errors",
       "status": "passed",
-      "durationMs": 480
+      "durationMs": 461
     },
     {
       "name": "23 Browser errors and external requests",
       "status": "passed",
-      "durationMs": 1,
+      "durationMs": 0,
       "details": {
         "pageErrors": [],
         "consoleErrors": [],

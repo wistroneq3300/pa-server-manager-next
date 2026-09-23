@@ -27,7 +27,7 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
    await page.evaluate(t=>applyTheme(t),theme);await settle();
    for(const view of ['Perspective','Front','Rear']){
     await page.getByRole('button',{name:view,exact:true}).click();await settle();
-    await page.screenshot({path:path.join(output,`gb300-rack-${theme}-${view.toLowerCase()}.png`)});
+    await page.screenshot({path:path.join(output,`gb300-rack-${theme}-${view.toLowerCase()}.png`),animations:'disabled'});
     assert.equal((await state()).theme,theme);
    }
   }
@@ -36,7 +36,7 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   for(const name of ['SERVER-04U','SERVER-03U','SERVER-02U','SERVER-01','NVLINK-01','PS-01','SW-01','CDU-01']){
    await select(name);assert.equal((await state()).selected,name);
    await page.getByRole('button',{name:'Inspect in 3D',exact:true}).click();await settle();
-   await page.screenshot({path:path.join(output,`gb300-detail-${name.toLowerCase()}.png`)});
+   await page.screenshot({path:path.join(output,`gb300-detail-${name.toLowerCase()}.png`),animations:'disabled'});
   }
   results.push('Front/rear/orbit views, selection/focus and both material themes rendered');
   await page.getByRole('button',{name:'Reset',exact:true}).click();await settle();
@@ -58,13 +58,25 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   // Check two arbitrary units beyond the demonstration without changing application data.
   const dynamic=await page.evaluate(()=>{const scene=document.querySelector('#ew-rack-canvas').paRackScene;scene.setComponents([{name:'CUSTOM-07U',mgx_type:'nvlink',rack_u:40,rack_size:7},{name:'CUSTOM-06U',mgx_type:'pdu',rack_u:20,rack_size:6}]);return scene.getState();});
   assert.equal(dynamic.occupiedU,13);assert.equal(dynamic.placements[0].size,7);assert.equal(dynamic.placements[1].bottom,15);
+  const cduModels=await page.evaluate(()=>[1,2,3,4,5,48].map(size=>{
+   const scene=document.querySelector('#ew-rack-canvas').paRackScene;
+   scene.setComponents([{name:'CUSTOM-CDU',mgx_type:'cdu',rack_u:48,rack_size:size}]);
+   return {size,state:scene.getState()};
+  }));
+  for(const {size,state:s} of cduModels){assert.equal(s.occupiedU,size);assert.equal(s.invalid.length,0);assert.equal(s.placements[0].bottom,49-size);assert.equal(s.geometryBuffers,2);}
   await page.reload();await ready();assert.equal((await state()).count,35);
-  results.push('Drag gestures, full-rack reset, expanded-view Escape, cleanup and arbitrary 6U/7U models verified');
+  results.push('Drag gestures, full-rack reset, expanded-view Escape, cleanup, arbitrary 6U/7U models and 1/2/3/4/5/48U CDU geometry verified');
   const svgAudit=await page.evaluate(()=>{
    const kinds=['server','switch','nvlink','powershelf','pdu','cdu','storage','network','blanking'];
    return kinds.map(type=>{const holder=document.createElement('div');holder.innerHTML=PAHardwareVisuals.render({mgx_type:type,rack_size:type==='cdu'?4:1});return {type,rendered:holder.querySelector('svg')?.dataset.hardwareType,shapes:holder.querySelectorAll('path,rect,circle,ellipse,line,polygon').length};});
   });
   for(const row of svgAudit){assert.equal(row.rendered,row.type);assert.ok(row.shapes>8,row.type+' needs a device-specific illustration');}
+  const cduSizes=await page.evaluate(()=>[1,2,3,4,5,48].flatMap(units=>['front','perspective'].map(view=>{
+   const markup=PAHardwareVisuals.render({mgx_type:'cdu',rack_size:units},{view}),doc=new DOMParser().parseFromString(markup,'image/svg+xml');
+   return {units,view,reported:Number(doc.documentElement.dataset.hardwareUnits),valid:!doc.querySelector('parsererror')&&![...doc.querySelectorAll('rect,ellipse,circle')].some(el=>['width','height','rx','ry','r'].some(a=>el.hasAttribute(a)&&Number(el.getAttribute(a))<0))};
+  })));
+  for(const row of cduSizes){assert.equal(row.reported,row.units);assert.ok(row.valid,`CDU ${row.units}U ${row.view}: invalid SVG geometry`);}
+  results.push('Detailed CDU front/perspective drawings preserve 1/2/3/4/5/48U dimensions without invalid geometry');
   const gallery=await context.newPage();
   await gallery.goto(base+'/#/machine/host_a');await gallery.waitForSelector('.pd-hardware-stage');
   await gallery.evaluate(()=>{
@@ -84,9 +96,12 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
    }
   }
   await page.setViewportSize({width:1600,height:1100});
-  for(const name of ['host_a','CDU-01','NVLINK-01']){
+  for(const name of ['host_a','SERVER-01','CDU-01','NVLINK-01']){
    await page.goto(base+'/#/machine/'+name);await page.waitForFunction(n=>document.querySelector('.pd-workspace')?.dataset.system===n,name);await page.waitForSelector('.pd-hardware-stage svg');
-   await page.screenshot({path:path.join(output,`gb300-system-detail-${name.toLowerCase()}.png`),fullPage:true});
+   for(const theme of ['dark','light']){
+    await page.evaluate(t=>applyTheme(t),theme);await settle();
+    await page.screenshot({path:path.join(output,`gb300-system-detail-${name.toLowerCase()}${theme==='light'?'-light':''}.png`),fullPage:true,animations:'disabled'});
+   }
   }
   results.push('Single-device illustrations and captions fully contained at 1440/1600/1920; compute, switch, NVLink, power and CDU verified');
   await page.goto(base+'/#/rack/proj_k');await ready();

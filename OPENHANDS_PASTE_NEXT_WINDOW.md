@@ -1,5 +1,7 @@
 *** NEXT 3D UPDATE 2026-09-24: Read SESSION_HANDOFF_GB300_RACK_20260924.md first. Branch astra-cinematic-ui; data-driven 48U + nine detailed device illustrations. Latest color request: Server AND NVLink tray fronts champagne gold. Preserve upstream functionality; only serve.py uses fixtures. Original repository/main are out of scope. ***
 
+Latest CDU refinement: charcoal enclosure and silver tubular handles, black glass HMI, lower geometric vents. This supersedes the earlier silver CDU. Server details now use the eight-module GB300-inspired face with gold NIC faceplates; the old six-black-bay illustration is obsolete.
+
 *** NEXT UI UPDATE 2026-09-23: Read SESSION_HANDOFF_UI_RACK_20260923.md for astra-cinematic-ui. Preserve upstream main functionality; production entry is NOT a fixture preview. Original repository is out of scope. ***
 
 *** READ FIRST: SESSION_HANDOFF_LAST_REVIEW_SKILL_20260918.md (last review state + pa-library-review skill) ***

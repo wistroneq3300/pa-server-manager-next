@@ -3,53 +3,54 @@
   "results": [
     "Exact approved 35-component / 48U arrangement; mixed 1/2/3/4U and 5U blank; 9 independent NVLink trays",
     "Front/rear/orbit views, selection/focus and both material themes rendered",
-    "Drag gestures, full-rack reset, expanded-view Escape, cleanup and arbitrary 6U/7U models verified",
+    "Drag gestures, full-rack reset, expanded-view Escape, cleanup, arbitrary 6U/7U models and 1/2/3/4/5/48U CDU geometry verified",
+    "Detailed CDU front/perspective drawings preserve 1/2/3/4/5/48U dimensions without invalid geometry",
     {
       "deviceIllustrations": [
         {
           "type": "server",
           "rendered": "server",
-          "shapes": 185
+          "shapes": 191
         },
         {
           "type": "switch",
           "rendered": "switch",
-          "shapes": 237
+          "shapes": 243
         },
         {
           "type": "nvlink",
           "rendered": "nvlink",
-          "shapes": 114
+          "shapes": 120
         },
         {
           "type": "powershelf",
           "rendered": "powershelf",
-          "shapes": 164
+          "shapes": 170
         },
         {
           "type": "pdu",
           "rendered": "pdu",
-          "shapes": 118
+          "shapes": 124
         },
         {
           "type": "cdu",
           "rendered": "cdu",
-          "shapes": 142
+          "shapes": 151
         },
         {
           "type": "storage",
           "rendered": "storage",
-          "shapes": 125
+          "shapes": 131
         },
         {
           "type": "network",
           "rendered": "network",
-          "shapes": 109
+          "shapes": 115
         },
         {
           "type": "blanking",
           "rendered": "blanking",
-          "shapes": 34
+          "shapes": 40
         }
       ]
     },

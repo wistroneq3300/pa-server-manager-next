@@ -73,7 +73,8 @@
       for(let i=0;i<segments;i++){vertex([x,y,z],[0,0,1],color,metal);for(const a of [i/segments*TAU,(i+1)/segments*TAU])vertex([x+Math.cos(a)*r,y+Math.sin(a)*r,z],[0,0,1],color,metal);}
     }
     function face(x,y,z,w,h,color,metal=.2,front=1){quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],[0,0,front],color,metal);}
-    return {data,box,bevel,tube,ring,disc,face};
+    function polygon(points,z,color,metal=.2){for(let i=1;i<points.length-1;i++)for(const p of [points[0],points[i],points[i+1]])vertex([p[0],p[1],z],[0,0,1],color,metal);}
+    return {data,box,bevel,tube,ring,disc,face,polygon};
   }
   // Embossed U numbers are actual geometry; no canvas texture or CSS projection.
   const SEGMENTS={0:[0,1,2,3,4,5],1:[1,2],2:[0,1,6,4,3],3:[0,1,2,3,6],4:[5,6,1,2],5:[0,5,6,2,3],6:[0,5,6,4,2,3],7:[0,1,2],8:[0,1,2,3,4,5,6],9:[0,1,2,3,5,6]};
@@ -101,9 +102,9 @@
     V(0,-7.29,3.22,4.38,.32,.12,C.dark,.025);B(0,-7.14,3.29,4.16,.007,.012,C.edge);
     return m;
   }
-  function chassis(m,h,depth,color=C.silver){
-    const z=FRONT-depth/2; m.bevel(0,0,z,3.94,h,depth,color,.023);m.bevel(0,h/2-.002,z,3.90,.015,Math.max(.05,depth-.04),color===C.dark?C.dark:C.lid,.006);
-    for(const side of [-1,1]){m.box(side*1.988,-h*.30,z,.028,.042,Math.max(.08,depth-.18),C.edge);m.bevel(side*2.002,0,FRONT+.016,.126,h+.008,.105,C.steel,.014);for(const y of [-1,1]){const sy=y*Math.min(h*.35,.30);m.tube([side*2.004,sy,FRONT+.07],[side*2.004,sy,FRONT+.081],.022,C.edge,8);m.box(side*2.004,sy,FRONT+.085,.026,.006,.004,C.black);}
+  function chassis(m,h,depth,color=C.silver,textured=false){
+    const z=FRONT-depth/2; m.bevel(0,0,z,3.94,h,depth,color,.023,textured?-.7:.9);m.bevel(0,h/2-.002,z,3.90,.015,Math.max(.05,depth-.04),textured||color===C.dark?color:C.lid,.006,textured?-.7:.9);
+    for(const side of [-1,1]){m.box(side*1.988,-h*.30,z,.028,.042,Math.max(.08,depth-.18),C.edge);m.bevel(side*2.002,0,FRONT+.016,.126,h+.008,.105,textured?color:C.steel,.014,textured?-.7:.9);if(!textured)for(const y of [-1,1]){const sy=y*Math.min(h*.35,.30);m.tube([side*2.004,sy,FRONT+.07],[side*2.004,sy,FRONT+.081],.022,C.edge,8);m.box(side*2.004,sy,FRONT+.085,.026,.006,.004,C.black);}
       if(depth>.5){m.box(side*1.976,h/2-.027,z,.008,.009,depth-.07,C.dark);for(let i=0;i<5;i++){const sz=FRONT-.25-(depth-.50)*i/4;m.tube([side*1.977,h*.16,sz],[side*1.984,h*.16,sz],.020,C.steel,8);m.box(side*1.986,h*.16,sz,.003,.006,.021,C.black);m.tube([side*1.78,h/2+.006,sz],[side*1.78,h/2+.012,sz],.019,C.edge,8);}}}
     if(depth>.5){m.box(0,h/2+.010,FRONT-.45,3.69,.003,.012,C.steel);m.bevel(.88,h/2+.012,z,.30,.017,.20,C.steel,.018);m.bevel(.88,h/2+.022,z,.22,.007,.13,C.dark,.012);}
     return z;
@@ -134,7 +135,7 @@
   function createEquipment(item){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube,h=item.height,type=item.mgx_type,f=FRONT+.028;
     const depths={server:5.85,switch:4.40,nvlink:5.95,powershelf:3.60,pdu:1.02,cdu:5.95,storage:5.50,network:3.10,blanking:.13},depth=depths[type];
-    chassis(m,h,depth,type==='blanking'?C.dark:C.silver);
+    chassis(m,h,depth,type==='cdu'?[.070,.074,.084]:type==='blanking'?C.dark:C.silver,type==='cdu');
     if(type==='server'){
       V(0,0,f,3.90,h-.008,.115,C.gold,.022);B(0,h/2-.010,f+.066,3.74,.012,.018,C.goldEdge);B(0,-h/2+.010,f+.066,3.74,.012,.018,C.goldEdge);
       // Fixed-pitch GB300-inspired service band. Taller enclosures add vented
@@ -180,21 +181,38 @@
       const rear=FRONT-depth-.030;V(0,0,rear,3.76,h-.015,.07,C.steel,.014);for(let c=0;c<9;c++){const x=-1.33+c*.333;B(x,cy,rear-.061,.27,.18,.073,C.black);B(x,cy,rear-.102,.22,.12,.023,C.steel);for(let p=0;p<5;p++)B(x-.083+p*.04,cy,rear-.117,.013,.095,.006,C.copper);}
       for(const side of [-1,1])fluidPort(m,side*1.73,cy,rear,.063);
     }else if(type==='cdu'){
-      V(0,0,f,3.9,h-.008,.105,C.silver,.025);V(0,0,f+.059,3.37,h-.047,.023,C.lid,.011);
-      const displayH=Math.min(.43,h-.092),grilleH=h-.086;
-      for(const side of [-1,1]){
-        grille(m,side*1.13,0,f+.080,.965,grilleH,C.steel);
-        for(let gy=-grilleH/2+.048;gy<grilleH/2;gy+=.081)B(side*1.13,gy,f+.092,.91,.007,.009,C.edge);
-        V(side*1.77,0,f+.054,.145,h-.013,.11,C.steel,.020);
-        const grip=Math.max(.026,h/2-.060);T([side*1.77,-grip,f+.109],[side*1.77,-grip,f+.196],.025,C.edge,10);T([side*1.77,-grip,f+.196],[side*1.77,grip,f+.196],.027,C.edge,14);T([side*1.77,grip,f+.196],[side*1.77,grip,f+.109],.025,C.edge,10);
-        for(const sy of [-1,1])screw(m,side*1.62,sy*(h/2-.05),f+.086);
+      // Photo reference: powder-coated charcoal enclosure, tubular chrome
+      // handles, recessed black HMI and circular service collars. No brand mark
+      // or fabricated live readings are painted into this physical model.
+      const powder=[.085,.090,.102],trim=[.055,.061,.072],chamfer=[.12,.13,.15],glass=[.004,.005,.007];
+      V(0,0,f,3.9,h-.008,.105,powder,.019,-.7);B(0,h/2-.015,f+.060,3.76,.009,.012,trim,.25);B(0,-h/2+.014,f+.060,3.76,.007,.010,trim,.25);
+      // Three recessed rhombi per cell form the cube-like stamped vent pattern.
+      // Face geometry is bounded even for unusually tall configured enclosures.
+      const radius=.031,stepX=.081,stepY=.065,bottom=-h/2+Math.min(.062,h*.08),bandH=Math.min(.40,h*.33);
+      for(let row=0,y=bottom+radius;y<bottom+bandH;row++,y+=stepY)for(let x=-1.57+(row%2)*stepX/2;x<1.59;x+=stepX){
+        const rx=radius*.86,shapes=[[[x,y+radius],[x+rx,y+radius*.5],[x,y],[x-rx,y+radius*.5]],[[x-rx,y+radius*.5],[x,y],[x,y-radius],[x-rx,y-radius*.5]],[[x,y],[x+rx,y+radius*.5],[x+rx,y-radius*.5],[x,y-radius]]];
+        for(const pts of shapes){const cx=pts.reduce((sum,p)=>sum+p[0],0)/4,cy=pts.reduce((sum,p)=>sum+p[1],0)/4,scale=k=>pts.map(p=>[cx+(p[0]-cx)*k,cy+(p[1]-cy)*k]);m.polygon(scale(.88),f+.058,chamfer,.22);m.polygon(scale(.70),f+.061,C.black,.03);}
       }
-      V(0,0,f+.087,1.025,displayH+.040,.039,C.steel,.019);V(0,0,f+.111,.952,displayH,.020,C.black,.012);B(0,0,f+.125,.859,displayH-.042,.010,C.socket,.15,.15);
-      // Non-numeric display markings are illustrative, not live telemetry.
-      B(-.235,displayH*.25,f+.135,.25,.013,.007,C.label,.15,.3);B(-.192,displayH*.11,f+.135,.34,.007,.007,C.steel,.1,.2);
-      if(displayH>.24){const line=[[-.34,-.10],[-.24,-.072],[-.13,-.084],[-.04,-.020],[.065,-.048],[.18,.005],[.32,-.004]];for(let i=0;i<line.length-1;i++)T([line[i][0],line[i][1],f+.139],[line[i+1][0],line[i+1][1],f+.139],.004,C.label,5,.15);B(0,-.145,f+.137,.68,.004,.005,C.steel,.15);}
-      led(m,item,.427,-Math.min(h*.35,displayH/2+.055),f+.095);
-      const rear=FRONT-depth-.035;V(0,0,rear,3.8,h*.90,.08,C.steel,.02);
+      for(const side of [-1,1]){
+        // Curved return ends keep the long bright grips clear of the face.
+        const grip=Math.min(.40,Math.max(.027,h*.32)),x=side*1.76,r=Math.min(.032,h*.092);
+        for(const sy of [-1,1]){T([x,sy*grip,f+.057],[x,sy*grip,f+.090],r*1.70,C.edge,16);T([x,sy*grip,f+.086],[x,sy*grip,f+.130],r,C.edge,12);
+          for(let j=0;j<5;j++){const a=j/5*Math.PI/2,b=(j+1)/5*Math.PI/2;T([x,sy*(grip-r*(1-Math.cos(a))),f+.130+r*Math.sin(a)],[x,sy*(grip-r*(1-Math.cos(b))),f+.130+r*Math.sin(b)],r,C.edge,12);}}
+        T([x,-grip+r,f+.130+r],[x,grip-r,f+.130+r],r,C.edge,18);
+        // Realistically proportioned oblong mounting slots in the rack ears.
+        for(const sy of [-1,1]){const ey=sy*Math.max(.052,h/2-.071),ex=side*2.003,rr=.014,straight=.043,points=[];for(let i=0;i<=8;i++){const a=-Math.PI/2+i/8*Math.PI;points.push([ex+straight/2+Math.cos(a)*rr,ey+Math.sin(a)*rr]);}for(let i=0;i<=8;i++){const a=Math.PI/2+i/8*Math.PI;points.push([ex-straight/2+Math.cos(a)*rr,ey+Math.sin(a)*rr]);}m.polygon(points,FRONT+.071,C.black,.02);}
+      }
+      // Nested bezel steps and one quiet diagonal reflection, without a chart.
+      const bezelH=Math.min(.70,h-.084),screenH=Math.min(.382,bezelH*.54),screenY=Math.min(.073,bezelH*.105);
+      V(0,0,f+.083,1.14,bezelH,.064,trim,.025,.58);V(0,0,f+.116,1.10,bezelH-.026,.027,chamfer,.018,.63);V(0,0,f+.132,1.076,bezelH-.044,.018,trim,.012,.4);
+      V(0,screenY,f+.146,.889,screenH+.021,.019,chamfer,.010,.65);B(0,screenY,f+.159,.858,screenH,.010,glass,.60);
+      m.polygon([[-.424,screenY+screenH/2-.005],[-.12,screenY+screenH/2-.005],[.13,screenY-screenH/2+.005],[-.424,screenY-screenH/2+.005]],f+.165,[.020,.023,.029],.48);
+      B(-.429,screenY,f+.166,.004,screenH-.013,.003,C.steel,.5);
+      const buttonY=Math.min(.28,h*.30),buttonR=Math.min(.105,h*.18),buttonX=1.32;
+      T([buttonX,buttonY,f+.053],[buttonX,buttonY,f+.086],buttonR,C.steel,24);m.ring(buttonX,buttonY,f+.094,buttonR*.88,Math.min(.012,buttonR*.12),C.edge,24);m.disc(buttonX,buttonY,f+.093,buttonR*.76,[.48,.50,.53],.64,24);
+      const portY=-Math.min(.118,h*.15),portR=Math.min(.118,h*.19),portH=Math.min(.081,portR*.85);
+      for(const x of [.73,1.026,1.322]){T([x,portY,f+.055],[x,portY,f+.084],portR,trim,20,.6);m.ring(x,portY,f+.092,portR*.90,Math.min(.008,portR*.09),C.steel,20);qsfp(m,x,portY,f+.091,Math.min(.119,portR*1.25),portH,1,C.steel);B(x,portY+portR+.029,f+.065,.074,.007,.004,C.label,.1);}
+      const rear=FRONT-depth-.035;V(0,0,rear,3.8,h*.90,.08,powder,.02,-.7);
       for(const x of [-1.24,-.48,.48,1.24]){const radius=Math.min(.125,h*.23);T([x,0,rear],[x,0,rear-.21],radius,C.edge,14);T([x,0,rear-.20],[x,0,rear-.27],radius*.84,x<0?C.blue:[.43,.17,.13],14);T([x,0,rear-.27],[x,0,rear-.275],radius*.64,C.black,14);}
       for(const x of [-1.71,1.71])B(x,0,rear-.075,.14,h*.58,.08,C.black);
     }else if(type==='pdu'){
@@ -230,7 +248,7 @@
     uniform vec3 uEye;uniform float uLight;uniform float uSelected;
     void main(){
       vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.58,.88,.72)),fill=normalize(vec3(.74,.40,-.35));
-      float metal=vMaterial.x,hemisphere=.22+.17*(n.y*.5+.5),diff=max(dot(n,key),0.0),brush=.992+.008*sin(vLocal.z*440.0+vLocal.x*17.0);
+      float metal=max(vMaterial.x,0.0),hemisphere=.22+.17*(n.y*.5+.5),diff=max(dot(n,key),0.0),brush=.992+.008*sin(vLocal.z*440.0+vLocal.x*17.0);
       vec3 c=vColor*(hemisphere+diff*.86+max(dot(n,fill),0.0)*.20)*brush;
       float overhead=pow(max(dot(r,normalize(vec3(-.46,.67,-.59))),0.0),18.0),side=pow(max(dot(r,normalize(vec3(-.83,.30,.42))),0.0),24.0),back=pow(max(dot(r,normalize(vec3(.72,.42,-.65))),0.0),22.0);
       float spec=pow(max(dot(n,normalize(key+v)),0.0),95.0),rim=pow(1.0-max(dot(n,v),0.0),4.0);
@@ -238,6 +256,7 @@
       vec3 ceiling=vPosition+r*((16.0-vPosition.y)/max(r.y,.08));float softbox=(1.0-smoothstep(4.0,7.0,abs(ceiling.x+7.0)))*(1.0-smoothstep(9.0,15.0,abs(ceiling.z+19.0)));
       c+=vec3(.83,.89,.92)*softbox*smoothstep(.10,.30,r.y)*metal*.15;c+=vec3(.35,.60,.69)*(back*.30+rim*.055)*metal;
       c+=vColor*uLight*.075;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.015,.017,.019)*uSelected+vec3(.16,.25,.27)*rim*uSelected*.23;
+      if(vMaterial.x<-.5){float grain=fract(sin(dot(floor(vLocal*380.0),vec3(127.1,311.7,74.7)))*43758.5453);c*=.965+grain*.070;}
       gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),1.0);
     }`;
   function mount(canvas,options={}){

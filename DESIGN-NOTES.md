@@ -11,7 +11,11 @@ and Next `main` are not modified by this feature branch.
   and height. The model, plane editor and component list share the same records.
 - Material rule (latest user revision): champagne compute and NVLink tray fronts;
   silver tray bodies/rears, graphite management switches and power modules,
-  neutral silver CDU, dark blanking and PDU enclosures.
+  charcoal CDU with silver tubular handles, dark blanking and PDU enclosures.
+- The latest user-supplied CDU reference supersedes the earlier silver CDU concept:
+  textured black fascia, central recessed double-bezel display, right circular button
+  and three connector collars, dense lower geometric ventilation and silver handles.
+  The drawing is original, unbranded and has no invented display readings.
 - Each device owns its fixed-pitch service details. Increasing height adds chassis
   panels/vent bands rather than stretching connectors or creating fake inventory.
 - GB300-inspired compute faces, NVLink closed service panels, six-module power
@@ -36,8 +40,9 @@ References consulted (reference images are not redistributed):
   including GB300 compute front, NVLink tray and power shelf figures.
 - [NVIDIA SN2000 hardware](https://networking-docs.nvidia.com/sn2000hw/latest/introduction)
   for SN2700-style Ethernet connector organization.
-- [Vertiv CoolChip CDU 100](https://go.vertiv.com/CoolChip-CDU-100) for a generic in-rack
-  CDU silhouette; [Eaton horizontal rack PDU](https://www.eaton.com/us/en-us/skuPage.EHMAL620N.html)
+- User-provided black CDU product reference for the final front-panel design;
+  [Vertiv CoolChip CDU 100](https://go.vertiv.com/CoolChip-CDU-100) informed the earlier
+  in-rack silhouette. [Eaton horizontal rack PDU](https://www.eaton.com/us/en-us/skuPage.EHMAL620N.html)
   for the outlet form factor.
 
 No new frontend/runtime dependencies, downloaded models or external texture services.

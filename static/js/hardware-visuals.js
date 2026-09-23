@@ -43,7 +43,7 @@
   const circle = (x,y,r,fill,extra='') => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" ${extra}/>`;
   const line = (x1,y1,x2,y2,stroke,width=1,opacity=1) => `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${stroke}" stroke-width="${width}" opacity="${opacity}"/>`;
   function front(type,id,h,units) {
-    const material = ['server','nvlink'].includes(type) ? 'champagne' : ['switch','powershelf','pdu','network','blanking'].includes(type) ? 'dark' : 'front';
+    const material = ['server','nvlink'].includes(type) ? 'champagne' : type==='cdu'?'cdu-metal':['switch','powershelf','pdu','network','blanking'].includes(type) ? 'dark' : 'front';
     const metal=`url(#${id}-${material})`, dark=`url(#${id}-dark)`, edge=`url(#${id}-edge)`;
     const mesh=`url(#${id}-mesh)`, grain=`url(#${id}-grain)`;
     const screw = (x,y,r=1.5) => circle(x,y,r,'#111c23') + circle(x,y,r*.69,'#77878c') + line(x-r*.45,y,x+r*.45,y,'#24323a',.55);
@@ -123,18 +123,43 @@
       }
       if(units>1) {content+=grille(19,5,400,Math.max(9,cy-9))+grille(19,cy+36,400,Math.max(9,h-cy-41));}
     } else if(type==='cdu') {
-      content+=handle(16,6,h-12)+handle(413,6,h-12);
-      content+=rect(33,5,374,h-10,`url(#${id}-satin)`,'#b3bec0',2)+rect(34,6,372,h-12,grain);
-      const cy=h/2, displayHeight=Math.min(49,h-15), displayY=cy-displayHeight/2;
-      content+=rect(168,displayY-2,104,displayHeight+4,dark,'#8b9fa6',2)+rect(173,displayY+2,94,displayHeight-4,'#0c1c24','#526b73',1);
-      if(displayHeight>29) {
-        content+=line(179,displayY+10,209,displayY+10,'#668998',1.5)+line(179,displayY+15,219,displayY+15,'#405e6c',1);
-        content+=`<path d="M180 ${cy+13}l12-3 12 1 9-8 11 3 12-6 14 1" fill="none" stroke="#769d94" stroke-width="1.2"/>`;
-        content+=line(179,cy+17,257,cy+17,'#27414c',.6);
-      } else content+=line(181,cy,244,cy,'#5d8292',1.4);
-      content+=grille(43,11,110,h-22)+grille(285,11,110,h-22);
-      for(let y=18;y<h-10;y+=9) content+=line(47,y,149,y,'#c4ceca',.75,.52)+line(289,y,391,y,'#c4ceca',.75,.52);
-      content+=circle(258,Math.min(h-7,displayY+displayHeight+8),2,'#69785c')+screw(39,9)+screw(402,9)+screw(39,h-9)+screw(402,h-9);
+      // Charcoal powder-coated cooling appliance. The black HMI is unlit:
+      // reflections are material detail, never invented telemetry or readings.
+      const powder=`url(#${id}-cdu-powder)`, shell=`url(#${id}-cdu-metal)`;
+      content+=rect(0,0,22,h,shell,'#15191e',1)+rect(418,0,22,h,shell,'#15191e',1);
+      for(const x of [6,424]) for(const y of [h*.14,h*.82]) content+=rect(x,y,10,5,'#020508','#454b51',2.5);
+      content+=rect(24,1,392,h-2,shell,'#171c22',1.3)+rect(24.8,1.8,390.4,h-3.6,powder,'',1);
+      content+=line(25,2,414,2,'#767c83',.75,.6)+line(25,h-2,414,h-2,'#05090d',1.2,.9);
+      content+=line(24,3,24,h-3,'#747c82',.55,.65)+line(415,3,415,h-3,'#0b1117',1.3,.9);
+      const ventY=h*.60, ventHeight=h-ventY-8;
+      content+=rect(60,ventY,320,ventHeight,`url(#${id}-cdu-honeycomb)`);
+      const handleTop=Math.max(8,h*.22), handleBottom=h-Math.max(8,h*.17);
+      for(const [x,side] of [[40,1],[400,-1]]) {
+        for(const y of [handleTop,handleBottom]) content+=circle(x,y,5.3,'#10161b')+circle(x,y,4.5,edge,`stroke="#8b959a" stroke-width=".55"`)+circle(x,y,2.3,'#bac2c5');
+        const hx=x-3*side;
+        const curve=`M${x} ${handleTop}Q${hx} ${handleTop} ${hx} ${handleTop+5}V${handleBottom-5}Q${hx} ${handleBottom} ${x} ${handleBottom}`;
+        content+=`<path d="${curve}" fill="none" stroke="#080d12" stroke-width="8.4" stroke-linecap="round"/><path d="${curve}" fill="none" stroke="${edge}" stroke-width="5.8" stroke-linecap="round"/>`;
+        content+=line(hx-.9,handleTop+5,hx-.9,handleBottom-5,'#eef1eb',.85,.85);
+      }
+      const bezelW=114, bezelH=Math.min(98,h-15), bezelX=163, bezelY=h*.51-bezelH/2;
+      content+=rect(bezelX-1.5,bezelY-1.5,bezelW+3,bezelH+3,'#080c10','#373e44',3);
+      content+=rect(bezelX,bezelY,bezelW,bezelH,`url(#${id}-cdu-bezel)`,'#797f83',2.2)+rect(bezelX+2,bezelY+2,bezelW-4,bezelH-4,'#252a31','#0d1116',1.4);
+      content+=line(bezelX+3,bezelY+3,bezelX+bezelW-3,bezelY+3,'#a0a5a7',.5,.6)+line(bezelX+3,bezelY+4,bezelX+3,bezelY+bezelH-4,'#747d83',.65,.65);
+      const padY=Math.min(13,bezelH*.16), screenX=bezelX+13, screenY=bezelY+padY, screenW=88, screenH=Math.min(53,bezelH*.56);
+      content+=rect(screenX-.7,screenY-.7,screenW+1.4,screenH+1.4,'#080c10','#91999c',.7)+rect(screenX,screenY,screenW,screenH,`url(#${id}-cdu-screen)`,'#1d242a',.3);
+      content+=`<path d="M${screenX+.5} ${screenY+.5}H${screenX+32}L${screenX+59} ${screenY+screenH-.5}H${screenX+.5}Z" fill="url(#${id}-cdu-glass)"/>`;
+      content+=line(screenX+1,screenY+1,screenX+screenW-1,screenY+1,'#aeb7bb',.4,.5)+line(screenX+1,screenY+1,screenX+1,screenY+screenH-1,'#747e84',.45,.7);
+      for(const x of [bezelX+3,bezelX+bezelW-3]) content+=circle(x,bezelY+bezelH-3,.7,'#4e565d');
+      const buttonY=h*.26, buttonR=Math.min(10,h*.17);
+      content+=circle(354,buttonY,buttonR+1.5,'#0b1015')+circle(354,buttonY,buttonR,edge,`stroke="#cbd2d4" stroke-width=".7"`)+circle(354,buttonY,buttonR-2.2,'#a5adb1',`stroke="#e6ecea" stroke-width=".8"`);
+      content+=`<path d="M${354-buttonR*.67} ${buttonY}A${buttonR*.67} ${buttonR*.67} 0 0 1 ${354+buttonR*.67} ${buttonY}" fill="none" stroke="#f0f3ee" stroke-width=".6" opacity=".75"/>`;
+      const portY=h*.67, portR=Math.min(11,h*.17);
+      for(const x of [295,324,353]) {
+        content+=circle(x,portY,portR+1,'#080e13')+circle(x,portY,portR,`url(#${id}-cdu-bezel)`,`stroke="#636d75" stroke-width=".5"`)+circle(x,portY,portR-2.2,'#1b2229',`stroke="#464f56" stroke-width=".45"`);
+        const pw=Math.min(12,portR*1.2),ph=Math.min(9,portR*.9);
+        content+=rj45(x-pw/2,portY-ph/2,pw,ph);
+        if(units>1) content+=line(x-3.4,portY-portR-4,x+3.4,portY-portR-4,'#7e8990',1.2,.7);
+      }
     } else if(type==='pdu') {
       const cy=h/2-13;
       content+=rect(17,cy-2,312,30,dark,'#526169',1);
@@ -176,6 +201,13 @@
       <linearGradient id="${id}-dark" x2=".12" y2="1"><stop stop-color="#43505a"/><stop offset=".11" stop-color="#242e36"/><stop offset=".72" stop-color="#1b252d"/><stop offset="1" stop-color="#071017"/></linearGradient>
       <linearGradient id="${id}-edge" x2="1"><stop stop-color="#6d7678"/><stop offset=".21" stop-color="#dbe1da"/><stop offset=".4" stop-color="#a8b2af"/><stop offset=".69" stop-color="#dce1d9"/><stop offset="1" stop-color="#56646a"/></linearGradient>
       <linearGradient id="${id}-satin" x2="1" y2=".15"><stop stop-color="#a4b1b5"/><stop offset=".37" stop-color="#d5ddd9"/><stop offset=".67" stop-color="#b6c1c1"/><stop offset="1" stop-color="#8a9ca4"/></linearGradient>
+      <linearGradient id="${id}-cdu-metal" x2=".25" y2="1"><stop stop-color="#383c43"/><stop offset=".26" stop-color="#282d34"/><stop offset=".7" stop-color="#22272e"/><stop offset="1" stop-color="#131a21"/></linearGradient>
+      <linearGradient id="${id}-cdu-top" x2=".4" y2="1"><stop stop-color="#565a61"/><stop offset=".34" stop-color="#41464e"/><stop offset="1" stop-color="#292f37"/></linearGradient>
+      <linearGradient id="${id}-cdu-bezel" x2=".2" y2="1"><stop stop-color="#535a61"/><stop offset=".18" stop-color="#333940"/><stop offset=".8" stop-color="#222830"/><stop offset="1" stop-color="#454d54"/></linearGradient>
+      <linearGradient id="${id}-cdu-screen" x2=".5" y2="1"><stop stop-color="#020406"/><stop offset=".7" stop-color="#060a0e"/><stop offset="1" stop-color="#151b22"/></linearGradient>
+      <linearGradient id="${id}-cdu-glass" x2=".2" y2="1"><stop stop-color="#ccd3da" stop-opacity=".19"/><stop offset=".55" stop-color="#b9c4d0" stop-opacity=".08"/><stop offset="1" stop-color="#d9e1e5" stop-opacity=".03"/></linearGradient>
+      <pattern id="${id}-cdu-powder" width="6" height="5" patternUnits="userSpaceOnUse"><circle cx=".6" cy=".7" r=".18" fill="#c0c7ce" opacity=".15"/><circle cx="3.7" cy="1.5" r=".22" fill="#080d13" opacity=".5"/><circle cx="2" cy="3.5" r=".2" fill="#87939c" opacity=".17"/><circle cx="5.2" cy="4.5" r=".16" fill="#070c12" opacity=".5"/></pattern>
+      <pattern id="${id}-cdu-honeycomb" width="8" height="7" patternUnits="userSpaceOnUse"><path d="M4 .3L6.7 1.9 4 3.4 1.3 1.9Z M.6 2.8L3.4 4.3V6.8L.6 5.2Z M7.4 2.8L4.6 4.3V6.8L7.4 5.2Z" fill="#03090e"/><path d="M1.3 1.9L4 .3 6.7 1.9 M.6 2.8V5.2 M7.4 2.8V5.2" fill="none" stroke="#626c74" stroke-width=".22" opacity=".65"/></pattern>
       <pattern id="${id}-grain" width="11" height="3" patternUnits="userSpaceOnUse"><path d="M0 .4H11M3 2H9" stroke="#e8ece3" stroke-width=".25" opacity=".16"/><path d="M0 1.4H11" stroke="#172b34" stroke-width=".25" opacity=".14"/></pattern>
       <pattern id="${id}-mesh" width="3.4" height="3.4" patternUnits="userSpaceOnUse"><rect width="3.4" height="3.4" fill="#63716c"/><rect x=".65" y=".65" width="2.3" height="2.3" rx=".35" fill="#081117"/><path d="M.65 3H3" stroke="#a0aaa0" stroke-width=".23"/></pattern>
       <pattern id="${id}-mesh-champagne" width="3.4" height="3.4" patternUnits="userSpaceOnUse"><rect width="3.4" height="3.4" fill="#c4b182"/><rect x=".65" y=".65" width="2.3" height="2.3" rx=".35" fill="#081117"/><path d="M.65 3H3" stroke="#eee0b7" stroke-width=".23"/></pattern>
@@ -192,8 +224,9 @@
     let drawing;
     if(view==='front') drawing=`<g transform="translate(14,8)">${face}</g>`;
     else {
-      const top=type==='blanking'||type==='pdu'||type==='switch'?'dark':'top';
-      drawing=`<ellipse cx="310" cy="${y+h+42}" rx="224" ry="12" fill="#071c26" opacity=".18"/><path d="M60 ${y}L${60+dx} ${y-d}L${right+dx} ${y-d+dy}L${right} ${y+dy}Z" fill="url(#${id}-${top})" stroke="#a0b0b5" stroke-width=".7"/><path d="M${right} ${y+dy}L${right+dx} ${y-d+dy}V${y-d+dy+h}L${right} ${y+dy+h}Z" fill="url(#${id}-side)" stroke="#536770" stroke-width=".7"/>`;
+      const top=type==='cdu'?'cdu-top':type==='blanking'||type==='pdu'||type==='switch'?'dark':'top';
+      const side=type==='cdu'?'cdu-metal':'side';
+      drawing=`<ellipse cx="310" cy="${y+h+42}" rx="224" ry="12" fill="#071c26" opacity=".18"/><path d="M60 ${y}L${60+dx} ${y-d}L${right+dx} ${y-d+dy}L${right} ${y+dy}Z" fill="url(#${id}-${top})" stroke="#a0b0b5" stroke-width=".7"/><path d="M${right} ${y+dy}L${right+dx} ${y-d+dy}V${y-d+dy+h}L${right} ${y+dy+h}Z" fill="url(#${id}-${side})" stroke="#536770" stroke-width=".7"/>`;
       if(type!=='blanking') {
         drawing+=`<path d="M76 ${y-8}L${70+dx} ${y-d+7}L${right+dx-13} ${y-d+dy+7}" fill="none" stroke="#e5eae4" stroke-width=".7" opacity=".7"/>`;
         for(const p of [.15,.72]) {
