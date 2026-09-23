@@ -193,7 +193,7 @@ function connectOne(name, bmcIp) {
 
   rfb.addEventListener("connect", () => { markMasterUI(); });
   rfb.addEventListener("disconnect", (e) => {
-    const detail = e && e.detail && e.detail.clean ? "" : "（已斷線，會自動重連）";
+    const detail = e && e.detail && e.detail.clean ? "" : "\uff08\u8acb\u91cd\u65b0\u958b\u555f KVM\uff09";
     showStatus(`${name} 斷線${detail}`);
   });
   rfb.addEventListener("securityfailure", (e) => {
@@ -220,6 +220,7 @@ function connectOne(name, bmcIp) {
       rec.alive = isUp;
       dot.style.background = isUp ? "#3ad28b" : (st === "connecting" ? "#ffb020" : "#e05656");
       rec.aliveEl = dot;
+      showStatus(`${[...K.rfbMap.values()].filter(r => r.alive).length}/${K.rfbMap.size} \u5df2\u9023\u7dda`);
     }
     // 連線後持續強制等比縮放：把完整桌面 fit 進格子（noVNC 有時沒自動觸發 autoscale，導致原始解析度塞進小格子而裁切）
     if (isUp) {
@@ -511,8 +512,8 @@ async function openKvmBroadcast(project) {
             lines + NL + NL +
             '本頁仍會開啟，但只連線可同步的 RFB 系統。');
     }
-    if (det.data.sync_ok) {
-      setBanner(`✔ 協議一致，可同步。<br>${detectDetailHTML(det.data)}`, "ok");
+    if (det.data.sync_ok && rfbCands.length) {
+      setBanner(`\u5354\u8b70\u76f8\u5bb9\uff1a${rfbCands.length} \u53f0 RFB \u5019\u9078\u3002\u5be6\u969b\u9023\u7dda\u6578\u8acb\u898b\u72c0\u614b\u5217\uff0c\u975e\u9023\u7dda\u6210\u529f\u4fdd\u8b49\u3002<br>${detectDetailHTML(det.data)}`, "warn");
     } else if ((otherCands.length || spxCands.length) && rfbCands.length) {
       setBanner(`⚠ 協議不一致，無法「全部同步」。<br>
                  <div style="color:#e88a8f">原因：${esc(det.data.reason || "")}</div>

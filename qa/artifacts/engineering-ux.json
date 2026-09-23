@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "results": [
+    "Pure helpers: independent denominators, unknown values, sensor severity",
+    "Hardware: five categories, both themes, no document overflow",
+    "Sensors: structured rows, filtering, separate analysis",
+    "Case inspector: original commands visible, zero selection disabled, selection enables generation",
+    "L10 compact density and offline filter"
+  ],
+  "errors": []
+}

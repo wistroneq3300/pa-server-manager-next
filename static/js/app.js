@@ -2477,7 +2477,7 @@ function machineSensorsHtml(d, base, name) {
       <div class="sensor-kpi"><b>${s.ok||0}</b><span>${s.ns>0 ? `OK (+${s.ns||0} ns)` : "OK"}</span></div>
     </div>
     <ul class="alerts" style="margin-top:10px">
-      ${critRow || warnRow || nsRow || `<li class="no-alert">✔ 無異常感測器（無 Critical / Warning / No Reading）</li>`}
+      ${(critRow + warnRow + nsRow) || `<li class="no-alert">✔ 無異常感測器（無 Critical / Warning / No Reading）</li>`}
     </ul>
     <div class="tel-ai sensor-ai" id="sensor-ai">${sensorAiResult[name] ?? (sensorAiDone.has(name) ? "🤖 Sensor AI 已就緒（暫無分析）" : "🤖 正在分析感測器狀況…")}</div>
     ${d.refreshing ? `<span class="hint">（快取已過期，背景重新抓取中…）</span>` : ""}
@@ -2501,7 +2501,7 @@ function sensorAiHtml(text, counts) {
 }
 async function sensorAnalyze(name) {
   if (!name || sensorAiBusy.has(name)) return;
-  const show = (html) => { const el = $("#sensor-ai"); if (el) el.innerHTML = html; };
+  const show = (html) => { const el = $("sensor-ai"); if (el && _activeMachine === name && state.view === "machine") el.innerHTML = html; };
   if (sensorAiDone.has(name) && sensorAiResult[name] != null) { show(sensorAiResult[name]); return; }
   sensorAiBusy.add(name);
   show("🤖 正在分析感測器狀況…");

@@ -1,13 +1,15 @@
 # Wistron PA Server Manager
 
-> **Next UI branch (`astra-cinematic-ui`, 2026-09-24):** see
+> **Next integrated main (2026-09-24):** see [integration/deployment handoff](SESSION_HANDOFF_ENGINEERING_MAIN_20260924.md)
+> and [code review / open bugs](CODE_REVIEW_20260924.md). Existing main functionality and UI history are preserved.
+> For the 3D design, see
 > [3D rack handoff](SESSION_HANDOFF_GB300_RACK_20260924.md) and
 > [design notes](DESIGN-NOTES.md) for the configuration-driven rack and device illustrations.
 > `python serve.py --port 8769` opens an isolated, reset-on-reload fixture preview at
 > `http://127.0.0.1:8769/#/rack/proj_k`; this does not connect to production equipment.
 > Production FastAPI still serves `static/index.html` without the fixture script.
 
-A centralized **web management console** for **AI GPU servers** (and racks). It unifies **L10 (System Level / single node)** and **L11 (Rack Level / whole rack)** monitoring and control in a single view.
+A centralized **web management console** for **servers and racks**, including GPU-equipped systems. It unifies **L10 (System Level / single node)** and **L11 (Rack Level / whole rack)** monitoring and control in a single view.
 
 - Backend: **FastAPI (Python 3.12)**; Frontend: **vanilla JavaScript** (no framework, no build step).
 - No agent required on managed hosts — everything works over **SSH** (OS) and **IPMI / BMC**.
