@@ -66,13 +66,14 @@
     const type = PAHardwareVisuals.typeOf(m);
     target.innerHTML = `<span class="pd-eyebrow">COMPONENT / ${esc(type.toUpperCase())}</span><h2>${esc(m.name)}</h2>${PAHardwareVisuals.render(m)}<p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>PLACEMENT</dt><dd>${m.rack_u ? `U${Number(m.rack_u)} / ${Number(m.rack_size)||1}U` : 'Unplaced'}</dd></div><div><dt>OS / MANAGEMENT</dt><dd>${esc(m.os_ip || 'Not configured')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || 'Not configured')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">Open component</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">Placement / type</button></div>`;
     const status=value=>value===true?'Online':value===false?'Offline':'Unknown';
-    target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>CONNECTION / POWER</dt><dd>OS ${status(m.os_alive)}<br>BMC ${status(m.bmc_alive)}<br>Power ${esc(m.power_state ?? m.power ?? 'Unknown')}</dd></div>`);
+    target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>CONNECTION / POWER</dt><dd>OS ${m.os_ip?status(m.os_alive):'Not configured'}<br>BMC ${m.bmc_ip?status(m.bmc_alive):'Not configured'}<br>Power ${esc(m.power_state ?? m.power ?? 'Unknown')}</dd></div>`);
   }
   window.equipmentRackSelect = name => {
     selectedByProject.set(rackView.project,name); scene?.select(name); inspector(name);
     const picker = document.getElementById('ew-rack-component'); if (picker) picker.value = name;
   };
   rackLayoutHtml = function(members,pinged) {
+    members=rackMembers();
     const placement = PAWorkspaceReliability.validatePlacements(members);
     const old = baseLayout(devicesView === 'plane' ? placement.valid : members,pinged);
     if (devicesView !== 'plane') return old;
@@ -87,7 +88,7 @@
   RENDERERS.rack = function() {
     const choices=PAWorkspaceReliability.rackProjects();
     const requested=choices.find(p=>p.name===rackView.project);
-    if(requested && !projectMembers(requested.name).filter(isRackItem).length) {
+    if(requested && !projectMembers(requested.name).filter(isRackItem).some(m=>Number(m.rack_u)>0)) {
       racksProjectDesc=requested.desc||'';
       return `<header class="rack-hero"><div class="rack-hero-left"><div class="rack-hero-title">Rack Manager</div><div class="rack-hero-sub">${esc(requested.name)} / 48U</div></div><label class="rack-sel">Project<select class="input" onchange="rackSetProject(this.value)">${choices.map(p=>`<option value="${esc(p.name)}" ${p.name===requested.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><button class="btn primary" onclick="productLevel('rack');addRackComponentDialog()">Add component</button></header>${rackLayoutHtml([],[])}`;
     }
@@ -117,7 +118,11 @@
   const baseDashboard=RENDERERS.dashboard;
   RENDERERS.dashboard=function(){
     const fragment=document.createElement('div');fragment.innerHTML=baseDashboard();
-    if(!window.PA_PREVIEW){const footer=fragment.querySelector('.p-page-foot span');if(footer)footer.textContent='ENGINEERING WORKSPACE';}
+    if(!window.PA_PREVIEW){
+      for(const selector of ['.p-page-foot span','.cine-footer>span:nth-child(2)','.cine-fleet-total small','.cine-insights-title>span']){
+        const label=fragment.querySelector(selector);if(label)label.textContent='ENGINEERING WORKSPACE';
+      }
+    }
     return fragment.innerHTML;
   };
   document.addEventListener('DOMContentLoaded',()=>{
