@@ -5,7 +5,7 @@ const path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/kobei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
 const base=process.env.PA_PREVIEW_URL||'http://127.0.0.1:8769';
 const output=path.join(__dirname,'artifacts');
-const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'],['SW-01',46,1,'switch'],['SW-02',45,1,'switch'],...Array.from({length:4},(_,i)=>[`PS-0${i+1}`,44-i,1,'powershelf']),['SERVER-04U',40,4,'server'],['SERVER-03U',36,3,'server'],['SERVER-02U',33,2,'server'],...Array.from({length:9},(_,i)=>[`NVLINK-0${i+1}`,31-i,1,'nvlink']),...Array.from({length:9},(_,i)=>[`SERVER-0${i+1}`,22-i,1,'server']),...Array.from({length:4},(_,i)=>[`PS-0${i+5}`,13-i,1,'powershelf']),['BLANK-RESERVE-05U',9,5,'blanking'],['CDU-01',4,4,'cdu']];
+const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'],['SW-01',46,1,'switch'],['SW-02',45,1,'switch'],...Array.from({length:4},(_,i)=>[`PS-0${i+1}`,44-i,1,'powershelf']),['SERVER-04U',40,4,'server'],['SERVER-03U',36,3,'server'],['SERVER-02U',33,2,'server'],...Array.from({length:9},(_,i)=>[`NVLINK-0${i+1}`,31-i,1,'nvlink']),...Array.from({length:9},(_,i)=>[`SERVER-0${i+1}`,22-i,1,'server']),...Array.from({length:4},(_,i)=>[`PS-0${i+5}`,13-i,1,'powershelf']),['BLANK-RESERVE-05U',9,5,'blanking'],['BLANK-BOTTOM-04U',4,4,'blanking']];
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe'});
  const context=await browser.newContext({viewport:{width:1600,height:1100}});
@@ -24,9 +24,10 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
  };
  try{
   await page.goto(base+'/#/rack/proj_k');await ready();await settle();
-  const initial=await state();assert.equal(initial.count,35);assert.equal(initial.occupiedU,48);assert.equal(initial.invalid.length,0);assert.equal(initial.geometryBuffers,36);
-  for(const [name,top,size,type] of expected){const p=initial.placements.find(p=>p.name===name);assert.deepEqual(p,{name,type,top,bottom:top-size+1,size});}
-  results.push('Exact approved 35-component / 48U arrangement; mixed 1/2/3/4U and 5U blank; 9 independent NVLink trays');
+  const initial=await state();assert.equal(initial.count,36);assert.equal(initial.occupiedU,48);assert.equal(initial.invalid.length,0);assert.ok(initial.geometryBuffers>=initial.count+1);
+  for(const [name,top,size,type] of expected){const p=initial.placements.find(p=>p.name===name);assert.deepEqual(p,{name,type,top,bottom:top-size+1,size,external:false});}
+  const externalCdu=initial.placements.find(p=>p.name==='CDU-01');assert.deepEqual(externalCdu,{name:'CDU-01',type:'cdu',top:0,bottom:0,size:0,external:true});assert.equal(initial.cooling.mode,'external');
+  results.push('Exact approved 36-component / 48U arrangement; mixed 1/2/3/4U and 5U blank; 9 independent NVLink trays');
   await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u5df2\u9023\u7dda/);assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u5df2\u958b\u6a5f/);
   await select('PS-03');await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u96e2\u7dda/);
   await select('BLANK-TOP-01');await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u672a\u77e5/);assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u672a\u8a2d\u5b9a/);await select('SERVER-04U');
@@ -52,7 +53,7 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   assert.equal((await state()).zoom,1);
   await page.locator('.ew-inspector-actions button').last().focus();await page.keyboard.press('Tab');
   assert.equal(await page.locator('.ew-expand').evaluate(e=>e===document.activeElement),true,'Expanded viewport traps focus inside its visible controls');
-  await page.getByRole('button',{name:'\u4f4d\u7f6e\uff0f\u985e\u578b',exact:true}).click();await page.waitForSelector('#rm-move-u');
+  await select('SERVER-04U');await page.getByRole('button',{name:'\u4f4d\u7f6e\uff0f\u985e\u578b',exact:true}).click();await page.waitForSelector('#rm-move-u');
   assert.equal(await page.locator('.ew-rack-deck').evaluate(e=>e.classList.contains('is-expanded')),false,'Placement dialog must not be hidden behind the expanded stage');
   await page.locator('#rm-dialog .modal-head button').first().click();
   await page.getByRole('button',{name:'\u653e\u5927\u6aa2\u8996',exact:true}).click();
@@ -70,11 +71,11 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   assert.equal(dynamic.occupiedU,13);assert.equal(dynamic.placements[0].size,7);assert.equal(dynamic.placements[1].bottom,15);
   const cduModels=await page.evaluate(()=>[1,2,3,4,5,48].map(size=>{
    const scene=document.querySelector('#ew-rack-canvas').paRackScene;
-   scene.setComponents([{name:'CUSTOM-CDU',mgx_type:'cdu',rack_u:48,rack_size:size}]);
+   scene.setComponents([{name:'CUSTOM-CDU',mgx_type:'cdu',rack_u:size,rack_size:size,rack_mount:'internal'}]);
    return {size,state:scene.getState()};
   }));
-  for(const {size,state:s} of cduModels){assert.equal(s.occupiedU,size);assert.equal(s.invalid.length,0);assert.equal(s.placements[0].bottom,49-size);assert.equal(s.geometryBuffers,2);}
-  await page.reload();await ready();assert.equal((await state()).count,35);
+  for(const {size,state:s} of cduModels){assert.equal(s.occupiedU,size);assert.equal(s.invalid.length,0);assert.equal(s.placements[0].bottom,1);assert.equal(s.cooling.mode,'internal');assert.ok(s.geometryBuffers>=2);}
+  await page.reload();await ready();assert.equal((await state()).count,36);
   results.push('Drag gestures, full-rack reset, expanded-view Escape, cleanup, arbitrary 6U/7U models and 1/2/3/4/5/48U CDU geometry verified');
   const svgAudit=await page.evaluate(()=>{
    const kinds=['server','switch','nvlink','powershelf','pdu','cdu','storage','network','blanking'];

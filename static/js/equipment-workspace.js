@@ -2,6 +2,9 @@
 (() => {
   'use strict';
   const q = value => esc(JSON.stringify(String(value ?? '')));
+  function externalCduVisual() {
+    return `<svg class="pa-hardware-visual ew-cdu-cabinet" data-hardware-type="cdu" data-hardware-view="front" data-hardware-units="0" viewBox="0 0 240 290" role="img" aria-label="\u5916\u7f6e CDU \u5916\u89c0\u793a\u610f" xmlns="http://www.w3.org/2000/svg"><title>\u5916\u7f6e CDU</title><rect x="58" y="10" width="124" height="264" rx="3" fill="#b6bec2" stroke="#71818a" stroke-width="3"/><rect x="65" y="18" width="110" height="65" rx="2" fill="#e4e8e9"/><rect x="108" y="33" width="29" height="20" rx="2" fill="#203440"/><rect x="112" y="37" width="21" height="12" fill="#6ea3b8"/><circle cx="156" cy="58" r="4" fill="#a64139"/><rect x="65" y="88" width="110" height="177" fill="#263841"/><rect x="72" y="96" width="96" height="159" fill="#374b55"/>${Array.from({length:22},(_,i)=>`<path d="M77 ${101+i*7}h86" stroke="#172a35" stroke-width="2"/>`).join('')}<path d="M120 89v174" stroke="#829399" stroke-width="2"/><path d="M110 165v25m20-25v25" stroke="#b9c5c9" stroke-width="3"/><rect x="68" y="275" width="16" height="7" fill="#1e3039"/><rect x="156" y="275" width="16" height="7" fill="#1e3039"/></svg>`;
+  }
   const baseMachine = RENDERERS.machine;
   RENDERERS.machine = function() {
     const root = document.createElement('div'); root.innerHTML = baseMachine();
@@ -11,7 +14,7 @@
     const stage = root.querySelector('.pd-hardware-stage');
     if (stage) {
       stage.dataset.componentType = type;
-      stage.innerHTML = PAHardwareVisuals.render(machine) + `<span class="pd-stage-caption">${esc(PAHardwareVisuals.caption(type))}</span>`;
+      stage.innerHTML = (rackIsExternal(machine)?externalCduVisual():PAHardwareVisuals.render(machine)) + `<span class="pd-stage-caption">${esc(PAHardwareVisuals.caption(type))}</span>`;
     }
     root.querySelector('.pd-workspace').dataset.componentType = type;
     const hw = machineDetailCache[_activeMachine]?.os_info?.hw || {};
@@ -53,6 +56,14 @@
   let scene = null, canvas = null;
   let mode = '3d';
   let expanded = false;
+  let flowEnabled = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.equipmentRackFlowToggle = () => {
+    flowEnabled = !flowEnabled;
+    scene?.setFlowEnabled?.(flowEnabled);
+    const button=document.getElementById('ew-flow-toggle');
+    if(button){button.setAttribute('aria-pressed',String(flowEnabled));button.textContent=flowEnabled?'\u66ab\u505c\u6c34\u6d41':'\u986f\u793a\u6c34\u6d41';}
+  };
+  window.equipmentRackAdd = () => {if(expanded)equipmentRackExpand(false);rackAddEntry();};
   const selectedByProject = new Map();
   const baseLayout = rackLayoutHtml;
   function rackMembers() { return projectMembers(rackView.project).filter(isRackItem); }
@@ -84,10 +95,12 @@
     const m = rackMembers().find(item => item.name === name);
     if (!m) {target.innerHTML = '<div class="ew-inspector-empty">\u9078\u64c7\u5143\u4ef6\uff0c\u67e5\u770b\u5b89\u88dd\u4f4d\u7f6e\u8207\u7ba1\u7406\u4ecb\u9762\u3002</div>';return;}
     const type = PAHardwareVisuals.typeOf(m);
+    const external=rackIsExternal(m);
     const top=Number(m.rack_u)||0,size=Number(m.rack_size)||1;
+    const sizeLabel=external?'\u5916\u7f6e':`${size}U`;
     const placed=PAWorkspaceReliability.validatePlacements(rackMembers()).valid.some(item=>item.name===m.name);
-    const range=top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'\u5c1a\u672a\u653e\u7f6e';
-    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${size}U</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${PAHardwareVisuals.render(m,{view:'front'})}<span>\u6b63\u9762\u8996\u5716\uff0f ${size}U</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>\u805a\u7126 3D \u5143\u4ef6</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}<small>${placed?'\u5df2\u5132\u5b58\u7684\u6a5f\u6ac3\u4f4d\u7f6e':top?'\u8acb\u6aa2\u67e5\u4f4d\u7f6e\u885d\u7a81':'\u5c1a\u672a\u5b89\u88dd\u65bc\u6a5f\u6ac3'}</small></dd></div><div><dt>OS\uff0f\u7ba1\u7406\u4ecb\u9762</dt><dd>${esc(m.os_ip || '\u672a\u8a2d\u5b9a')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || '\u672a\u8a2d\u5b9a')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">\u958b\u555f\u5143\u4ef6\u8a73\u60c5</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">\u4f4d\u7f6e\uff0f\u985e\u578b</button></div>`;
+    const range=external?'\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074':top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'\u5c1a\u672a\u653e\u7f6e';
+    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${sizeLabel}</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${external?externalCduVisual():PAHardwareVisuals.render(m,{view:'front'})}<span>\u6b63\u9762\u8996\u5716\uff0f ${sizeLabel}</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>\u805a\u7126 3D \u5143\u4ef6</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}<small>${external?'\u4e0d\u5360\u6a5f\u6ac3 U \u4f4d':placed?'\u5df2\u5132\u5b58\u7684\u6a5f\u6ac3\u4f4d\u7f6e':top?'\u8acb\u6aa2\u67e5\u4f4d\u7f6e\u885d\u7a81':'\u5c1a\u672a\u5b89\u88dd\u65bc\u6a5f\u6ac3'}</small></dd></div><div><dt>OS\uff0f\u7ba1\u7406\u4ecb\u9762</dt><dd>${esc(m.os_ip || '\u672a\u8a2d\u5b9a')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || '\u672a\u8a2d\u5b9a')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">\u958b\u555f\u5143\u4ef6\u8a73\u60c5</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">\u4f4d\u7f6e\uff0f\u985e\u578b</button></div>`;
     const status=value=>value===true?'\u5df2\u9023\u7dda':value===false?'\u96e2\u7dda':'\u672a\u77e5';
     const powerLabel=value=>{const raw=String(value??'').trim();return ({on:'\u5df2\u958b\u6a5f',off:'\u5df2\u95dc\u6a5f',true:'\u5df2\u958b\u6a5f',false:'\u5df2\u95dc\u6a5f','1':'\u5df2\u958b\u6a5f','0':'\u5df2\u95dc\u6a5f',unknown:'\u672a\u77e5',unavailable:'\u7121\u6cd5\u53d6\u5f97','n/a':'\u4e0d\u9069\u7528','not available':'\u7121\u6cd5\u53d6\u5f97',powering_on:'\u958b\u6a5f\u4e2d',powering_off:'\u95dc\u6a5f\u4e2d'})[raw.toLowerCase()]||raw||'\u672a\u77e5';};
     target.querySelector('.ew-inspector-actions .btn:not(.primary)').onclick=()=>equipmentRackPlacement(m.name);
@@ -101,30 +114,33 @@
   rackLayoutHtml = function(members,pinged) {
     members=rackMembers();
     const placement = PAWorkspaceReliability.validatePlacements(members);
-    const old = baseLayout(devicesView === 'plane' ? placement.valid : members,pinged);
+    const hasCdu = placement.valid.some(m=>PAHardwareVisuals.typeOf(m)==='cdu');
+    const old = baseLayout(devicesView === 'plane' ? placement.valid.filter(m=>!rackIsExternal(m)) : members,pinged);
     if (devicesView !== 'plane') return old;
     const tabs=document.createElement('div');tabs.innerHTML=rackSubviewTabs();
     tabs.querySelectorAll('button').forEach(button=>{if((button.getAttribute('onclick')||'').includes("'plane'"))button.remove();});
-    const controls = `<div class="ew-view-switch"><button aria-pressed="${mode==='3d'}" class="btn ${mode==='3d'?'primary':''}" onclick="equipmentRackMode('3d')">3D \u6a5f\u6ac3</button><button aria-pressed="${mode==='plane'}" class="btn ${mode==='plane'?'primary':''}" onclick="equipmentRackMode('plane')">48U \u914d\u7f6e</button>${tabs.innerHTML}</div>`;
-    if (mode === 'plane') return controls + old;
+    const controls = `<div class="ew-view-switch"><button aria-pressed="${mode==='3d'}" class="btn ${mode==='3d'?'primary':''}" onclick="equipmentRackMode('3d')">3D \u6a5f\u6ac3</button><button aria-pressed="${mode==='plane'}" class="btn ${mode==='plane'?'primary':''}" onclick="equipmentRackMode('plane')">48U \u914d\u7f6e</button>${tabs.innerHTML}<button class="btn primary" id="ew-rack-add" onclick="equipmentRackAdd()">\uff0b \u65b0\u589e\u81f3\u6a5f\u6ac3</button></div>`;
+    const external = placement.valid.find(rackIsExternal);
+    const externalCard = external ? `<div class="ew-external-cdu"><div><strong>${esc(external.name)}</strong><span>\u5916\u7f6e CDU / \u6a5f\u6ac3\u6b63\u9762\u53f3\u5074 / \u4e0d\u5360 U \u4f4d</span></div><button class="btn small" onclick="rackCduDialog(${q(rackView.project)})">\u7de8\u8f2f CDU</button></div>` : '';
+    if (mode === 'plane') return controls + externalCard + old;
     const warnings = [...placement.issues.map(x=>`${x.name}: ${x.message}`),...placement.pending.map(x=>`${x.name}: \u5c1a\u672a\u653e\u7f6e`)];
     return `${controls}<section class="ew-rack-deck p-surface ${expanded?'is-expanded':''}">
       <div class="ew-rack-stage">
         <header><div><span class="pd-eyebrow">L11\uff0f\u6a5f\u6ac3\u5de5\u7a0b</span><h2>${esc(rackView.project)}</h2></div><button class="btn small ew-expand" aria-pressed="${expanded}" onclick="equipmentRackExpand()">${expanded?'\u96e2\u958b\u653e\u5927\u6aa2\u8996':'\u653e\u5927\u6aa2\u8996'}</button></header>
         <div class="ew-rack-summary"><span><b>${placement.valid.length}</b> \u500b\u5df2\u5b89\u88dd\u5143\u4ef6</span><span><b>${placement.usedU}</b> / 48U \u5df2\u4f7f\u7528</span><span><b>${48-placement.usedU}</b>U \u53ef\u7528\u7a7a\u9593</span></div>
         <div class="ew-rack-viewport"><canvas id="ew-rack-canvas" tabindex="0" aria-label="3D \u6a5f\u6ac3\u3002\u62d6\u66f3\u6216\u4f7f\u7528\u65b9\u5411\u9375\u65cb\u8f49\uff1bHome \u56de\u5230\u5168\u6ac3\u3002\u53ef\u4f7f\u7528\u5143\u4ef6\u9078\u55ae\u4ee5\u9375\u76e4\u9078\u53d6\u3002"></canvas><span class="ew-stage-mark" aria-hidden="true">48U<br><small>\u914d\u7f6e\u6a21\u578b</small></span></div>
-        <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">\u900f\u8996</button><button class="btn small" onclick="equipmentRackCamera('front')">\u6b63\u9762</button><button class="btn small" onclick="equipmentRackCamera('rear')">\u80cc\u9762</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="\u653e\u5927">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="\u7e2e\u5c0f">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">\u91cd\u8a2d\u8996\u89d2</button></div><p class="ew-orbit-hint">\u62d6\u66f3\u65cb\u8f49\uff0f\u9ede\u64ca\u9078\u53d6 \u00b7 Home\uff1a\u56de\u5230\u5168\u6ac3 \u00b7 Esc\uff1a\u96e2\u958b\u653e\u5927\u6aa2\u8996</p>
+        <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">\u900f\u8996</button><button class="btn small" onclick="equipmentRackCamera('front')">\u6b63\u9762</button><button class="btn small" onclick="equipmentRackCamera('rear')">\u80cc\u9762</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="\u653e\u5927">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="\u7e2e\u5c0f">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">\u91cd\u8a2d\u8996\u89d2</button><span class="ew-camera-divider"></span><button class="btn small" id="ew-flow-toggle" ${hasCdu?'':'disabled'} aria-pressed="${hasCdu&&flowEnabled}" onclick="equipmentRackFlowToggle()">${!hasCdu?'\u672a\u9023\u63a5 CDU':flowEnabled?'\u66ab\u505c\u6c34\u6d41':'\u986f\u793a\u6c34\u6d41'}</button></div><p class="ew-flow-note">${hasCdu?`<span class="ew-flow-blue">\u85cd\uff1aCDU \u2192 Rack</span><span class="ew-flow-red">\u7d05\uff1aRack \u2192 CDU</span><span>\u6d41\u5411\u793a\u610f\uff0c\u975e\u5373\u6642\u6d41\u91cf</span>`:'<span>\u5c1a\u672a\u5b89\u88dd CDU\uff0c\u7ba1\u8def\u63a5\u982d\u4fdd\u7559\u5c01\u84cb\u3002</span>'}</p><p class="ew-orbit-hint">\u62d6\u66f3\u65cb\u8f49\uff0f\u9ede\u64ca\u9078\u53d6 \u00b7 Home\uff1a\u56de\u5230\u5168\u6ac3 \u00b7 Esc\uff1a\u96e2\u958b\u653e\u5927\u6aa2\u8996</p>
       </div>
-      <aside class="ew-rack-aside"><label for="ew-rack-component">\u5143\u4ef6\uff0f\u5df2\u5132\u5b58\u4f4d\u7f6e</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">\u9078\u64c7\u5143\u4ef6</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'\u5c1a\u672a\u653e\u7f6e'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
+      <aside class="ew-rack-aside"><label for="ew-rack-component">\u5143\u4ef6\uff0f\u5df2\u5132\u5b58\u4f4d\u7f6e</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">\u9078\u64c7\u5143\u4ef6</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${rackIsExternal(m)?'\u5916\u7f6e':Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'\u5c1a\u672a\u653e\u7f6e'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
     </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>\u914d\u7f6e\u9700\u8981\u78ba\u8a8d</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">\u6aa2\u67e5\u914d\u7f6e</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
   };
   const baseRack = RENDERERS.rack;
   RENDERERS.rack = function() {
     const choices=PAWorkspaceReliability.rackProjects();
     const requested=choices.find(p=>p.name===rackView.project);
-    if(requested && !projectMembers(requested.name).filter(isRackItem).some(m=>Number(m.rack_u)>0)) {
+    if(requested && !projectMembers(requested.name).filter(isRackItem).some(m=>Number(m.rack_u)>0||rackIsExternal(m))) {
       racksProjectDesc=requested.desc||'';
-      return `<header class="rack-hero"><div class="rack-hero-left"><div class="rack-hero-title">\u6a5f\u6ac3\u7ba1\u7406</div><div class="rack-hero-sub">${esc(requested.name)} / 48U</div></div><label class="rack-sel">\u5c08\u6848<select class="input" onchange="rackSetProject(this.value)">${choices.map(p=>`<option value="${esc(p.name)}" ${p.name===requested.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><button class="btn primary" onclick="productLevel('rack');addRackComponentDialog()">\u65b0\u589e\u5143\u4ef6</button></header>${rackLayoutHtml([],[])}`;
+      return `<header class="rack-hero"><div class="rack-hero-left"><div class="rack-hero-title">\u6a5f\u6ac3\u7ba1\u7406</div><div class="rack-hero-sub">${esc(requested.name)} / 48U</div></div><label class="rack-sel">\u5c08\u6848<select class="input" onchange="rackSetProject(this.value)">${choices.map(p=>`<option value="${esc(p.name)}" ${p.name===requested.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><button class="btn primary" onclick="rackAddEntry()">\u65b0\u589e\u5143\u4ef6</button></header>${rackLayoutHtml([],[])}`;
     }
     const fragment=document.createElement('div');fragment.innerHTML=baseRack();
     const select=fragment.querySelector('.rack-sel select');
@@ -142,6 +158,7 @@
     next.addEventListener('pa-rack-fallback',fallback);
     next.addEventListener('pa-rack-ready',()=>next.parentElement?.querySelector('.ew-gl-fallback')?.remove());
     scene = PARackScene.mount(canvas,{components:valid.map(m=>({...m,mgx_type:PAHardwareVisuals.typeOf(m)})),theme:document.documentElement.dataset.theme,onSelect:window.equipmentRackSelect});
+    scene.setFlowEnabled?.(flowEnabled);
     if (!scene.supported) fallback();
     const remembered=selectedByProject.get(rackView.project);
     equipmentRackSelect(rackMembers().some(m=>m.name===remembered)?remembered:valid.find(m=>PAHardwareVisuals.typeOf(m)==='server')?.name||valid[0]?.name||'');

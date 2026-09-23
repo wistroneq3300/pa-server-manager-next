@@ -21,10 +21,11 @@ const contrast=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)
   await page.goto(base+'/#/rack/proj_k');
   await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas')?.dataset.rackState==='ready');
   const state=()=>page.evaluate(()=>document.querySelector('#ew-rack-canvas').paRackScene.getState());
-  const initial=await state();assert.equal(initial.count,35);assert.equal(initial.occupiedU,48);
-  for(const [name,top,bottom,size]of [['SERVER-04U',40,37,4],['SERVER-03U',36,34,3],['SERVER-02U',33,32,2],['BLANK-RESERVE-05U',9,5,5],['CDU-01',4,1,4]]){
+  const initial=await state();assert.equal(initial.count,36);assert.equal(initial.occupiedU,48);
+  for(const [name,top,bottom,size]of [['SERVER-04U',40,37,4],['SERVER-03U',36,34,3],['SERVER-02U',33,32,2],['BLANK-RESERVE-05U',9,5,5],['BLANK-BOTTOM-04U',4,1,4]]){
    const part=initial.placements.find(p=>p.name===name);assert.ok(part,name);assert.equal(part.top,top);assert.equal(part.bottom,bottom);assert.equal(part.size,size);
   }
+  assert.deepEqual(initial.placements.find(p=>p.name==='CDU-01'),{name:'CDU-01',type:'cdu',top:0,bottom:0,size:0,external:true});assert.equal(initial.cooling.mode,'external');
   assert.equal(initial.placements.filter(p=>p.type==='nvlink'&&p.size===1).length,9);
   await page.screenshot({path:path.join(out,'equipment-rack-dark.png'),fullPage:true});
   await page.getByRole('button',{name:'\u80cc\u9762',exact:true}).click();assert.equal((await state()).view,'rear');
@@ -51,7 +52,7 @@ const contrast=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)
    }
   }
   await page.getByRole('button',{name:'48U \u914d\u7f6e',exact:true}).click();await page.waitForSelector('.rm-rack');assert.equal(await page.locator('.rm-u .mono').count(),48);
-  results.push('3D geometry: 35 components / 48U, mixed 1/2/3/4/5U heights, camera, selection, all 9 type identities, 48U edit, 3 widths / 2 themes');
+  results.push('3D geometry: 36 components / 48U, one external CDU with no U occupancy, mixed 1/2/3/4/5U heights, camera, selection, all 9 type identities, 48U edit, 3 widths / 2 themes');
   const nvlinkRow=page.locator('.rm-row[data-u="31"]'),nvlinkCell=nvlinkRow.locator('.rm-cell.mgx-nvlink'),contrasts=[];
   assert.match(await nvlinkCell.locator('.rm-name').innerText(),/NVLINK-01/);
   for(const theme of ['dark','light']){

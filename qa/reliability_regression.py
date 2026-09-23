@@ -45,7 +45,9 @@ class Reliability(unittest.TestCase):
                       machines={}, projects={'rack': {'name': 'rack'}}, links=[], _seq=1,
                       DATA_FILE=str(Path(self.tmp.name) / 'data.json'),
                       AddRackPassive=SimpleNamespace, AddProject=SimpleNamespace,
-                      _bmc_safe=lambda m: dict(m), _is_masked=lambda s: False)
+                      _bmc_safe=lambda m: dict(m), _is_masked=lambda s: False,
+                      telemetry_core=SimpleNamespace(kind_of=lambda m, n='':
+                          m.get('mgx_type') or ('cdu' if (n or m.get('name','')).lower().startswith('cdu') else 'server')))
         extract('main.py', ['_data_transaction', '_save_data', '_rack_integer',
                 '_validate_rack', 'edit_machine', 'add_rack_passive', 'add_project'], self.s)
         self.s['_save_data']()

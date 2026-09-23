@@ -11,8 +11,14 @@
     return {projectMatch, names:members.filter(machine => projectMatch || text(`${machine.name || ''} ${machine.os_ip || ''} ${machine.bmc_ip || ''}`).includes(needle)).map(machine => machine.name)};
   }
   function validatePlacements(members, capacity = 48) {
-    const pending = [], spans = [], issues = [], cells = new Map();
+    const pending = [], spans = [], external = [], issues = [], cells = new Map();
     for (const machine of members) {
+      const cdu = machine.mgx_type === 'cdu' || (!machine.mgx_type && /cdu/i.test(machine.name||''));
+      if (machine.rack_mount === 'external') {
+        if (!cdu || Number(machine.rack_u||0)!==0 || Number(machine.rack_size||0)!==0) issues.push({name:machine.name,code:'external',message:'\u5916\u7f6e\u50c5\u652f\u63f4 CDU\uff0c\u4e14\u4e0d\u5360 U \u4f4d\u3002',conflicts:[]});
+        else external.push(machine);
+        continue;
+      }
       if (machine.rack_u == null || machine.rack_u === '' || Number(machine.rack_u) === 0) { pending.push(machine); continue; }
       const top = Number(machine.rack_u), height = machine.rack_size == null ? 1 : Number(machine.rack_size), bottom = top - height + 1;
       if (!Number.isInteger(height) || height < 1 || height > capacity) {
@@ -20,6 +26,9 @@
       }
       if (!Number.isInteger(top) || top > capacity || bottom < 1) {
         issues.push({name:machine.name,code:'range',message:`位置超出 U1–U${capacity}，請確認配置。`,conflicts:[]}); continue;
+      }
+      if (cdu && bottom !== 1) {
+        issues.push({name:machine.name,code:'cdu-bottom',message:'\u6ac3\u5167 CDU \u5fc5\u9808\u5b89\u88dd\u5728 U1 \u8d77\u7684\u5e95\u90e8\u3002',conflicts:[]}); continue;
       }
       spans.push({machine,top,bottom});
       for (let u=bottom;u<=top;u++) { if (!cells.has(u)) cells.set(u,[]); cells.get(u).push(machine.name); }
@@ -31,6 +40,7 @@
     }
     const invalid = new Set(issues.map(issue => issue.name)), valid = spans.filter(span => !invalid.has(span.machine.name)).map(span => span.machine), occupied = new Set();
     spans.filter(span => !invalid.has(span.machine.name)).forEach(span => { for(let u=span.bottom;u<=span.top;u++) occupied.add(u); });
+    valid.push(...external);
     return {valid,pending,issues,occupied:[...occupied].sort((a,b)=>b-a),usedU:occupied.size};
   }
   const helpers = window.PAWorkspaceReliability = {projectVisible,matchesProject,validatePlacements};

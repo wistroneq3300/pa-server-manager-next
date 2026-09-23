@@ -5,7 +5,8 @@
  * Larger-U enclosures are generic derivatives, not claims of a vendor SKU.
  * Switch vocabulary: NVIDIA SN2000 / SN2700 (32 QSFP28), not an installed-SKU claim.
  * CDU vocabulary: in-rack liquid-to-liquid CDU with HMI / rear fluid connections.
- * No external model, texture, runtime dependency, network request or idle animation.
+ * Procedural cooling illustration; animated direction is not measured flow.
+ * No external model, texture, runtime dependency or network request.
  */
 (() => {
   'use strict';
@@ -36,11 +37,15 @@
       const name=String(raw.name||'').trim(),top=Number(raw.rack_u),size=raw.rack_size==null?1:Number(raw.rack_size);
       if(!name){invalid.push({name,reason:'missing-name'});continue;}
       if(names.has(name)){invalid.push({name,reason:'duplicate-name'});continue;}names.add(name);
+      if(raw.rack_mount==='external'){
+        if(raw.mgx_type!=='cdu'||top!==0||size!==0){invalid.push({name,reason:'invalid-external'});continue;}
+        valid.push({...raw,name,mgx_type:'cdu',external:true,x:6.35,y:0,top:0,bottom:0,size:0,height:14.58});continue;
+      }
       if(raw.rack_u==null||raw.rack_u===''||top===0){unplaced.push(name);continue;}
       if(!Number.isInteger(top)||!Number.isInteger(size)||top<1||top>48||size<1||size>48||top-size+1<1){invalid.push({name,reason:'out-of-range',top,size});continue;}
       const slots=Array.from({length:size},(_,i)=>top-i);
       if(slots.some(n=>occupied.has(n))){invalid.push({name,reason:'overlap',top,size});continue;}
-      slots.forEach(n=>occupied.add(n));valid.push({...raw,name,mgx_type:TYPES.has(raw.mgx_type)?raw.mgx_type:'server',top,size,bottom:top-size+1,y:(top-size/2)*U-HALF,height:size*U-.026});
+      slots.forEach(n=>occupied.add(n));valid.push({...raw,name,x:0,external:false,mgx_type:TYPES.has(raw.mgx_type)?raw.mgx_type:'server',top,size,bottom:top-size+1,y:(top-size/2)*U-HALF,height:size*U-.026});
     }
     return {valid,invalid,unplaced,occupiedU:occupied.size,count:valid.length};
   }
@@ -244,10 +249,99 @@
     }
     return {mesh:m,depth,min:[-2.07,-h/2,FRONT-depth-.33],max:[2.07,h/2,FRONT+.28]};
   }
+
+  // TC1288 exterior proportions are a visual reference, not a selected SKU.
+  function createExternalCdu(){
+    const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube,front=3.15,rear=-5.96;
+    V(0,-.42,-1.40,6.08,14.58,9.11,C.dark,.09,.25);
+    V(0,-.37,front,5.82,14.19,.10,[.025,.033,.065],.065,.30);
+    B(0,-.35,front+.06,.023,13.86,.012,C.black);
+    for(const side of [-1,1]){
+      V(side*2.96,-.4,-1.4,.12,14.30,9.1,C.steel,.025);
+      for(let i=0;i<4;i++){const y=-5.2+i*3.10;B(side*2.42,y,front+.063,.11,2.48,.035,C.black);B(side*2.42,y,front+.085,.039,2.38,.022,[.03,.40,.77],.2,.85);B(side*2.65,y+.38,front+.07,.025,1.26,.018,[.02,.24,.49],.1,.65);}
+      for(const z of [-5.5,2.7])V(side*2.47,-7.72,z,.37,.21,.50,C.black,.035);
+      B(side*2.67,-.32,rear-.035,.095,13.8,.06,C.steel);
+      for(let i=0;i<5;i++)B(side*2.58,-5.8+i*2.8,rear-.08,.07,.12,.06,C.edge);
+    }
+    V(0,3.76,front+.12,1.71,1.08,.14,C.black,.055,.1);
+    B(0,3.78,front+.20,1.43,.80,.015,[.055,.15,.22],.1,.55);
+    for(let i=0;i<3;i++){B(-.44+i*.44,3.97,front+.22,.31,.16,.012,[.10,.39,.52],.1,.8);B(-.44+i*.44,3.65,front+.22,.31,.21,.012,C.steel,.1,.6);}
+    m.disc(-1.54,3.72,front+.17,.235,[.64,.43,.035]);m.disc(-1.54,3.72,front+.20,.14,[.61,.075,.03]);
+    // Neutral nameplate and ventilation keep the model brand-independent.
+    B(0,5.30,front+.07,1.94,.27,.024,C.steel,.4);
+    for(let i=0;i<15;i++)B(0,-6.6+i*.11,front+.074,2.51,.037,.026,C.black,.1);
+    V(2.06,-.27,front+.13,.09,.72,.09,C.edge,.025);
+    V(0,-.18,rear-.03,5.23,12.66,.10,C.black,.06,.15);
+    for(let i=0;i<26;i++)B(0,-4.52+i*.36,rear-.095,4.70,.033,.024,C.steel,.35);
+    const blue=[.025,.36,.69],red=[.68,.08,.035];
+    for(const [x,color] of [[-.95,blue],[.95,red]]){
+      T([x,-6.50,rear],[x,-6.50,rear-.31],.23,C.edge,18);
+      T([x,-6.50,rear-.24],[x,-6.50,rear-.36],.20,color,18);
+      T([x,-6.50,rear-.36],[x,-6.50,rear-.39],.14,C.dark,18);
+    }
+    return {mesh:m,depth:9.11,min:[-3.08,-7.84,-6.38],max:[3.08,6.94,3.39]};
+  }
+  function smoothPath(anchors){
+    const points=[];
+    for(let i=0;i<anchors.length-1;i++){
+      const a=anchors[Math.max(0,i-1)],b=anchors[i],c=anchors[i+1],d=anchors[Math.min(anchors.length-1,i+2)];
+      for(let j=0;j<12;j++){const t=j/12,t2=t*t,t3=t2*t;points.push(b.map((v,k)=>clamp(.5*((2*v)+(-a[k]+c[k])*t+(2*a[k]-5*v+4*c[k]-d[k])*t2+(-a[k]+3*v-3*c[k]+d[k])*t3),Math.min(v,c[k]),Math.max(v,c[k]))));}
+    }
+    points.push(anchors[anchors.length-1]);return points;
+  }
+  function pipeMesh(mesh,points,r,color,flow=false){
+    let distance=0;
+    for(let i=1;i<points.length;i++){
+      const a=points[i-1],b=points[i],v=b.map((n,k)=>n-a[k]),length=Math.hypot(...v),offset=mesh.data.length;
+      mesh.tube(a,b,r,color,10,flow?-2:.65);
+      if(flow&&length>0)for(let j=offset;j<mesh.data.length;j+=11){const t=clamp(v.reduce((n,q,k)=>n+(mesh.data[j+k]-a[k])*q,0)/(length*length),0,1);mesh.data[j+10]=distance+t*length;}
+      distance+=length;
+    }
+  }
+  function createCooling(items){
+    const solid=meshBuilder(),water=meshBuilder(),shell=meshBuilder(),B=solid.box,T=solid.tube,V=solid.bevel;
+    const cdu=items.find(i=>i.mgx_type==='cdu'),mode=cdu?(cdu.external?'external':'internal'):'unconnected';
+    // Copper DC busbar, its insulating spine, and cable cartridges are distinct
+    // from the paired silver coolant distribution rails.
+    V(0,0,-3.39,.24,14.05,.19,C.black,.023);
+    for(const side of [-1,1])B(side*.065,0,-3.505,.073,13.93,.035,C.copper,.93);
+    for(let y=-6.7;y<7;y+=.58){B(0,y,-3.54,.27,.095,.08,C.dark);T([-.11,y,-3.585],[-.11,y,-3.60],.023,C.edge,8);}
+    for(const side of [-1,1]){
+      const color=side<0?[.025,.38,.78]:[.78,.07,.025],x=side*1.57;
+      T([x,-6.50,-3.57],[x,6.57,-3.57],.105,C.edge,14);
+      B(side*1.26,0,-3.33,.27,13.3,.11,C.black);
+      for(let i=0;i<35;i++){const y=-5.92+i*.35;B(side*1.26,y,-3.42,.35,.14,.06,C.steel);B(side*1.26,y,-3.456,.23,.065,.013,C.black);}
+      for(const item of items.filter(i=>!i.external&&(i.mgx_type==='server'||i.mgx_type==='nvlink'))){
+        const y=item.y+Math.min(item.height/2-.12,0);
+        T([x,y,-3.57],[side*1.80,y,-3.57],.038,C.edge,10);T([side*1.80,y,-3.57],[side*1.80,y,-3.28],.042,C.dark,10);
+        T([x,y,-3.57],[x,y,-3.78],.055,C.edge,10);T([x,y,-3.73],[x,y,-3.79],.059,color,10);
+      }
+      // A silver elbow at the top is connected to the flexible riser when CDU exists.
+      T([x,6.35,-3.57],[side*.84,6.35,-3.57],.11,C.edge,14);
+      T([side*.84,6.35,-3.57],[side*.84,6.35,-4.03],.14,C.edge,16);
+      T([side*.84,6.35,-3.91],[side*.84,6.35,-4.05],.146,color,16);
+      if(!cdu){T([side*.84,6.35,-4.04],[side*.84,6.35,-4.10],.118,C.black,16);continue;}
+      let anchors;
+      const rackEnd=[side*.84,6.35,-4.06];
+      if(cdu.external){
+        const port=[6.35+side*.95,-6.50,-6.35];
+        const laneY=-6.62+side*.20,laneZ=-6.98+side*.25;
+        anchors=[port,[port[0],-6.50,-6.72],[port[0]-.3,laneY,laneZ],[3.05,laneY,laneZ],[side*.84,laneY,-6.25+side*.20],[side*.84,-5.9,-4.44],[side*.84,5.70,-4.30],rackEnd];
+      }else{
+        // The secondary loop uses the inner pair of the rackmount CDU's four ports.
+        const port=[side*.48,cdu.y,FRONT-5.95-.310];
+        anchors=[port,[side*.48,cdu.y,-3.42],[side*.84,cdu.y+.35,-4.23],[side*.84,5.70,-4.30],rackEnd];
+      }
+      // Blue runs CDU -> rack; red runs rack -> CDU, regardless of camera angle.
+      if(side>0)anchors.reverse();const path=smoothPath(anchors);
+      pipeMesh(water,path,cdu.external?.083:Math.min(.083,cdu.height*.14),color,true);pipeMesh(shell,path,cdu.external?.115:Math.min(.115,cdu.height*.22),[.58,.69,.74]);
+    }
+    return {solid,water,shell,mode,connected:!!cdu,bounds:{min:[-2.49,-7.85,cdu?.external?-7.45:-4.62],max:[cdu?.external?9.50:2.30,7.83,3.45]}};
+  }
   const VERTEX=`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aMaterial;uniform mat4 uViewProjection;uniform mat4 uModel;uniform mat4 uPart;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;void main(){mat4 m=uModel*uPart;vec4 p=m*vec4(aPosition,1.0);vPosition=p.xyz;vLocal=aPosition;vNormal=mat3(m)*aNormal;vColor=aColor;vMaterial=aMaterial;gl_Position=uViewProjection*p;}`;
   const FRAGMENT=`
     precision highp float;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;
-    uniform vec3 uEye;uniform float uLight;uniform float uSelected;
+    uniform vec3 uEye;uniform float uLight;uniform float uSelected;uniform float uAlpha;uniform float uTime;
     void main(){
       vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.58,.88,.72)),fill=normalize(vec3(.74,.40,-.35));
       float metal=max(vMaterial.x,0.0),hemisphere=.22+.17*(n.y*.5+.5),diff=max(dot(n,key),0.0),brush=.992+.008*sin(vLocal.z*440.0+vLocal.x*17.0);
@@ -259,7 +353,8 @@
       c+=vec3(.83,.89,.92)*softbox*smoothstep(.10,.30,r.y)*metal*.15;c+=vec3(.35,.60,.69)*(back*.30+rim*.055)*metal;
       c+=vColor*uLight*.075;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.015,.017,.019)*uSelected+vec3(.16,.25,.27)*rim*uSelected*.23;
       if(vMaterial.x<-.5){float grain=fract(sin(dot(floor(vLocal*380.0),vec3(127.1,311.7,74.7)))*43758.5453);c*=.965+grain*.070;}
-      gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),1.0);
+      if(vMaterial.x<-1.5){float band=pow(.5+.5*cos(vMaterial.y*4.5-uTime*2.4),8.0);c=vColor*(.40+.40*band)+vec3(.34,.40,.43)*band;}
+      gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),uAlpha);
     }`;
   function mount(canvas,options={}){
     const noop={supported:false,setComponents(){},setTheme(){},select(){},focusSelection(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
@@ -271,38 +366,46 @@
     try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:false,powerPreference:'low-power'});}catch(error){fail(error.message);return noop;}if(!gl){fail();return noop;}
     function buffer(mesh){const b=gl.createBuffer(),data=new Float32Array(mesh.data);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);return {buffer:b,count:data.length/11};}
     function compile(type,source){const shader=gl.createShader(type);shaders.push(shader);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error('Rack shader compilation failed');return shader;}
-    function rebuild(){components.forEach(p=>gl.deleteBuffer(p.buffer));components=placement.valid.map(item=>{const part=createEquipment(item);return {...buffer(part.mesh),item,min:part.min,max:part.max};});}
+    let cooling=null,coolingBuffers=[],flowEnabled=options.flowEnabled!==false,visible=true;const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    function rebuild(){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));cooling=createCooling(placement.valid);coolingBuffers=[buffer(cooling.solid),buffer(cooling.water),buffer(cooling.shell)];components.forEach(p=>gl.deleteBuffer(p.buffer));components=placement.valid.map(item=>{const part=item.external?createExternalCdu():createEquipment(item);return {...buffer(part.mesh),item,min:part.min,max:part.max};});}
     function setup(){
       maxSize=Math.min(4096,Number(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE))||4096);program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,VERTEX));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,FRAGMENT));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Rack shader linking failed');shaders.forEach(s=>gl.deleteShader(s));shaders.length=0;
-      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
-      frameMesh=buffer(createFrame());components=[];rebuild();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);ready=false;
+      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected','uAlpha','uTime'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
+      frameMesh=buffer(createFrame());components=[];coolingBuffers=[];rebuild();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);ready=false;
     }
-    function release(){if(!lost){components.forEach(p=>gl.deleteBuffer(p.buffer));if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];frameMesh=null;program=null;shaders.length=0;}
+    function release(){if(!lost){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));components.forEach(p=>gl.deleteBuffer(p.buffer));if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];coolingBuffers=[];frameMesh=null;program=null;shaders.length=0;}
     try{setup();}catch(error){release();fail(error.message);return noop;}
-    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.reduce((sum,p)=>sum+p.count,frameMesh?.count||0));}
+    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0));}
     function requestDraw(){if(!disposed&&!lost&&program&&!frame)frame=requestAnimationFrame(draw);}
-    function draw(){
+    function flowAnimated(){return flowEnabled&&cooling?.connected&&!reduced.matches&&visible&&!document.hidden&&!disposed&&!lost&&!focus;}
+    function draw(now=0){
       frame=0;if(disposed||lost||!program)return;const rect=canvas.getBoundingClientRect();if(rect.width<1||rect.height<1)return;const dpr=Math.min(window.devicePixelRatio||1,1.65,maxSize/Math.max(rect.width,rect.height)),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-      const rotationMatrix=rotation(yaw,pitch),model=multiply(rotationMatrix,translation(0,-targetY,0)),aspect=w/h,eye=[0,0,34];
+      const centerX=focus?(placement.valid.find(p=>p.name===focus)?.x||0):(cooling.mode==='external'?3.50:0);
+      const rotationMatrix=rotation(yaw,pitch),model=multiply(rotationMatrix,translation(-centerX,-targetY,0)),aspect=w/h,eye=[0,0,34];
       // Fit the projected orbit envelope at every angle. Device inspection uses
       // the selected part's own bounds; selection near U48 is not clipped away.
       const focused=focus?components.find(p=>p.item.name===focus):null;
-      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[-2.49,-7.82,-3.48],max:[2.30,7.83,3.39]};
+      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[cooling.bounds.min[0]-centerX,cooling.bounds.min[1],cooling.bounds.min[2]],max:[cooling.bounds.max[0]-centerX,cooling.bounds.max[1],cooling.bounds.max[2]]};
       let maxX=0,maxY=0,required=0;const tan=Math.tan(.55/2),marginX=focused?.83:.92,marginY=focused?.78:.94;
       for(const x of [bounds.min[0],bounds.max[0]])for(const y of [bounds.min[1],bounds.max[1]])for(const z of [bounds.min[2],bounds.max[2]]){const p=transform(rotationMatrix,[x,y,z,1]);maxX=Math.max(maxX,Math.abs(p[0]));maxY=Math.max(maxY,Math.abs(p[1]));required=Math.max(required,p[2]+Math.abs(p[0])/(tan*aspect*marginX),p[2]+Math.abs(p[1])/(tan*marginY));}
       const vertical=Math.max(maxY/marginY,maxX/(aspect*marginX),focused?1.10:0)/zoom,horizontal=vertical*aspect,isPlan=view==='front'||view==='rear';
       if(!isPlan)eye[2]=Math.max(5.1,required/zoom);const vp=multiply(isPlan?ortho(horizontal,vertical):perspective(.55,aspect),lookAt(eye));inverseMvp=inverse(multiply(vp,model));
       canvas.dataset.rackCameraDistance=eye[2].toFixed(3);
-      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);
+      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
       function part(mesh,matrix,isSelected){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);let offset=0;[['aPosition',3],['aNormal',3],['aColor',3],['aMaterial',2]].forEach(([name,size])=>{gl.enableVertexAttribArray(attrib[name]);gl.vertexAttribPointer(attrib[name],size,gl.FLOAT,false,44,offset);offset+=size*4;});gl.uniformMatrix4fv(uniform.uPart,false,matrix);gl.uniform1f(uniform.uSelected,isSelected?1:0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
-      part(frameMesh,identity(),false);for(const p of components)part(p,translation(0,p.item.y,p.item.name===selected?.22:0),p.item.name===selected);
+      part(frameMesh,identity(),false);for(const p of components)part(p,translation(p.item.x||0,p.item.y,p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0),p.item.name===selected);
+      part(coolingBuffers[0],identity(),false);
+      gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+      gl.uniform1f(uniform.uAlpha,.88);part(coolingBuffers[1],identity(),false);
+      gl.depthMask(false);gl.uniform1f(uniform.uAlpha,.20);part(coolingBuffers[2],identity(),false);gl.depthMask(true);gl.disable(gl.BLEND);
+      canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());if(flowAnimated())requestDraw();
       if(!ready){const error=gl.getError();if(error!==gl.NO_ERROR){fail('Rack WebGL render error '+error);return;}ready=true;canvas.dataset.rackState='ready';delete canvas.dataset.rackError;canvas.dispatchEvent(new CustomEvent('pa-rack-ready',{bubbles:true}));}
     }
     function orbit(y,p){yaw=((y+Math.PI)%TAU+TAU)%TAU-Math.PI;pitch=clamp(p,-1.15,1.15);view='custom';sync();requestDraw();}
     function pick(x,y){
       if(!inverseMvp)return null;const rect=canvas.getBoundingClientRect(),nx=(x-rect.left)/rect.width*2-1,ny=1-(y-rect.top)/rect.height*2;
       const points=[-1,1].map(z=>{const p=transform(inverseMvp,[nx,ny,z,1]);return p.slice(0,3).map(v=>v/p[3]);}),origin=points[0],dir=points[1].map((v,i)=>v-origin[i]);let nearest=Infinity,hit=null;
-      for(const p of components){const pull=p.item.name===selected?.22:0,min=[p.min[0],p.min[1]+p.item.y,p.min[2]+pull],max=[p.max[0],p.max[1]+p.item.y,p.max[2]+pull];let enter=0,exit=1;for(let axis=0;axis<3;axis++){if(Math.abs(dir[axis])<1e-9){if(origin[axis]<min[axis]||origin[axis]>max[axis]){exit=-1;break;}}else{const t1=(min[axis]-origin[axis])/dir[axis],t2=(max[axis]-origin[axis])/dir[axis];enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));}}if(enter<=exit&&enter<nearest){nearest=enter;hit=p.item.name;}}
+      for(const p of components){const pull=p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0,min=[p.min[0]+(p.item.x||0),p.min[1]+p.item.y,p.min[2]+pull],max=[p.max[0]+(p.item.x||0),p.max[1]+p.item.y,p.max[2]+pull];let enter=0,exit=1;for(let axis=0;axis<3;axis++){if(Math.abs(dir[axis])<1e-9){if(origin[axis]<min[axis]||origin[axis]>max[axis]){exit=-1;break;}}else{const t1=(min[axis]-origin[axis])/dir[axis],t2=(max[axis]-origin[axis])/dir[axis];enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));}}if(enter<=exit&&enter<nearest){nearest=enter;hit=p.item.name;}}
       return hit;
     }
     function select(name){const next=String(name??'');selected=placement.valid.some(p=>p.name===next)?next:'';if(focus){const item=placement.valid.find(p=>p.name===selected);focus=item?.name||'';targetY=item?.y||0;}sync();requestDraw();}
@@ -318,13 +421,16 @@
     function onRestored(){lost=false;try{setup();requestDraw();}catch(error){release();fail(error.message);}}
     const oldTouchAction=canvas.style.touchAction;canvas.style.touchAction='none';const listeners=[['pointerdown',onDown],['pointermove',onMove],['pointerup',onUp],['pointercancel',onCancel],['lostpointercapture',onCancel],['keydown',onKey],['webglcontextlost',onLost],['webglcontextrestored',onRestored]];listeners.forEach(([name,fn])=>canvas.addEventListener(name,fn));
     const ro=typeof ResizeObserver!=='undefined'?new ResizeObserver(requestDraw):null;if(ro)ro.observe(canvas);else window.addEventListener('resize',requestDraw,{passive:true});
+    const onVisibility=()=>requestDraw();document.addEventListener('visibilitychange',onVisibility);reduced.addEventListener('change',onVisibility);
+    const visibilityObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting!==false;requestDraw();}):null;visibilityObserver?.observe(canvas);
     const api={supported:true,
+      setFlowEnabled(value){flowEnabled=!!value;requestDraw();},
       setComponents(items){if(disposed)return;placement=inspectPlacement(items);if(!placement.valid.some(p=>p.name===selected))selected='';if(focus){const item=placement.valid.find(p=>p.name===focus);focus=item?.name||'';targetY=item?.y||0;}if(!lost)rebuild();sync();requestDraw();},
       setTheme(value){const next=value==='light'||value===true?1:0;if(light!==next){light=next;requestDraw();}},select,focusSelection,setView,resetOrbit,
       zoomBy(factor){const f=Number(factor);if(!Number.isFinite(f)||f<=0)return;zoom=clamp(zoom*f,.75,2.10);sync();requestDraw();},
       resize:requestDraw,
-      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size})),geometryBuffers:components.length+(frameMesh?1:0),vertices:components.reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
-      destroy(){if(disposed)return;disposed=true;if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';delete canvas.paRackScene;}
+      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size,external:!!p.external})),cooling:{mode:cooling.mode,flowEnabled,animated:flowAnimated()},geometryBuffers:components.length+coolingBuffers.length+(frameMesh?1:0),vertices:components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
+      destroy(){if(disposed)return;disposed=true;visibilityObserver?.disconnect();document.removeEventListener('visibilitychange',onVisibility);reduced.removeEventListener('change',onVisibility);if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';delete canvas.paRackScene;}
     };canvas.paRackScene=api;sync();requestDraw();return api;
   }
   // CPU-only geometry sharing for the homepage editorial scene. This factory
@@ -332,7 +438,7 @@
   // Identical type/size meshes are built once so an editorial rack can reuse
   // the operational model quality without duplicating all of its geometry.
   function buildEditorialParts(records){
-    const inspected=inspectPlacement(records);
+    const inspected=inspectPlacement(records.filter(i=>i.rack_mount!=='external'));
     if(inspected.invalid.length||inspected.unplaced.length)throw new Error('Editorial rack requires valid, non-overlapping placed components');
     const equipment={},placements=inspected.valid.map(item=>{
       const meshKey=item.mgx_type+':'+item.size;
@@ -342,9 +448,13 @@
       }
       return Object.freeze({name:item.name,type:item.mgx_type,top:item.top,bottom:item.bottom,size:item.size,y:item.y,height:item.height,meshKey});
     });
+    const editorialFrame=createFrame(),rear=createCooling(inspected.valid);
+    for(let i=0;i<rear.water.data.length;i+=11){rear.water.data[i+9]=.25;rear.water.data[i+10]=.45;}
+    for(let i=0;i<rear.shell.data.length;i+=11)rear.shell.data[i+9]=-3;
+    for(const mesh of [rear.solid,rear.water,rear.shell])for(const value of mesh.data)editorialFrame.data.push(value);
     return Object.freeze({stride:11,unit:U,front:FRONT,
-      frame:Object.freeze({data:new Float32Array(createFrame().data)}),equipment:Object.freeze(equipment),placements:Object.freeze(placements),occupiedU:inspected.occupiedU,
-      bounds:Object.freeze({min:Object.freeze([-2.30,-7.82,-3.48]),max:Object.freeze([2.30,7.83,3.39])})});
+      frame:Object.freeze({data:new Float32Array(editorialFrame.data)}),equipment:Object.freeze(equipment),placements:Object.freeze(placements),occupiedU:inspected.occupiedU,
+      bounds:Object.freeze({min:Object.freeze([-2.30,-7.85,-4.62]),max:Object.freeze([2.30,7.83,3.39])})});
   }
   window.PARackScene=Object.freeze({mount,inspectPlacement,buildEditorialParts});
 })();

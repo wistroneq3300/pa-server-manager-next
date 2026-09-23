@@ -56,7 +56,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await go();assert.equal(await page.locator('.p-brand-logo').count(),1);
     await page.waitForFunction(()=>document.querySelector('#system-core')?.dataset.coreState==='ready');
     const fixture=await page.evaluate(()=>({machines:PA_PREVIEW.machines.length,projects:PA_PREVIEW.projects.length}));
-    assert.deepEqual(fixture,{machines:47,projects:6});assert.match(await page.locator('#content').innerText(),/L10/);assert.match(await page.locator('#content').innerText(),/L11/);await noOverflow('Dashboard');await page.screenshot({path:path.join(OUT,'dashboard-desktop-1600.png'),animations:'disabled'});
+    assert.deepEqual(fixture,{machines:48,projects:6});assert.match(await page.locator('#content').innerText(),/L10/);assert.match(await page.locator('#content').innerText(),/L11/);await noOverflow('Dashboard');await page.screenshot({path:path.join(OUT,'dashboard-desktop-1600.png'),animations:'disabled'});
     const core=await page.locator('#system-core').elementHandle();
     for(const progress of [.45,.535]){
       await page.evaluate(p=>{const story=document.getElementById('core-story'),stage=document.getElementById('core-stage');window.scrollTo({top:story.getBoundingClientRect().top+scrollY-76+p*(story.offsetHeight-stage.offsetHeight),behavior:'instant'});},progress);
@@ -70,7 +70,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
   await check('02 L10 / L11 separation and OS/BMC columns',async()=>{
     await projects('system');assert.equal(await visibleRows().count(),12);
     assert.match(await page.locator('#proj-sort-list').innerText(),/192\.0\.2\.21/);assert.match(await page.locator('#proj-sort-list').innerText(),/198\.51\.100\.21/);
-    await projects('rack');assert.equal(await visibleRows().count(),35);assert.equal(await page.locator('#sys-btn-addcomp').isVisible(),true);
+    await projects('rack');assert.equal(await visibleRows().count(),36);assert.equal(await page.locator('#sys-btn-addcomp').isVisible(),true);
     await projects('system');assert.equal(await page.locator('#sys-btn-broadcast').isVisible(),true);
   });
   await check('03 System/project search and no-results recovery',async()=>{
@@ -150,7 +150,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     }
     // Unmount only releases the position; its actual device height must survive.
     assert.equal((await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-RESERVE-05U').rack_size,5);
-    await page.locator('.rm-empty-slot[onclick="rackEmptyClick(9)"]').click();await page.locator('#rm-add-m').selectOption('BLANK-RESERVE-05U');assert.equal(await page.locator('#rm-add-size').inputValue(),'5');await page.locator('#rm-add-u').selectOption('9');await page.locator('#rm-dialog-foot').getByRole('button',{name:'加入',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('48/48'));
+    await page.locator('.rm-empty-slot[onclick="rackEmptyClick(9)"]').click();await page.locator('#rm-dialog-foot').getByRole('button',{name:'\u52a0\u5165\u65e2\u6709 L11',exact:true}).click();await page.locator('#rm-add-m').selectOption('BLANK-RESERVE-05U');assert.equal(await page.locator('#rm-add-size').inputValue(),'5');await page.locator('#rm-add-u').selectOption('9');await page.locator('#rm-dialog-foot').getByRole('button',{name:'加入',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('48/48'));
     const restored=(await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-RESERVE-05U');assert.equal(restored.rack_size,5);assert.equal(restored.rack_u,9);
     assert.equal((await api('/api/projects','POST',{name:'qa-components',desc:'Isolated component creation QA',level:'rack'})).status,200);await page.evaluate(()=>loadProjects());
     for(const [name,type,top,size]of [['QA-STORAGE','storage',48,1],['QA-NVLINK','nvlink',47,1],['QA-BLANK','blanking',46,5]]){

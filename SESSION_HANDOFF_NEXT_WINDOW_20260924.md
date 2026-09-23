@@ -1,3 +1,5 @@
+> Update 2026-09-24: CDU installation/rear cooling work was subsequently authorized and completed. Read SESSION_HANDOFF_CDU_COOLING_20260924.md for the latest CDU rules and validation. Vera 32-tray work remains on hold. Homepage keeps its internal 4U CDU; only the Rack fixture switches to external CDU plus bottom blanking.
+
 # PA Server Manager Next — 下一個視窗交接
 日期：2026-09-24
 

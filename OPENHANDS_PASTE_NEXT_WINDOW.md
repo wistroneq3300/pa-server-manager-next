@@ -1,3 +1,5 @@
+Latest Next handoff: SESSION_HANDOFF_CDU_COOLING_20260924.md. Work only in pa-server-manager-next; Vera 32-tray development stays on hold. Preserve the forthcoming backend upload.
+
 # 下一個視窗：先讀最新交接
 
 請先讀 `SESSION_HANDOFF_NEXT_WINDOW_20260924.md`。

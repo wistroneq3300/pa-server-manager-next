@@ -129,3 +129,47 @@
 @media(max-width:1200px){.ew-rack-deck{grid-template-columns:minmax(0,1fr) 300px}.ew-rack-aside{padding:20px}.ew-rack-summary{gap:15px}}
 @media(max-width:900px){.ew-rack-deck{grid-template-columns:1fr}.ew-rack-deck.is-expanded{inset:8px;grid-template-columns:minmax(0,1fr) 260px}.ew-rack-deck.is-expanded .ew-rack-aside{border-left:1px solid var(--ew-line)}.ew-stage-mark{font-size:15px;left:18px}.ew-rack-summary{font-size:10px}}
 @media(max-width:760px){.pd-workspace .pd-showcase{height:auto;min-height:420px;padding-bottom:50px}.pd-workspace .pd-showcase-copy{width:100%;padding-bottom:5px}.pd-workspace .pd-hardware-stage.pd-neutral-chassis{position:relative;width:90%;right:auto;top:auto;height:190px;margin:0 auto}}
+
+/* CDU placement shares the existing rack controls and never reserves a U cell externally. */
+.cdu-config>label,.cdu-config #cdu-placement>label{display:block;font-size:12px;color:var(--text-faint);margin:14px 0 7px}
+.cdu-config .input{display:block;width:100%;padding:10px;box-sizing:border-box}
+.cdu-existing,.cdu-location-note{border:1px solid var(--ew-line);border-radius:8px;padding:12px;font-size:12px;line-height:1.8}
+.cdu-config .cdu-conflict{color:#ffb591;font-size:12px;line-height:1.8;padding:12px;border:1px solid #d7775544;background:#7c35221c;border-radius:8px}
+.ew-external-cdu{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 20px;border:1px solid var(--ew-line);border-radius:10px;margin:12px 0;background:var(--ew-raised)}
+.ew-external-cdu strong,.ew-external-cdu span{display:block}.ew-external-cdu span{font-size:11px;color:var(--ew-muted);margin-top:5px}
+.ew-flow-note{display:flex;flex-wrap:wrap;justify-content:center;gap:7px 16px;margin:8px 14px;font-size:10px;color:var(--ew-muted)}
+.ew-flow-blue{color:#72baff}.ew-flow-red{color:#ff9c91}
+:root[data-theme="light"] .cdu-config .cdu-conflict{color:#923819}:root[data-theme="light"] .ew-flow-blue{color:#175a99}:root[data-theme="light"] .ew-flow-red{color:#b03d34}
+#ew-rack-add{margin-left:auto}
+
+/* Keep the paired rack/CDU assembly usable on narrow rack-workspace screens. */
+@media(max-width:760px){
+ body[data-product-view="rack"] .layout{flex-direction:column}
+ body[data-product-view="rack"] .sidebar{position:static;width:100%;height:auto;min-height:0;padding:8px 10px;border-right:0;border-bottom:1px solid var(--ew-line)}
+ body[data-product-view="rack"] .sidebar .brand,body[data-product-view="rack"] .sidebar-foot,body[data-product-view="rack"] .nav-group{display:none}
+ body[data-product-view="rack"] .nav{display:flex;gap:5px;padding:0;overflow:visible}
+ body[data-product-view="rack"] .nav-btn{flex:1;min-width:0;min-height:43px;padding:8px 5px;gap:5px;margin:0}
+ body[data-product-view="rack"] .nav-btn b{font-size:10px;white-space:normal}
+ body[data-product-view="rack"] .nav-btn small,body[data-product-view="rack"] .nav-btn i,body[data-product-view="rack"] .nav-btn:before{display:none}
+ body[data-product-view="rack"] .main{width:100%}
+ body[data-product-view="rack"] .topbar{padding:0 12px;gap:7px;height:52px;min-height:52px}
+ body[data-product-view="rack"] .p-top-label,body[data-product-view="rack"] .topbar .user{display:none}
+ body[data-product-view="rack"] .page-title{flex:1;min-width:0}
+ body[data-product-view="rack"] .content{padding:14px 10px 30px;max-width:100%}
+ body[data-product-view="rack"] .rack-hero{padding:16px!important}
+ body[data-product-view="rack"] .rack-hero-left{min-width:0;flex-basis:100%}
+ body[data-product-view="rack"] .rack-hero .rack-sel{min-width:0;max-width:100%;flex-basis:100%}
+ body[data-product-view="rack"] .rack-hero .rack-sel select{min-width:0;flex:1;width:0}
+ body[data-product-view="rack"] .rack-hero-title{font-size:22px!important}
+ .ew-rack-stage>header{flex-wrap:wrap;gap:10px;padding:18px}
+ .ew-rack-summary{padding-inline:18px;gap:10px;flex-wrap:wrap}
+ .ew-rack-camera{padding-inline:10px;gap:6px}
+ .ew-view-switch{gap:7px}.ew-view-switch .btn{padding:8px 10px}
+ #ew-rack-canvas{height:520px}
+ .ew-rack-deck.is-expanded{display:flex;flex-direction:column;overflow:auto}
+ .ew-rack-deck.is-expanded .ew-rack-stage{flex:none;overflow:visible}
+ .ew-rack-deck.is-expanded #ew-rack-canvas{position:relative;height:55vh;min-height:320px}
+ .ew-rack-deck.is-expanded .ew-rack-aside{overflow:visible;border-left:0}
+ .ew-external-cdu{flex-wrap:wrap;gap:10px}
+ .cdu-config{min-width:0}.cdu-config .input{max-width:100%}
+}

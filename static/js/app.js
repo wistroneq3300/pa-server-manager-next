@@ -683,9 +683,81 @@ async function rackAssign(machine, patch) {
   // 之後呼叫方會 setView("rack") 重繪：先把伺服器最新資料載進來，才不會用舊快取渲染
   await loadMachines(false);
 }
+
+// CDU installation is a single project resource; exterior devices never consume rack U.
+function rackIsExternal(m) { return mgxTypeOf(m) === "cdu" && m.rack_mount === "external"; }
+function rackProjectCdu(proj) { return machines.find(m => isRackItem(m) && m.project === proj && mgxTypeOf(m) === "cdu"); }
+function rackAddEntry(presetU) {
+  const proj = rackView.project;
+  if (!proj) return addRackComponentDialog();
+  const cdu = rackProjectCdu(proj);
+  showDialog("\uff0b \u65b0\u589e\u81f3\u6a5f\u6ac3", `<div class="rm-modal-body"><p>${esc(proj)}${presetU ? ` / U${presetU}` : ''}</p><p class="hint-msg">\u9078\u64c7\u8981\u52a0\u5165\u7684\u8a2d\u5099\u3002CDU \u53ef\u5b89\u88dd\u65bc\u6ac3\u5167\u5e95\u90e8\u6216\u6a5f\u6ac3\u53f3\u5074\uff0c\u6bcf\u6ac3\u4e00\u5957\u3002</p>${cdu ? `<p class="cdu-existing">\u73fe\u6709 CDU\uff1a<b>${esc(cdu.name)}</b>\u3002\u53ef\u7de8\u8f2f\u6216\u5207\u63db\u5b89\u88dd\u65b9\u5f0f\u3002</p>` : ''}</div>`, [
+    {txt:"\u53d6\u6d88",cls:"",fn:closeDialog},
+    {txt:"\u52a0\u5165\u65e2\u6709 L11",cls:"",fn:()=>rackAddDialog(presetU)},
+    {txt:"\u65b0\u589e\u5176\u4ed6\u5143\u4ef6",cls:"",fn:()=>rackAddPassiveWithU(presetU,proj)},
+    {txt:cdu?"\u7de8\u8f2f CDU":"\u65b0\u589e CDU",cls:"primary",fn:()=>rackCduDialog(proj)}
+  ]);
+}
+let rackCduState = null;
+function rackCduDialog(proj, sourceName) {
+  const existing = rackProjectCdu(proj);
+  const source = existing || machines.find(m => m.name === sourceName && m.project === proj);
+  rackCduState = {project:proj,name:source?.name||'',busy:false,size:source?.rack_size > 0 ? Number(source.rack_size) : 4};
+  showDialog(source ? "CDU \u5b89\u88dd\u8a2d\u5b9a" : "\u65b0\u589e CDU", `<div class="rm-modal-body cdu-config"><p class="hint-msg">${esc(proj)} / \u6bcf\u6ac3\u4e00\u5957 CDU</p>${existing?`<p class="cdu-existing">\u7de8\u8f2f\u73fe\u6709 ${esc(existing.name)}\uff0c\u4e0d\u6703\u5efa\u7acb\u7b2c\u4e8c\u53f0\u3002</p>`:''}<label for="cdu-name">\u5143\u4ef6\u540d\u7a31</label><input class="input" id="cdu-name" value="${esc(source?.name||'')}" placeholder="CDU-01" ${source?'readonly':''}><label for="cdu-mount">\u5b89\u88dd\u65b9\u5f0f</label><select class="input" id="cdu-mount" onchange="rackCduRefresh()"><option value="internal" ${!rackIsExternal(source||{})?'selected':''}>\u6ac3\u5167\uff08\u56fa\u5b9a\u6700\u5e95\u90e8\uff09</option><option value="external" ${rackIsExternal(source||{})?'selected':''}>\u5916\u7f6e\uff08\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074\uff09</option></select><div id="cdu-placement"></div>${source?'':`<label for="cdu-ip">\u7ba1\u7406 IP\uff08\u9078\u586b\uff09</label><input class="input" id="cdu-ip" placeholder="\u672a\u8a2d\u5b9a"><p class="hint-msg">\u586b\u5beb IP \u6642\u5148\u78ba\u8a8d Ping \u9023\u7dda\u3002</p>`}<p id="cdu-message" role="status"></p></div>`,[
+    {txt:"\u53d6\u6d88",cls:"",fn:closeDialog},
+    {txt:source?"\u5132\u5b58\u8a2d\u5b9a":"\u5efa\u7acb CDU",cls:"primary",fn:rackCduSave}
+  ]);
+  rackCduRefresh();
+}
+function rackCduConflicts(size) {
+  const state = rackCduState;
+  return machines.filter(m => isRackItem(m) && m.project === state.project && m.name !== state.name && !rackIsExternal(m) && Number(m.rack_u)>0 && Number(m.rack_u)-Number(m.rack_size||1)+1<=size);
+}
+function rackCduRefresh() {
+  if (!rackCduState) return;
+  const sizeInput = $("cdu-size");
+  if (sizeInput) rackCduState.size = Number(sizeInput.value);
+  const external = $("cdu-mount").value === 'external';
+  const size = rackCduState.size;
+  $("cdu-placement").innerHTML = external
+    ? '<p class="cdu-location-note">\u653e\u5728\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074\uff0c\u4e0d\u5360 U \u4f4d\u3002\u5916\u89c0\u70ba\u793a\u610f\uff0c\u4e0d\u9650\u5b9a\u8a2d\u5099\u578b\u865f\u3002</p>'
+    : `<label for="cdu-size">\u5360\u7528\u9ad8\u5ea6</label><select class="input" id="cdu-size" onchange="rackCduRefresh()">${RACK_SIZES.map(u=>`<option value="${u}" ${u===size?'selected':''}>${u}U</option>`).join('')}</select><p class="cdu-location-note">\u56fa\u5b9a\u5728\u6a5f\u6ac3\u6700\u5e95\u90e8 U1${size>1?`\u2013U${size}`:''}\uff0c\u4e0d\u53d7\u9ede\u9078\u7684\u7a7a\u69fd\u4f4d\u7f6e\u5f71\u97ff\u3002</p>`;
+  const conflicts = external ? [] : rackCduConflicts(size);
+  const message = $("cdu-message");
+  message.textContent = conflicts.length ? `U1\u2013U${size} \u5df2\u88ab ${conflicts.map(m=>m.name).join(' / ')} \u5360\u7528\u3002\u8acb\u5148\u9a30\u51fa\u5e95\u90e8\u7a7a\u9593\uff0c\u6216\u9078\u64c7\u5916\u7f6e CDU\u3002` : '';
+  message.className = conflicts.length ? 'cdu-conflict' : '';
+  const button = document.querySelector('#rm-dialog-foot .primary');
+  if (button) button.disabled = conflicts.length>0 || rackCduState.busy;
+}
+async function rackCduSave() {
+  const current = rackCduState;
+  if (!current || current.busy) return;
+  const name = $("cdu-name").value.trim(), external = $("cdu-mount").value === 'external';
+  const size = external ? 0 : Number($("cdu-size")?.value);
+  const showError = text => {const message=$("cdu-message");if(message){message.textContent=text;message.className='cdu-conflict';}};
+  if (!name) return showError('\u8acb\u586b\u5beb\u5143\u4ef6\u540d\u7a31\u3002');
+  if (!external && (!Number.isInteger(size) || size<1 || size>RACK_U || rackCduConflicts(size).length)) return rackCduRefresh();
+  const patch = {mgx_type:'cdu',rack_mount:external?'external':'internal',rack_size:size,rack_u:size};
+  current.busy = true;
+  const button=document.querySelector('#rm-dialog-foot .primary');if(button)button.disabled=true;
+  try {
+    if (current.name) await rackAssign(current.name,patch);
+    else {
+      const ip = $("cdu-ip")?.value.trim()||'';
+      if (ip) {const ping = await api(`/api/ping-ip?ip=${encodeURIComponent(ip)}`);if(!ping.alive)throw new Error('\u7ba1\u7406 IP \u7121\u6cd5 Ping\uff0c\u8acb\u78ba\u8a8d\u9023\u7dda\u5f8c\u518d\u8a66\u3002');}
+      await api('/api/rack/passive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...patch,name,project:current.project,manage_ip:ip})});
+      await loadMachines(false);
+    }
+    rackView.project=current.project;
+    closeDialog();setView('rack');
+  } catch(error) {if(rackCduState===current)showError(error.message);}
+  finally {current.busy=false;if(button)button.disabled=false;}
+}
+
 function rackMoveDialog(name) {
   const m = machines.find(x => x.name === name);
   if (!m) return;
+  if (mgxTypeOf(m) === "cdu") return rackCduDialog(m.project, m.name);
   // quick jump：直接輸入目標 U（取代慢慢按）
   quickJumpTo = "";
   const proj = m.project;
@@ -754,6 +826,7 @@ function rackMoveJump() {
   el.value = "";
 }
 function rackMoveSetType(name, type) {
+  if (type === "cdu") { const m=machines.find(x=>x.name===name); return rackCduDialog(m.project,name); }
   const lbl = $("rm-newtype"); if (lbl) lbl.textContent = MGX_TYPES[type].label;
   rackMoveTargetType = type;
 }
@@ -769,7 +842,7 @@ function rackAddPassiveWithU(u, projOverride) {
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">元件名稱 *</label>
       <input class="input" id="rp-name" style="width:100%;padding:8px;margin-bottom:12px" placeholder="例如 SW-01 / CDU-1 / PS-3">
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">類型</label>
-      <select class="input" id="rp-type" style="width:100%;padding:8px;margin-bottom:12px">
+      <select class="input" id="rp-type" onchange="if(this.value==='cdu')rackCduDialog(_rackAddProj)" style="width:100%;padding:8px;margin-bottom:12px">
         ${Object.entries(MGX_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${esc(v.label)}</option>`).join("")}
       </select>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">占用高度（U 數）</label>
@@ -857,7 +930,7 @@ function rackAddDialog(presetU) {
   const inRack = new Set(machines.filter(x => x.project === proj && x.level === "rack" && (x.rack_u||0) > 0).map(x => x.name));
   // 需求：加入機櫃只能選「L11（rack）」系統。L10 若要變 L11，請先在 System Manager 升為 L11。
   // 需求：+ 號只能加「System Manager 同專案」的 L11 系統（不同專案的 L11 不得跨專案加入）
-  const candidates = machines.filter(x => x.project === proj && x.level === "rack" && !inRack.has(x.name));
+  const candidates = machines.filter(x => x.project === proj && x.level === "rack" && !inRack.has(x.name) && mgxTypeOf(x) !== "cdu");
   if (!candidates.length) {
     const otherProjects = machines.filter(x => x.level === "rack" && x.project !== proj);
     alert(otherProjects.length
@@ -880,7 +953,7 @@ function rackAddDialog(presetU) {
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">選擇起始 U 槽</label>
       <select class="input" id="rm-add-u" style="width:100%;padding:8px"></select>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:12px 0 6px">元件類型</label>
-      <select class="input" id="rm-add-type" style="width:100%;padding:8px">
+      <select class="input" id="rm-add-type" onchange="if(this.value==='cdu')rackCduDialog(rackView.project,$('rm-add-m').value)" style="width:100%;padding:8px">
         ${Object.entries(MGX_TYPES).map(([k, v]) => `<option value="${k}">${v.icon} ${esc(v.label)}</option>`).join("")}
       </select>
     </div>`,
@@ -941,11 +1014,11 @@ function closeDialog() { const b = $("rm-dialog"); if (b) b.style.display = "non
 
 function pageRack() {
   // 已從機櫃移除(rack_u<=0)的 L11 只留在 System Manager，不繪製在機櫃上
-  const racksAll = machines.filter(m => m.level === "rack" && (m.rack_u||0) > 0);
+  const racksAll = machines.filter(m => m.level === "rack" && ((m.rack_u||0) > 0 || rackIsExternal(m)));
   const projSet = [...new Set(racksAll.map(m => m.project).filter(Boolean))];
   // 「暫存」專案：有 L11 機台但全部未放上機櫃（rack_u=0）→ 讓它能被選到並提示放置
   const pendingByProj = {};
-  machines.forEach(m => { if (m.level === "rack" && m.project && (m.rack_u||0) <= 0) (pendingByProj[m.project] = pendingByProj[m.project]||[]).push(m); });
+  machines.forEach(m => { if (m.level === "rack" && m.project && (m.rack_u||0) <= 0 && !rackIsExternal(m)) (pendingByProj[m.project] = pendingByProj[m.project]||[]).push(m); });
   const pendingSet = Object.keys(pendingByProj);
   const selAll = [...projSet, ...pendingSet.filter(p => !projSet.includes(p))];
   const selKey = rackView.project || (selAll[0] || "");
@@ -1029,6 +1102,7 @@ function emptyRackCard() {
   return `<div class="card" style="margin-top:18px"><div class="empty">目前沒有 L11（Rack）整櫃機台。<br>請在「新增系統」把層級選成 <b>L11 · Rack Level</b>，或「➕ 加入機櫃」把既有機台放進來。</div></div>`;
 }
 function rackmapHtml(members, pinged) {
+  members = members.filter(m => !rackIsExternal(m));
   // 依「起始 U（rack_u=上方第一個 U）」放置；rack_size 代表占用幾個 U
   const rackU = {};
   members.forEach(m => {
@@ -1130,11 +1204,7 @@ function rackBlockRow(m, u, size, pinged) {
     </div>
   </div>`;
 }
-function rackEmptyClick(u) {
-  // rack 平面圖「＋」只保留「新增系統」：加入同專案既有 L11 機台（U 數固定）。
-  // 機櫃元件改從 System Manager 的 L11 分頁「＋ 新增元件」加入。
-  rackAddDialogAt(u);
-}
+function rackEmptyClick(u) { rackAddEntry(u); }
 // 新增機櫃元件：帶預設 U 槽 = 點到的空位 u
 function rackAddPassiveAt(u) {
   closeDialog();
@@ -1193,7 +1263,7 @@ function devicesHtml(members, pinged) {
       // 只有「有 OS IP」的系統才有 Terminal + 開關機（跟 System Manager 清單同一套邏輯）
       const hasOs = !!m.os_ip;
       return `<tr>
-        <td class="mono">U${m.rack_u || "—"}${(m.rack_size||1)>1?`<span class="hint"> (+${(m.rack_size||1)-1})</span>`:""}</td>
+        <td class="mono">${rackIsExternal(m)?"\u5916\u7f6e":`U${m.rack_u || "\u2014"}${(m.rack_size||1)>1?`<span class="hint"> (+${(m.rack_size||1)-1})</span>`:""}`}</td>
         <td class="mono"><a href="#" class="mach-link" onclick="event.preventDefault();openMachine('${esc(m.name)}')"><b>${esc(m.name)}</b></a></td>
         <td>${info.icon} ${esc(info.label)}</td>
         <td class="mono">${osCell}</td>
@@ -1201,7 +1271,7 @@ function devicesHtml(members, pinged) {
           <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
           ${hasOs ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
           ${hasOs ? `<button class="btn small" onclick="machControlDialog('${esc(m.name)}')" title="開關機 / Reboot / AC cycle">⏻ 開關機</button>` : ""}
-          <button class="btn small" title="從機櫃拿掉（System Manager 的 L11 不受影響）" onclick="rackUnmount('${esc(m.name)}')">刪除</button>
+          ${rackIsExternal(m) ? "" : `<button class="btn small" title="從機櫃拿掉（System Manager 的 L11 不受影響）" onclick="rackUnmount('${esc(m.name)}')">刪除</button>`}
         </td>
       </tr>`;
     }).join("") + `</tbody></table></div></div>`;
@@ -3703,6 +3773,8 @@ function deleteMachine(name) {
 }
 /* ---------- 機櫃移除（只拿下機櫃，保留 System Manager，即時顯示） ---------- */
 async function rackUnmount(name) {
+  const item=machines.find(m=>m.name===name);
+  if (item && rackIsExternal(item)) return rackCduDialog(item.project,item.name);
   if (!confirm("「" + name + "」要從機櫃拿掉嗎？\n（System Manager 的系統不會被刪除，只是取消機櫃 U 位置、仍維持 L11）")) return;
   try {
     await api("/api/machines/" + encodeURIComponent(name), {

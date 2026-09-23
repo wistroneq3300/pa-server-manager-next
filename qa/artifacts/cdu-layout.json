@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "results": [
+    "Full 48U rack supports one external CDU without a U field; duplicate add rejected and internal collision names the blocking blank",
+    "Internal CDU occupies exactly U1-U4, floating placement rejected, pipes reconnect to internal CDU",
+    "Generic external CDU creates from Rack plus in an empty project, with zero U occupancy and no model restriction",
+    "Actual pixels show moving flow, paused flow stays still, and reduced motion disables animation",
+    "External assembly front/rear fits 1600/1024/390/320px canvases with no document overflow",
+    "No CDU preserves capped rear manifolds with no connection hoses or moving flow",
+    "1/4/8/16/24/48U devices have finite bounded geometry at both rack edges; >48U and underflow are rejected"
+  ],
+  "errors": [],
+  "external": []
+}

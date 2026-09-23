@@ -33,9 +33,9 @@
     ...Array.from({length:9},(_,i)=>['NVLINK-'+String(i+1).padStart(2,'0'),'nvlink',31-i,1]),
     ...Array.from({length:9},(_,i)=>['SERVER-'+String(i+1).padStart(2,'0'),'server',22-i,1]),
     ...Array.from({length:4},(_,i)=>['PS-'+String(i+5).padStart(2,'0'),'powershelf',13-i,1]),
-    ['BLANK-RESERVE-05U','blanking',9,5],['CDU-01','cdu',4,4]
+    ['BLANK-RESERVE-05U','blanking',9,5],['BLANK-BOTTOM-04U','blanking',4,4],['CDU-01','cdu',0,0]
   ];
-  rack.forEach(([name,kind,u,size],i)=>machines.push({name,project:'proj_k',level:'rack',mgx_type:kind,rack_u:u,rack_size:size,order:i,os_ip:kind==='blanking'?'':'192.0.2.'+(100+i),os_user:'demo',os_pass:'preview-only',os_port:22,bmc_ip:kind==='server'?'198.51.100.'+(100+i):'',bmc_user:'demo',bmc_pass:'preview-only',os_alive:kind==='blanking'?null:i!==6,bmc_alive:kind==='server',power:kind==='blanking'?null:'ON',passive:kind==='blanking'}));
+  rack.forEach(([name,kind,u,size],i)=>machines.push({name,project:'proj_k',level:'rack',mgx_type:kind,rack_mount:kind==='cdu'?'external':'internal',rack_u:u,rack_size:size,order:i,os_ip:kind==='blanking'?'':'192.0.2.'+(100+i),os_user:'demo',os_pass:'preview-only',os_port:22,bmc_ip:kind==='server'?'198.51.100.'+(100+i):'',bmc_user:'demo',bmc_pass:'preview-only',os_alive:kind==='blanking'?null:i!==6,bmc_alive:kind==='server',power:kind==='blanking'?null:'ON',passive:kind==='blanking'}));
   let links=machines.filter(m=>m.project==='proj_k'&&m.mgx_type==='server').slice(0,3).map((m,i)=>({a:m.name,b:'SW-01',type:'eth',a_port:'eth0',b_port:'1/'+(i+1)}));
   if(scenario==='scale'){
     projects.length=0;machines.length=0;links=[];
@@ -47,7 +47,7 @@
         machines.push({name:project+'-SYS-'+String(i).padStart(2,'0'),project,level:'system',mgx_type:'server',os_ip:'192.0.2.'+(20+id),bmc_ip:'198.51.100.'+(20+id),os_user:'demo',os_pass:'preview-only',bmc_user:'demo',bmc_pass:'preview-only',os_port:22,bmc_port:22,os_alive:id%13!==0,bmc_alive:true,power:id%13===0?'OFF':'ON',order:i-1,rack_u:0,rack_size:1,preview_gpu:id%2===0});
       }
     }
-    const composition=[['SW','switch',48,1],['NET','network',47,1],['SYS-A','server',46,2],['SYS-B','server',44,4],['SYS-C','server',40,4],['STORAGE','storage',36,4],['PS','powershelf',32,3],['PDU','pdu',29,2],['CDU','cdu',27,6],['BLANK','blanking',21,2],['SYS-D','server',19,2]];
+    const composition=[['SW','switch',48,1],['NET','network',47,1],['SYS-A','server',46,2],['SYS-B','server',44,4],['SYS-C','server',40,4],['STORAGE','storage',36,4],['PS','powershelf',32,3],['PDU','pdu',29,2],['CDU','cdu',6,6],['BLANK','blanking',21,2],['SYS-D','server',19,2]];
     for(let p=1;p<=3;p++){
       const project='L11-Rack-'+String(p).padStart(2,'0');
       projects.push({name:project,desc:'Scale fixture / compute, network, storage, power and cooling',level:'rack',order:9+p});
@@ -81,11 +81,25 @@
     return {sensors:{total:entries.length,ok:entries.length,critical:0,warning:0,ns:0,entries}};
   }
   function placementError(m){
-    if(m.level!=='rack'||!m.rack_u)return '';
-    const top=Number(m.rack_u),height=Number(m.rack_size)||1,bottom=top-height+1;
-    if(!Number.isInteger(top)||!Number.isInteger(height)||top>48||bottom<1||height<1)return '元件位置必須在 U1–U48 範圍內。';
-    return machines.some(x=>x.name!==m.name&&x.level==='rack'&&x.project===m.project&&x.rack_u>0&&bottom<=x.rack_u&&top>=x.rack_u-(x.rack_size||1)+1)?'目標 U 槽已被其他元件占用。':'';
+    const mount=m.rack_mount||'internal',cdu=m.mgx_type==='cdu';
+    if(!['internal','external'].includes(mount))return {detail:'rack_mount must be internal or external.',status:400};
+    if(mount==='external'&&(m.level!=='rack'||!cdu))return {detail:'\u53ea\u6709 CDU \u53ef\u4ee5\u653e\u5728\u6ac3\u5916\u3002',status:400};
+    if(m.level!=='rack')return '';
+    if(m.project&&!projects.some(p=>p.name===m.project))return {detail:'\u8acb\u9078\u64c7\u6709\u6548\u7684\u5c08\u6848\u3002',status:400};
+    if(m.rack_side&&!['front','rear'].includes(m.rack_side))return {detail:'rack_side must be front or rear.',status:400};
+    if(cdu&&m.project&&machines.some(x=>x.name!==m.name&&x.level==='rack'&&x.project===m.project&&x.mgx_type==='cdu'))return {detail:'\u6b64 Rack \u5df2\u6709 CDU\uff0c\u8acb\u7de8\u8f2f\u73fe\u6709 CDU \u7684\u5b89\u88dd\u65b9\u5f0f\u3002',status:409};
+    if(mount==='external'){
+      if(!m.project)return {detail:'\u5916\u7f6e CDU \u5fc5\u9808\u9078\u64c7\u5c08\u6848\u3002',status:400};
+      m.rack_u=0;m.rack_size=0;return '';
+    }
+    const top=m.rack_u??0,height=m.rack_size??1,bottom=top-height+1;
+    if(!Number.isInteger(top)||!Number.isInteger(height)||top<0||top>48||height<1||height>48)return {detail:'\u5143\u4ef6\u4f4d\u7f6e\u5fc5\u9808\u5728 U1\u2013U48 \u7bc4\u570d\u5167\u3002',status:400};
+    if(!top)return '';
+    if(!m.project||bottom<1)return {detail:'\u5143\u4ef6\u9700\u8981\u5c08\u6848\u8207\u5b8c\u6574\u7684 U \u7bc4\u570d\u3002',status:400};
+    if(cdu&&bottom!==1)return {detail:'\u6ac3\u5167 CDU \u5fc5\u9808\u5f9e U1 \u5411\u4e0a\u4f54\u7528\u3002',status:400};
+    return machines.some(x=>x.name!==m.name&&x.level==='rack'&&x.project===m.project&&x.rack_mount!=='external'&&x.rack_u>0&&bottom<=x.rack_u&&top>=x.rack_u-(x.rack_size||1)+1)?{detail:'\u76ee\u6a19 U \u69fd\u5df2\u88ab\u5176\u4ed6\u5143\u4ef6\u5360\u7528\u3002',status:409}:null;
   }
+
   const defs={server:{cpu_used:{label:'CPU',unit:'%',color:'#007b9e'},mem_used_pct:{label:'Memory',unit:'%',color:'#889f30'},gpu_power:{label:'GPU power',unit:'W',color:'#4893ac'}},switch:{port_rx:{label:'Port RX',unit:'MB/s'},port_tx:{label:'Port TX',unit:'MB/s'},temp:{label:'Temperature',unit:'°C'}},powershelf:{power_w:{label:'Power',unit:'W'},voltage:{label:'Voltage',unit:'V'},current_a:{label:'Current',unit:'A'}},pdu:{power_w:{label:'Power',unit:'W'},current_a:{label:'Current',unit:'A'}},cdu:{flow_lpm:{label:'Flow',unit:'L/min'},inlet_temp:{label:'Inlet',unit:'°C'},outlet_temp:{label:'Outlet',unit:'°C'},pressure:{label:'Pressure',unit:'bar'}}};
   window.fetch=async (input,options={})=>{
     const url=new URL(typeof input==='string'?input:input.url,location.href),path=decodeURIComponent(url.pathname),method=(options.method||'GET').toUpperCase();
@@ -147,13 +161,13 @@
       if(!projects.some(p=>p.name===body.project))return fail('請選擇有效的專案。');
       const passive=path==='/api/rack/passive',name=passive?String(body.name||'').trim():body.name||'demo-system-'+newMachineSequence++;
       if(!name)return fail('請填元件名稱。');if(machines.some(m=>m.name===name))return fail('系統名稱已存在。',409);
-      const m={...body,name,mgx_type:body.mgx_type||'server',level:passive?'rack':body.level||'system',passive,os_ip:passive?body.manage_ip||'':body.os_ip,os_alive:passive?(body.manage_ip?true:null):true,bmc_alive:Boolean(body.bmc_ip),power:passive?null:'ON',order:machines.filter(x=>x.project===body.project).length,rack_u:passive?Number(body.rack_u):0,rack_size:Number(body.rack_size)||1};
-      const error=placementError(m);if(error)return fail(error,409);
+      const m={...body,name,mgx_type:body.mgx_type||'server',level:passive?'rack':body.level||'system',passive,os_ip:passive?(body.mgx_type==='cdu'?'':body.manage_ip||''):body.os_ip,bmc_ip:passive&&body.mgx_type==='cdu'?body.manage_ip||'':body.bmc_ip||'',os_alive:passive?(body.mgx_type==='cdu'?null:body.manage_ip?true:null):true,bmc_alive:Boolean(passive&&body.mgx_type==='cdu'?body.manage_ip:body.bmc_ip),power:passive?null:'ON',order:machines.filter(x=>x.project===body.project).length,rack_mount:body.rack_mount||'internal',rack_u:passive?(body.rack_u??1):0,rack_size:body.rack_size??1};
+      const error=placementError(m);if(error)return fail(error.detail,error.status);
       machines.push(m);return response({ok:true,machine:m,name:m.name,machines:machineList()});
     }
     if(path.startsWith('/api/machines/')){
       const m=machines.find(m=>m.name===path.split('/')[3]);if(!m)return fail('找不到這台系統。',404);
-      if(method==='PATCH'){const error=placementError({...m,...body});if(error)return fail(error,409);Object.assign(m,body);if(body.level==='system')m.rack_u=0;}
+      if(method==='PATCH'){const candidate={...m,...body};const error=placementError(candidate);if(error)return fail(error.detail,error.status);Object.assign(m,candidate);if(body.level==='system')m.rack_u=0;}
       if(method==='DELETE'){machines.splice(machines.indexOf(m),1);links=links.filter(l=>l.a!==m.name&&l.b!==m.name);}
       if(body.new_os_ip)m.os_ip=body.new_os_ip;if(body.new_bmc_ip)m.bmc_ip=body.new_bmc_ip;
       return response({ok:true,machine:m,machines:machineList()});

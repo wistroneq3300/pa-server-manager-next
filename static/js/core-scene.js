@@ -78,7 +78,7 @@
   function transform(m,p){return [m[0]*p[0]+m[4]*p[1]+m[8]*p[2]+m[12],m[1]*p[0]+m[5]*p[1]+m[9]*p[2]+m[13],m[2]*p[0]+m[6]*p[1]+m[10]*p[2]+m[14]];}
   function addAlpha(data){
     const out=new Float32Array(data.length/11*12);
-    for(let s=0,d=0;s<data.length;s+=11,d+=12){for(let i=0;i<9;i++)out[d+i]=data[s+i];out[d+9]=1;out[d+10]=data[s+9];out[d+11]=data[s+10];}
+    for(let s=0,d=0;s<data.length;s+=11,d+=12){for(let i=0;i<9;i++)out[d+i]=data[s+i];out[d+9]=data[s+9]===-3?.20:1;out[d+10]=data[s+9]===-3?.65:data[s+9];out[d+11]=data[s+10];}
     return out;
   }
   function auxiliaryMesh(){
@@ -142,7 +142,7 @@
       const tray=shared.equipment['server:1'],trayMin=tray.min.map((v,i)=>v+[0,primaryPose.y,primaryPose.z][i]),trayMax=tray.max.map((v,i)=>v+[0,primaryPose.y,primaryPose.z][i]);
       // An upper-rack close-up makes the empty slot and linear insertion legible.
       // After seating, pull back to include every U, the frame and its feet.
-      const reveal=ease(.075,.27,progress),rackMin=[-2.30,mix(2.22,-7.82,pullback),-3.48],rackMax=[2.30,7.83,3.39];
+      const reveal=ease(.075,.27,progress),rackMin=[-2.30,mix(2.22,-7.85,pullback),-4.62],rackMax=[2.30,7.83,3.39];
       const bounds={min:trayMin.map((v,i)=>mix(v,Math.min(v,rackMin[i]),reveal)),max:trayMax.map((v,i)=>mix(v,Math.max(v,rackMax[i]),reveal))};
       let required=0;
       for(const x of [bounds.min[0],bounds.max[0]])for(const y of [bounds.min[1],bounds.max[1]])for(const z of [bounds.min[2],bounds.max[2]]){

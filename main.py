@@ -153,22 +153,44 @@ def _rack_integer(value, field, low, high):
 
 
 def _validate_rack(candidate, name):
+    mount = candidate.get("rack_mount", "internal")
+    if mount not in ("internal", "external"):
+        raise HTTPException(400, "rack_mount must be internal or external")
+    is_cdu = telemetry_core.kind_of(candidate, name) == "cdu"
+    if mount == "external" and (candidate.get("level") != "rack" or not is_cdu):
+        raise HTTPException(400, "Only rack CDU equipment supports external installation")
     if candidate.get("level") != "rack":
         return
-    u = _rack_integer(candidate.get("rack_u", 0), "rack_u", 0, 48)
-    size = _rack_integer(candidate.get("rack_size", 1), "rack_size", 1, 48)
     if candidate.get("rack_side", "front") not in ("front", "rear"):
         raise HTTPException(400, "rack_side must be front or rear")
     project = candidate.get("project") or ""
     if project and project not in projects:
         raise HTTPException(400, "Project does not exist")
+    if is_cdu and project:
+        for other_name, other in machines.items():
+            if (other_name != name and other.get("level") == "rack"
+                    and other.get("project") == project
+                    and telemetry_core.kind_of(other, other_name) == "cdu"):
+                raise HTTPException(409, f"This rack already has a CDU: {other_name}; edit its installation instead")
+    if mount == "external":
+        if not project:
+            raise HTTPException(400, "An external CDU requires a project")
+        # External equipment belongs to the rack but never occupies a U range.
+        candidate["rack_u"] = 0
+        candidate["rack_size"] = 0
+        return
+    u = _rack_integer(candidate.get("rack_u", 0), "rack_u", 0, 48)
+    size = _rack_integer(candidate.get("rack_size", 1), "rack_size", 1, 48)
     if not u:
         return
     if not project or u - size + 1 < 1:
         raise HTTPException(400, "Placed components require a project and a complete U1..U48 range")
+    if is_cdu and u != size:
+        raise HTTPException(400, "An internal CDU must occupy the bottom U1..U{size}".format(size=size))
     # No depth metadata exists: both faces share the same physical U occupancy.
     for other_name, other in machines.items():
-        if other_name == name or other.get("level") != "rack" or other.get("project") != project:
+        if (other_name == name or other.get("level") != "rack" or other.get("project") != project
+                or other.get("rack_mount", "internal") == "external"):
             continue
         top = other.get("rack_u", 0)
         height = other.get("rack_size", 1)
@@ -191,10 +213,11 @@ class AddRackPassive(BaseModel):
     name: str = ""
     mgx_type: str = "switch"
     project: str = ""
-    rack_u: int = 1
+    rack_u: int = Field(default=1, strict=True, ge=0, le=48)
+    rack_mount: str = "internal"
     rack_side: str = "front"
     manage_ip: str = ""
-    rack_size: int = 1
+    rack_size: int = Field(default=1, strict=True, ge=0, le=48)
 
 
 class OsEntry(BaseModel):
@@ -667,6 +690,7 @@ def add_rack_passive(body: AddRackPassive):
         "project": body.project or "",
         "level": "rack",
         "mgx_type": body.mgx_type,
+        "rack_mount": getattr(body, "rack_mount", "internal"),
         "rack_u": body.rack_u,   # 0 = 未放上機櫃（不佔 U、不顯示在 rack），由 Rack Manager 的＋手動放置
         "rack_side": body.rack_side,
         "rack_size": body.rack_size,
@@ -703,7 +727,9 @@ def edit_machine(name: str, body: dict):
     if "mgx_type" in body:
         t = str(body["mgx_type"])
         m["mgx_type"] = t if t in ("server", "switch", "nvlink", "pdu", "powershelf", "cdu", "storage", "network", "blanking") else "server"
-    for field, low in (("rack_u", 0), ("rack_size", 1)):
+    if "rack_mount" in body:
+        m["rack_mount"] = body["rack_mount"]
+    for field, low in (("rack_u", 0), ("rack_size", 0 if m.get("rack_mount") == "external" else 1)):
         if field in body:
             m[field] = _rack_integer(body[field], field, low, 48)
     if "rack_side" in body:
@@ -3153,7 +3179,8 @@ def rack_telemetry(project: str, minutes: int = 60):
     members = [m for m in machines.values()
                if (m.get("project") or "").casefold() == want_proj
                and m.get("level") == "rack"
-               and (m.get("rack_u") or 0) > 0]
+               and ((m.get("rack_u") or 0) > 0
+                    or (m.get("rack_mount") == "external" and telemetry_core.kind_of(m) == "cdu"))]
     # 排除 blanking 擋板（passive 且無監控指標），不列入監控類型
     components = sorted([
         {"name": m.get("name", ""), "kind": telemetry_core.kind_of(m)}
