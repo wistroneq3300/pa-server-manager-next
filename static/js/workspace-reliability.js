@@ -38,6 +38,8 @@
   if (typeof RENDERERS === 'undefined') return;
   helpers.rackProjects = () => projects.filter(project => projectVisible(project,projectMembers(project.name),'rack'));
   const membersFor = (project,level) => projectMembers(project.name).filter(machine => inLevelFilter(machine,level));
+  // Keep empty-project creation on the existing, supported add-system workflow.
+  window.openMachineModal = window.openMachineModal || ((_unused, level) => openAdd(level));
   const visibleProjects = level => projects.filter(project => projectVisible(project,projectMembers(project.name),level));
   const emptyProjects = level => visibleProjects(level).filter(project => !projectMembers(project.name).length);
   const argument = value => esc(JSON.stringify(value));

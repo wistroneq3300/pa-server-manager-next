@@ -11,7 +11,17 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         if urlsplit(self.path).path in ('/', '/index.html'):
-            self.path = '/static/index.html'
+            # Fixtures are injected only by this loopback-only preview server.
+            # The production index remains connected to the actual backend.
+            source = (ROOT / 'static/index.html').read_text(encoding='utf-8')
+            source = source.replace('</head>', '<script src="/static/js/preview-fixtures.js"></script></head>')
+            body = source.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path.startswith(('/api/', '/ws/')):
             self.send_error(404, 'Design preview has no live backend')
             return

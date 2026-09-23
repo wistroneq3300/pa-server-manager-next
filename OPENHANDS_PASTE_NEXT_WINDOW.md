@@ -1,3 +1,5 @@
+*** NEXT UI UPDATE 2026-09-23: Read SESSION_HANDOFF_UI_RACK_20260923.md for astra-cinematic-ui. Preserve upstream main functionality; production entry is NOT a fixture preview. Original repository is out of scope. ***
+
 *** READ FIRST: SESSION_HANDOFF_LAST_REVIEW_SKILL_20260918.md (last review state + pa-library-review skill) ***
 
 *** ROUND-3 (2026-09-18): 全庫複核 LOCKED / 100% DONE — READ THIS FIRST ***

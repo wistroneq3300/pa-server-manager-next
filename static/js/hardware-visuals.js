@@ -34,7 +34,7 @@
   const circle = (x,y,r,fill,extra='') => `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" ${extra}/>`;
   function front(type, id) {
     const h = TYPES[type].height;
-    const metal = `url(#${id}-front)`, dark=`url(#${id}-dark)`, vent=`url(#${id}-vent)`;
+    const metal = `url(#${id}-${['server','switch'].includes(type)?'champagne':'front'})`, dark=`url(#${id}-dark)`, vent=`url(#${id}-vent)`;
     let content = rect(0,0,440,h,type==='blanking'?dark:metal,'#8d9ca3',2);
     content += `<path d="M3 2H437" stroke="#f0f2eb" opacity=".65"/><path d="M2 ${h-2}H438" stroke="#050d12" opacity=".75"/>`;
     for (const x of [6,434]) for (const y of [7,h-7]) content += circle(x,y,1.8,'#172831') + `<path d="M${x-1} ${y}h2" stroke="#d8e0e1" stroke-width=".5"/>`;
@@ -123,7 +123,8 @@
       drawing+=`<g transform="matrix(1 .07 0 1 60 ${y})">${face}</g>`;
       if(type==='cdu') drawing+=`<g fill="url(#${id}-edge)" stroke="#456577" stroke-width="1"><ellipse cx="${right+dx-9}" cy="${y-d+dy+45}" rx="7" ry="11"/><ellipse cx="${right+dx-15}" cy="${y-d+dy+73}" rx="7" ry="11"/></g><path d="M${right+dx-9} ${y-d+dy+39}v12M${right+dx-15} ${y-d+dy+67}v12" stroke="#167d9b" stroke-width="3"/>`;
     }
-    return `<svg class="pa-hardware-visual ${cls}" data-hardware-type="${type}" data-hardware-view="${view}" viewBox="${view==='front'?`0 0 468 ${h+16}`:'0 0 630 360'}" role="img" aria-label="${safe(label(type)+'：'+caption(type))}" xmlns="http://www.w3.org/2000/svg"><title>${safe(label(type))}</title><desc>${safe(caption(type))}。面板配置為外觀示意，不代表即時狀態、連接埠數量或硬體規格。</desc>${definitions}${drawing}</svg>`;
+    const champagne=`<defs><linearGradient id="${id}-champagne" x2=".15" y2="1"><stop stop-color="#ded6bb"/><stop offset=".12" stop-color="#b6a475"/><stop offset=".50" stop-color="#8e7a4e"/><stop offset=".80" stop-color="#c7b786"/><stop offset="1" stop-color="#695b3b"/></linearGradient></defs>`;
+    return `<svg class="pa-hardware-visual ${cls}" data-hardware-type="${type}" data-hardware-view="${view}" viewBox="${view==='front'?`0 0 468 ${h+16}`:'0 0 630 360'}" role="img" aria-label="${safe(label(type)+'：'+caption(type))}" xmlns="http://www.w3.org/2000/svg"><title>${safe(label(type))}</title><desc>${safe(caption(type))}。面板配置為外觀示意，不代表即時狀態、連接埠數量或硬體規格。</desc>${definitions}${champagne}${drawing}</svg>`;
   }
   window.PAHardwareVisuals=Object.freeze({typeOf,label,caption,render,types:Object.freeze(Object.keys(TYPES))});
 })();

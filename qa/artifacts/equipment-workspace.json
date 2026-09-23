@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "results": [
+    "3D geometry: 13 components / 44U, camera, selection, type identity, 48U edit, 3 widths / 2 themes",
+    {
+      "systems": 50,
+      "racks": 3
+    },
+    "50 visible systems, collapsed-project search, empty typed L11 rack",
+    "Hardware groups and separated Sensor AI"
+  ],
+  "errors": []
+}

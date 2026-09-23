@@ -14,7 +14,7 @@
 - PASS — 12 Rack component move, unmount, remount and add passive
 - PASS — 13 Rack list, telemetry kinds and time range
 - PASS — 14 Terminal preview modes and close
-- PASS — 15 KVM and Broadcast previews
+- PASS — 15 Live KVM shell with isolated RFB stub and Broadcast preview
 - PASS — 16 Fixture mutations respect API contracts
 - PASS — 17 Empty, loading and recoverable error states
 - PASS — 18 Deep links and reload

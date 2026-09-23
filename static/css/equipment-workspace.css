@@ -1,0 +1,72 @@
+/* Engineering surfaces; remote framebuffer pixels are never recolored. */
+:root{--ew-surface:#12242e;--ew-raised:#1b303b;--ew-line:#354e5b;--ew-text:#e2edf1;--ew-muted:#a2b8c3;--ew-blue:#82c9e2;--ew-green:#c0df8c}
+:root[data-theme="light"]{--ew-surface:#f5f7f6;--ew-raised:#e5ecee;--ew-line:#b8c9d0;--ew-text:#183744;--ew-muted:#4c6672;--ew-blue:#006c93;--ew-green:#365c16}
+.pd-hardware-body .os-scroll{max-height:none;overflow:visible;padding:0}
+.pd-hardware-body .hw-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.pd-hardware-body .ew-inventory-section{position:relative;display:grid;grid-template-columns:112px minmax(0,1fr);background:var(--ew-surface);border:1px solid var(--ew-line);border-radius:14px;overflow:hidden;box-shadow:inset 0 1px 0 #ffffff12,0 8px 24px #00000008}
+.pd-hardware-body .hw-label{padding:25px 18px;display:flex;flex-direction:column;gap:8px;background:linear-gradient(135deg,var(--ew-raised),transparent);color:var(--ew-blue);font-size:13px;font-weight:650;letter-spacing:.08em;border-right:1px solid var(--ew-line)}
+.pd-hardware-body .hw-body{padding:22px;min-width:0;color:var(--ew-text)}
+.pd-hardware-body .hw-line{padding:5px 0;line-height:1.8}
+.pd-hardware-body .cpu-model{font-size:18px;letter-spacing:-.02em;color:var(--ew-text)}
+.pd-hardware-body .cpu-spec,.pd-hardware-body .nic-bus{color:var(--ew-muted);font-size:12px;line-height:1.8}
+.pd-hardware-body .ssd-grid,.pd-hardware-body .gpu-grid,.pd-hardware-body .nic-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.pd-hardware-body .ssd-cell,.pd-hardware-body .gpu-cell,.pd-hardware-body .nic-cell{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:16px;background:var(--ew-raised);border:1px solid var(--ew-line);border-radius:9px;min-width:0;overflow-wrap:anywhere;color:var(--ew-text)}
+.pd-hardware-body .ssd-name,.pd-hardware-body .gpu-mem{color:var(--ew-blue);font:12px ui-monospace,monospace}
+.pd-hardware-body .ssd-model,.pd-hardware-body .gpu-name,.pd-hardware-body .nic-model{color:var(--ew-text);font-size:13px;line-height:1.6}
+.pd-hardware-body .ssd-size,.pd-hardware-body .gpu-util{color:var(--ew-muted)}
+.pd-hardware-body .nic-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pd-workspace .nic-type,.pd-workspace .nic-type.ib,.pd-workspace .nic-type.eth{color:var(--ew-blue);background:var(--ew-surface);border:1px solid var(--ew-line);padding:4px 8px;border-radius:5px;font-size:11px;line-height:1.4}
+.pd-workspace .nic-type.ib{color:var(--ew-green)}
+.pd-hardware-body .hw-raw{margin-top:22px;border-top:1px solid var(--ew-line);padding-top:16px;color:var(--ew-muted)}
+.pd-hardware-body .hw-raw pre{max-height:360px;overflow:auto;white-space:pre-wrap}
+/* Higher specificity retires legacy presentation !important rules in this panel only. */
+#pd-panel-hardware .hw-grid{display:grid!important;grid-template-columns:1fr!important;gap:16px!important}
+#pd-panel-hardware .ew-inventory-section{display:grid!important;grid-template-columns:105px minmax(0,1fr);padding:0!important;background:var(--ew-surface)!important;border:1px solid var(--ew-line)!important;border-radius:12px!important;color:var(--ew-text)!important}
+#pd-panel-hardware .hw-label{justify-content:flex-start;align-items:flex-start;text-align:left;margin:0!important;font-size:12px!important;color:var(--ew-blue)!important;padding:22px 16px}
+#pd-panel-hardware .hw-body{padding:20px}
+#pd-panel-hardware .cpu-model b{font-size:17px;color:var(--ew-text)!important}
+#pd-panel-hardware :is(.hw-line,.cpu-spec,.nic-bus,.ssd-size,.gpu-mem,.gpu-util){font-size:12px!important;color:var(--ew-muted)!important}
+#pd-panel-hardware :is(.ssd-cell,.gpu-cell,.nic-cell){padding:13px!important;background:var(--ew-raised)!important;border-color:var(--ew-line)!important}
+#pd-panel-hardware :is(.ssd-model,.ssd-name,.gpu-name,.nic-model){font-size:12px!important;color:var(--ew-text)!important}
+#pd-panel-hardware .nic-type{color:var(--ew-blue)!important;background:var(--ew-surface)!important;border-color:var(--ew-line)!important;font-size:11px!important}
+#pd-panel-hardware .nic-type.ib{color:var(--ew-green)!important}
+.rack-hero .rack-hero-title{color:var(--ew-text)!important;background:none!important;-webkit-text-fill-color:var(--ew-text)!important}
+.pd-hardware-stage .pa-hardware-visual{width:100%;height:100%;max-height:310px;object-fit:contain}
+.pd-inventory-summary:empty{display:none}
+.ew-analysis{margin:24px 0 30px;padding:20px;border:1px solid var(--ew-line);border-left:3px solid var(--ew-blue);border-radius:12px;background:var(--ew-raised)}
+.ew-analysis header>span{font-size:10px;letter-spacing:.16em;color:var(--ew-muted)}
+.ew-analysis h3{font-size:17px;margin:6px 0 16px;color:var(--ew-text)}
+.ew-analysis #sensor-ai{margin:0;padding:0;border:0;background:none;line-height:1.9;color:var(--ew-text)}
+.ew-analysis #sensor-ai .hint{display:block;margin-top:14px;padding-top:12px;border-top:1px solid var(--ew-line);color:var(--ew-muted)}
+.ew-sdr-title{display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--ew-text);margin:0 0 14px}.ew-sdr-title small{font-size:9px;letter-spacing:.13em;color:var(--ew-muted)}
+.pd-sensor-card .sdr-scroll+.hint{display:block;margin:12px 0;color:var(--ew-muted)}
+#kvm-overlay{background:var(--ew-surface)!important;color:var(--ew-text)!important;border:1px solid var(--ew-line);box-shadow:0 28px 90px #0006;font-family:inherit!important}
+#kvm-head{background:var(--ew-raised)!important;border-color:var(--ew-line)!important;padding:16px!important;gap:12px!important}
+#kvm-head>span:not(.spacer),#kvm-head label,#kvm-proj,#kvm-status,.kvm-bmc{color:var(--ew-muted)!important}
+#kvm-status{background:var(--ew-surface)!important;border-color:var(--ew-line)!important;padding:10px 18px!important}
+#kvm-master,#kvm-overlay button{background:var(--ew-surface)!important;color:var(--ew-text)!important;border:1px solid var(--ew-line)!important;border-radius:7px!important;padding:7px 10px!important}
+#kvm-overlay button:hover{background:var(--ew-raised)!important;border-color:var(--ew-blue)!important}
+#kvm-overlay :focus-visible,.ew-rack-deck :focus-visible{outline:2px solid var(--ew-blue);outline-offset:3px}
+#kvm-grid{gap:18px!important;padding:18px!important;grid-template-columns:repeat(auto-fit,minmax(min(460px,100%),1fr))!important}
+#kvm-grid .kvm-box{background:var(--ew-surface)!important;border-color:var(--ew-line)!important;border-radius:12px!important;box-shadow:0 8px 24px #0002}
+#kvm-grid .kvm-box>div:first-child{background:var(--ew-raised)!important;border-color:var(--ew-line)!important;color:var(--ew-text);padding:12px!important;flex-wrap:wrap}
+#kvm-grid .kvm-role{background:var(--ew-surface)!important;color:var(--ew-blue)!important;border-color:var(--ew-line)!important}
+#kvm-grid .kvm-box>div:first-child b{color:var(--ew-text)!important}
+#kvm-grid .oc-reason{color:var(--ew-muted)!important}
+#kvm-banner{background:var(--ew-raised)!important;color:var(--ew-text)!important;border-bottom:1px solid var(--ew-line)}
+.ew-view-switch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0}.ew-view-switch .rack-subtabs{margin-left:auto}
+.rack-hero{flex-wrap:wrap!important;gap:12px!important;align-items:center!important;padding:24px!important}.rack-hero-left{flex:1 1 55%;min-width:260px}.rack-hero-title{font-size:26px!important}.rack-hero-sub,.rack-hero-desc{max-width:650px;line-height:1.65!important}.rack-hero>.spacer{display:none}.rack-hero .rack-sel{flex:0 1 330px;display:flex;align-items:center;gap:12px;white-space:nowrap}.rack-hero .rack-sel select{min-width:180px}.rack-hero>.btn{flex:0 0 auto}.rack-hero>.rack-sel+.btn{margin-left:0}.rack-status-legend{flex-wrap:wrap;line-height:1.8}
+.ew-rack-deck{display:grid;grid-template-columns:minmax(0,1fr) 330px;overflow:hidden;border:1px solid var(--ew-line);border-radius:18px;background:var(--ew-surface)}
+.ew-rack-stage{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 44%,#00739318,transparent 64%)}
+.ew-rack-stage>header{display:flex;justify-content:space-between;align-items:center;padding:24px 28px;color:var(--ew-muted)}
+.ew-rack-stage h2{font-size:24px;color:var(--ew-text);margin:8px 0 0}
+#ew-rack-canvas{display:block;width:100%;height:590px;cursor:grab;outline-offset:-3px}#ew-rack-canvas:active{cursor:grabbing}
+.ew-rack-camera{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:10px 20px}.ew-orbit-hint{font-size:11px;color:var(--ew-muted);text-align:center;padding:0 20px 18px}
+.ew-rack-aside{padding:25px;border-left:1px solid var(--ew-line);background:linear-gradient(135deg,var(--ew-raised),var(--ew-surface));min-width:0}
+.ew-rack-aside>label{display:block;font-size:10px;letter-spacing:.14em;color:var(--ew-muted);margin-bottom:12px}.ew-rack-aside>select{width:100%;padding:10px;background:var(--ew-surface);color:var(--ew-text);border:1px solid var(--ew-line);border-radius:8px;margin-bottom:28px}
+#ew-rack-inspector h2{font-size:22px;overflow-wrap:anywhere;color:var(--ew-text)}#ew-rack-inspector svg{width:100%;height:180px}.ew-illustration-note{font-size:10px;line-height:1.7;color:var(--ew-muted)}
+#ew-rack-inspector dl>div{padding:16px 0;border-bottom:1px solid var(--ew-line)}#ew-rack-inspector dt{font-size:9px;letter-spacing:.14em;color:var(--ew-muted)}#ew-rack-inspector dd{margin:8px 0 0;font:13px ui-monospace,monospace;color:var(--ew-text);overflow-wrap:anywhere}.ew-inspector-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}.ew-inspector-empty{color:var(--ew-muted);line-height:1.8}
+.ew-rack-support{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.7fr);gap:22px;margin-top:22px}.ew-placement-warning,.ew-gl-fallback{padding:20px;border:1px solid var(--ew-line);border-radius:12px;margin:20px;color:var(--ew-text)}
+@media(max-width:1200px){.ew-rack-deck{grid-template-columns:minmax(0,1fr) 290px}.pd-hardware-body .ssd-grid,.pd-hardware-body .gpu-grid,.pd-hardware-body .nic-list{grid-template-columns:1fr}}
+@media(max-width:900px){.ew-rack-deck,.ew-rack-support{grid-template-columns:1fr}.ew-rack-aside{border-left:0;border-top:1px solid var(--ew-line)}.pd-hardware-body .ew-inventory-section{grid-template-columns:1fr}.pd-hardware-body .hw-label{border-right:0;border-bottom:1px solid var(--ew-line)}}
+@media(prefers-reduced-motion:reduce){.ew-rack-deck *,.ew-inventory-section *{animation:none!important;transition:none!important}}

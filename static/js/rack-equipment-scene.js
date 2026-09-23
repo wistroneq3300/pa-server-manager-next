@@ -8,7 +8,7 @@
   'use strict';
   const U=.30, HALF=48*U/2, FRONT=3.05, TAU=Math.PI*2;
   const TYPES=new Set(['server','switch','powershelf','pdu','cdu','storage','network','blanking']);
-  const C={silver:[.49,.54,.59],edge:[.73,.77,.79],steel:[.25,.31,.36],dark:[.045,.066,.082],black:[.013,.021,.029],blue:[.01,.36,.48],green:[.42,.66,.19],gold:[.52,.44,.32],copper:[.45,.28,.17],amber:[.84,.48,.16],unknown:[.27,.34,.39]};
+  const C={silver:[.49,.54,.59],edge:[.79,.78,.71],steel:[.25,.31,.36],dark:[.045,.066,.082],black:[.013,.021,.029],blue:[.01,.36,.48],green:[.42,.66,.19],gold:[.69,.59,.39],copper:[.45,.28,.17],amber:[.84,.48,.16],unknown:[.27,.34,.39]};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const identity=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
   function multiply(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o;}
@@ -66,7 +66,7 @@
     for(const side of [-1,1]){
       for(const end of [-1,1])V(side*2.17,0,end*3.15,.21,15.00,.21,C.dark,.035);
       for(const y of [-7.45,7.45])V(side*2.17,y,0,.21,.21,6.48,C.steel,.028);
-      B(side*2.085,0,3.14,.075,14.5,.08,C.silver);B(side*2.085,0,-3.11,.075,14.5,.08,C.steel);
+      B(side*2.085,0,3.14,.075,14.5,.08,C.gold);B(side*2.085,0,-3.11,.075,14.5,.08,C.steel);
       for(let u=1;u<=48;u++){const y=(u-.5)*U-HALF;B(side*2.087,y,3.191,.038,.072,.012,C.black,.1);B(side*2.087,y,-3.16,.038,.072,.012,C.black,.1);if(side===-1){const num=String(u).padStart(2,'0');digit(m,+num[0],-2.41,y,3.18);digit(m,+num[1],-2.30,y,3.18);}}
       // Open side structure: depth is legible and arbitrary hardware stays visible.
       for(const y of [-7.18,-3.6,3.6,7.18])B(side*2.19,y,0,.075,.095,6.2,C.dark);
@@ -84,7 +84,7 @@
   }
   function led(m,item,x,y,z){
     // Unknown is gray, not fictitious healthy green. Device state never animates.
-    const power=String(item.power_state??'').toLowerCase(),alive=item.os_alive===true||item.bmc_alive===true;
+    const power=String(item.power_state??item.power??'').toLowerCase(),alive=item.os_alive===true||item.bmc_alive===true;
     const color=power==='off'?C.amber:(alive||power==='on')?C.green:C.unknown;
     m.box(x,y,z,.022,.020,.009,color,.05,alive||power==='on'?.9:0);
   }
@@ -104,8 +104,8 @@
       for(let i=0;i<4;i++)qsfp(m,-.85+i*.57,0,rear-.068,.43,Math.min(.12,h*.49));
       for(const s of [-1,1]){T([s*1.62,0,rear],[s*1.62,0,rear-.14],.072,C.edge);T([s*1.62,0,rear-.14],[s*1.62,0,rear-.145],.041,C.black);}
     }else if(type==='switch'){
-      V(0,0,f,3.90,h-.01,.10,C.steel,.015);const rowH=Math.min(.082,(h-.07)/2),dy=Math.min(.055,h*.22);
-      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=-1.65+c*.203,y=row?dy:-dy;qsfp(m,x,y,f+.056,.178,rowH);}
+      V(0,0,f,3.90,h-.01,.10,C.gold,.015);const rowH=Math.min(.082,(h-.07)/2),dy=Math.min(.055,h*.22);
+      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=-1.70+c*.205+(c>=8?.18:0),y=row?dy:-dy;qsfp(m,x,y,f+.056,.170,rowH);}
       handle(m,-1.88,0,h*.65);handle(m,1.88,0,h*.65);led(m,item,1.67,h*.35,f+.074);
       const rear=FRONT-depth-.04;for(let i=0;i<2;i++){V(-1.36+i*.76,0,rear,.67,h*.86,.09,C.steel,.015);vent(m,-1.36+i*.76,0,rear-.052,.56,h*.66,2,7);B(-1.36+i*.76,-h*.22,rear-.069,.25,.025,.035,C.edge);}
       for(let i=0;i<4;i++){const x=.18+i*.43;B(x,0,rear,.36,h*.85,.09,C.dark);vent(m,x,0,rear-.051,.29,h*.63,3,4);}

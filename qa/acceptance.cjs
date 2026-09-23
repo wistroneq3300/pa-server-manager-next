@@ -136,7 +136,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     return meta.sheets.map(s=>({sheet:s.sheet,count:s.count}));
   });
   await check('11 48U rack placement, multi-U and topology',async()=>{
-    await go('rack/proj_k');await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/44\/48/);
+    await go('rack/proj_k');await page.getByRole('button',{name:'48U placement',exact:true}).click();await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/44\/48/);
     assert.equal(await page.locator('.rm-row[data-u]').count(),13);assert.equal(await page.locator('.rm-empty-slot').count(),4);
     await page.waitForSelector('.topo-svg');assert.equal(await page.locator('.topo-svg .topo-edge-group').count(),3);assert.equal(await page.locator('.topo-svg .topo-svg-node').count(),4);
     await screenshot('rack-workspace-1600');
@@ -157,8 +157,12 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await detail();await action('openTermDialog',page.locator('.pd-operations')).click();await page.locator('#rm-dialog-foot').getByRole('button',{name:'連接終端'}).click();await page.locator('#term-modal').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#term-os-status')?.textContent.includes('已連線'));
     assert.equal(await page.locator('#term-modal .xterm').count(),2);await page.locator('#term-mode-os').click();assert.ok((await page.locator('#term-modal-box').getAttribute('class')).includes('term-state-os'));await page.locator('#term-mode-both').click();await page.locator('#term-modal button[onclick="closeTerm()"]').click();
   });
-  await check('15 KVM and Broadcast previews',async()=>{
-    await action('openKvmBroadcast',page.locator('.pd-operations')).click();await page.locator('.p-kvm-grid').waitFor();assert.equal(await page.locator('.p-kvm-grid section').count(),4);assert.match(await page.locator('#rm-dialog').innerText(),/PREVIEW/i);await closeDialog();
+  await check('15 Live KVM shell with isolated RFB stub and Broadcast preview',async()=>{
+    // Exercise the real module's UI without connecting to equipment or fabricating a live framebuffer.
+    await page.route('**/static/vendor/novnc/core/rfb.js',route=>route.fulfill({contentType:'text/javascript',body:'export default class RFB extends EventTarget { constructor(target){super();this._canvas=document.createElement("canvas");target.append(this._canvas);this._rfbConnectionState="disconnected";} disconnect(){} focus(){} sendKey(){} sendCtrlAltDel(){} _updateScale(){} }'}));
+    await go('projects/fleet_l');await action('openKvmBroadcast').first().click();await page.locator('#kvm-overlay').waitFor();assert.equal(await page.locator('#kvm-grid .kvm-box').count(),4);
+    for(const theme of ['light','dark']){await page.evaluate(t=>applyTheme(t),theme);assert.equal(await page.locator('#kvm-head').evaluate(e=>getComputedStyle(e).backgroundColor),theme==='light'?'rgb(229, 236, 238)':'rgb(27, 48, 59)');await screenshot('kvm-'+theme);}
+    await page.locator('#kvm-overlay button[onclick="closeKvmBroadcast()"] ').click();await page.unroute('**/static/vendor/novnc/core/rfb.js');
     await projects('system');await page.locator('#sys-btn-broadcast').click();await page.locator('#rm-dialog-foot .primary').click();await page.locator('#bc-modal').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#bc-status-txt')?.textContent.includes('已就緒'));
     await page.locator('#bc-input').fill('echo preview');await page.locator('#bc-input').press('Enter');await page.waitForFunction(()=>[...document.querySelectorAll('[id^="bc-ack-"]')].some(e=>e.textContent==='✓'));await page.locator('#bc-modal button[onclick="closeBroadcast()"]').click();
   });
@@ -186,7 +190,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     for(const width of [1440,1600,1920]){
       await page.setViewportSize({width,height:1000});
       for(const [hash,name]of [['dashboard','dashboard'],['projects/fleet_l','projects'],['machine/host_a','system-detail'],['rack/proj_k','rack-workspace']]){
-        await go(hash);if(hash.startsWith('machine/'))await detailTab('overview').waitFor();if(hash.startsWith('rack/'))await page.waitForSelector('.rm-rack');
+        await go(hash);if(hash.startsWith('machine/'))await detailTab('overview').waitFor();if(hash.startsWith('rack/'))await page.waitForSelector('#ew-rack-canvas');
         measurements.push({width,view:name,...await noOverflow(name+' '+width)});if(name!=='projects')await screenshot(name+'-'+width);
       }
     }return measurements;
