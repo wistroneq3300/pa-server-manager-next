@@ -1,3 +1,16 @@
+# 下一個視窗：先讀最新交接
+
+請先讀 `SESSION_HANDOFF_NEXT_WINDOW_20260924.md`。
+
+- 唯一 repo：`wistroneq3300/pa-server-manager-next`；禁止改原 repo。
+- 功能 commit `2bc67a7` 已 push：三项 Bug 修正、MAC 顯示、測試及設計預覽。
+- **32 台 × 4 節點的 Rack Ping 尚未實作，使用者還要思考，暫停開發。**
+- 單機詳情不要新增 DPU OS／DPU BMC Ping；Rack Level 的檢查方式待定。
+- 等最新 FastAPI；保留使用者後端修改，不改 Terminal 埠、不碰正式資料。
+- 下列內容是歷史紀錄；與最新交接衝突時，以最新交接及使用者指示為準。
+
+---
+
 > 2026-09-24 local follow-up: R1-R3 and MAC changes are documented in SESSION_HANDOFF_RELIABILITY_MAC_20260924.md. The user authorized publishing this increment to Next main; it is not deployed; the review below records the earlier baseline. Cabling is a layout preview only.
 
 *** LATEST MAIN INTEGRATION 2026-09-24: Read SESSION_HANDOFF_ENGINEERING_MAIN_20260924.md and CODE_REVIEW_20260924.md FIRST. User now authorizes integration/push to pa-server-manager-next/main; original pa-server-manager remains OUT OF SCOPE. Integration branch preserves origin/main 93bcc09 plus UI 03c9b5e, adds engineering information design and sensor fixes. Do not overwrite production data. Full fixture acceptance 23/23 passed; real FastAPI/hardware not verified, full pytest unavailable. Review report contains open backend defects, not claims that they were fixed. ***

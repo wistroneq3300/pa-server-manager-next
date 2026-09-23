@@ -1,10 +1,12 @@
+> Latest decision: see SESSION_HANDOFF_NEXT_WINDOW_20260924.md. Vera 32-tray development is ON HOLD at the user's request. Feature commit 2bc67a7 has been pushed; no deployment.
+
 # Next reliability and MAC increment - 2026-09-24
 
 ## Baseline and scope
 
 - Only `https://github.com/wistroneq3300/pa-server-manager-next` was used.
 - This task's directory was initially empty. Cloned Next, then fetched origin.
-- HEAD and origin/main: `08f8a3eaf155ee16552e8b1a4cc8f3a7f8a60145`.
+- Baseline before this increment: `08f8a3eaf155ee16552e8b1a4cc8f3a7f8a60145`.
 - Initial checkout was clean. This does not establish the state of other checkouts
   or the user's forthcoming FastAPI upload.
 - User subsequently authorized commit/push of this increment to Next main.
