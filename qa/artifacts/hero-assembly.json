@@ -1,0 +1,144 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "reversibleInsertion": [
+        {
+          "progress": 0,
+          "phase": "system",
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.11973286290322581,
+          "phase": "system",
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.3595178091397849,
+          "phase": "align",
+          "pose": {
+            "x": 0,
+            "y": 4.64994376488594,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.39984038978494624,
+          "phase": "align",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.5799479166666667,
+          "phase": "insert",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 3.301432291626693,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.759517809139785,
+          "phase": "insert",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 0.00003549034019647568,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.9998403897849463,
+          "phase": "pullback",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 0,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.759517809139785,
+          "phase": "insert",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 0.00003549034019647568,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.5799479166666667,
+          "phase": "insert",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 3.301432291626693,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.39984038978494624,
+          "phase": "align",
+          "pose": {
+            "x": 0,
+            "y": 4.65,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.3595178091397849,
+          "phase": "align",
+          "pose": {
+            "x": 0,
+            "y": 4.64994376488594,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0.11973286290322581,
+          "phase": "system",
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "z": 6.6,
+            "scale": 1
+          }
+        },
+        {
+          "progress": 0,
+          "phase": "system",
+          "pose": {
+            "x": 0,
+            "y": 0,
+            "z": 6.6,
+            "scale": 1
+          }
+        }
+      ]
+    },
+    "1440/1600/1920 widths, both themes, real system/insertion/rack stages and zero WebGL errors",
+    "Keyboard orbit/reset and successful WebGL restoration preserve the assembled rack",
+    "Reduced motion and route cleanup remain functional"
+  ],
+  "errors": [],
+  "external": []
+}

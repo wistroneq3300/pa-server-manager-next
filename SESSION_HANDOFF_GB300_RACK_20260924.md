@@ -26,6 +26,13 @@
 - Server NIC plates and connector surrounds on both sides also use champagne metal;
   only perforations and socket interiors stay dark. Do not reuse the neutral-gray
   switch mesh material for these server front-panel regions.
+- Later refinement: multi-U Server extension panels (below the first 1U service
+  face) use neutral gray, while the top service face and outer frame stay gold.
+  The operational 3D frame no longer has left-side U numerals. The functional
+  48U placement editor still has all 48 numbered positions.
+- All newly added rack workspace labels/controls/statuses/empty/fallback copy and
+  sensor-analysis headings are now Traditional Chinese; names, OS, BMC and NVLink
+  identifiers are preserved. Power labels are display-only translations.
 - Model placement uses each record's `rack_u` (top slot) and `rack_size` (height).
   Future equipment is not forced into the example's sizes. Editors allow 1..48U.
 - Front/rear views, drag/keyboard orbit, zoom, selected-equipment focus, expanded

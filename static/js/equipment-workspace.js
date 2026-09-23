@@ -42,11 +42,11 @@
     const ai = root.querySelector('#sensor-ai');
     if (ai) {
       const panel = document.createElement('section'); panel.className = 'ew-analysis';
-      panel.innerHTML = '<header><span>ASSISTED ANALYSIS</span><h3>Sensor AI</h3></header>';
+      panel.innerHTML = '<header><span>\u8f14\u52a9\u5206\u6790</span><h3>\u611f\u6e2c\u5668 AI \u5206\u6790</h3></header>';
       ai.before(panel); panel.append(ai);
     }
     const table = root.querySelector('.sdr-scroll');
-    if (table) table.insertAdjacentHTML('beforebegin','<h3 class="ew-sdr-title">Sensor readings <small>SDR INVENTORY</small></h3>');
+    if (table) table.insertAdjacentHTML('beforebegin','<h3 class="ew-sdr-title">\u611f\u6e2c\u5668\u8b80\u503c <small>SDR \u611f\u6e2c\u5668\u6e05\u55ae</small></h3>');
     return root.innerHTML;
   };
 
@@ -66,7 +66,7 @@
     const deck = document.querySelector('.ew-rack-deck');
     deck?.classList.toggle('is-expanded',expanded);
     const button = deck?.querySelector('.ew-expand');
-    if(button){button.setAttribute('aria-pressed',String(expanded));button.textContent=expanded?'Exit expanded view':'Expand view';}
+    if(button){button.setAttribute('aria-pressed',String(expanded));button.textContent=expanded?'\u96e2\u958b\u653e\u5927\u6aa2\u8996':'\u653e\u5927\u6aa2\u8996';}
     scene?.resize();
   };
   document.addEventListener('keydown',event=>{
@@ -82,16 +82,17 @@
     const target = document.getElementById('ew-rack-inspector');
     if (!target) return;
     const m = rackMembers().find(item => item.name === name);
-    if (!m) {target.innerHTML = '<div class="ew-inspector-empty">Select a component to inspect its placement and management interfaces.</div>';return;}
+    if (!m) {target.innerHTML = '<div class="ew-inspector-empty">\u9078\u64c7\u5143\u4ef6\uff0c\u67e5\u770b\u5b89\u88dd\u4f4d\u7f6e\u8207\u7ba1\u7406\u4ecb\u9762\u3002</div>';return;}
     const type = PAHardwareVisuals.typeOf(m);
     const top=Number(m.rack_u)||0,size=Number(m.rack_size)||1;
     const placed=PAWorkspaceReliability.validatePlacements(rackMembers()).valid.some(item=>item.name===m.name);
-    const range=top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'Unplaced';
-    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${size}U</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${PAHardwareVisuals.render(m,{view:'front'})}<span>FRONT ELEVATION / ${size}U</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>Inspect in 3D</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>PLACEMENT</dt><dd>${range}<small>${placed?'Saved rack position':top?'Check placement conflict':'Not installed in rack'}</small></dd></div><div><dt>OS / MANAGEMENT</dt><dd>${esc(m.os_ip || 'Not configured')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || 'Not configured')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">Open component</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">Placement / type</button></div>`;
-    const status=value=>value===true?'Online':value===false?'Offline':'Unknown';
+    const range=top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'\u5c1a\u672a\u653e\u7f6e';
+    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${size}U</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${PAHardwareVisuals.render(m,{view:'front'})}<span>\u6b63\u9762\u8996\u5716\uff0f ${size}U</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>\u805a\u7126 3D \u5143\u4ef6</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}<small>${placed?'\u5df2\u5132\u5b58\u7684\u6a5f\u6ac3\u4f4d\u7f6e':top?'\u8acb\u6aa2\u67e5\u4f4d\u7f6e\u885d\u7a81':'\u5c1a\u672a\u5b89\u88dd\u65bc\u6a5f\u6ac3'}</small></dd></div><div><dt>OS\uff0f\u7ba1\u7406\u4ecb\u9762</dt><dd>${esc(m.os_ip || '\u672a\u8a2d\u5b9a')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || '\u672a\u8a2d\u5b9a')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">\u958b\u555f\u5143\u4ef6\u8a73\u60c5</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">\u4f4d\u7f6e\uff0f\u985e\u578b</button></div>`;
+    const status=value=>value===true?'\u5df2\u9023\u7dda':value===false?'\u96e2\u7dda':'\u672a\u77e5';
+    const powerLabel=value=>{const raw=String(value??'').trim();return ({on:'\u5df2\u958b\u6a5f',off:'\u5df2\u95dc\u6a5f',true:'\u5df2\u958b\u6a5f',false:'\u5df2\u95dc\u6a5f','1':'\u5df2\u958b\u6a5f','0':'\u5df2\u95dc\u6a5f',unknown:'\u672a\u77e5',unavailable:'\u7121\u6cd5\u53d6\u5f97','n/a':'\u4e0d\u9069\u7528','not available':'\u7121\u6cd5\u53d6\u5f97',powering_on:'\u958b\u6a5f\u4e2d',powering_off:'\u95dc\u6a5f\u4e2d'})[raw.toLowerCase()]||raw||'\u672a\u77e5';};
     target.querySelector('.ew-inspector-actions .btn:not(.primary)').onclick=()=>equipmentRackPlacement(m.name);
     if(!scene?.supported)target.querySelector('.ew-focus').disabled=true;
-    target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>CONNECTION / POWER</dt><dd>OS ${m.os_ip?status(m.os_alive):'Not configured'}<br>BMC ${m.bmc_ip?status(m.bmc_alive):'Not configured'}<br>Power ${esc(m.power_state ?? m.power ?? 'Unknown')}</dd></div>`);
+    target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>\u9023\u7dda\uff0f\u96fb\u6e90\u72c0\u614b</dt><dd>OS ${m.os_ip?status(m.os_alive):'\u672a\u8a2d\u5b9a'}<br>BMC ${m.bmc_ip?status(m.bmc_alive):'\u672a\u8a2d\u5b9a'}<br>\u96fb\u6e90 ${esc(powerLabel(m.power_state ?? m.power))}</dd></div>`);
   }
   window.equipmentRackSelect = name => {
     selectedByProject.set(rackView.project,name); scene?.select(name); inspector(name);
@@ -104,18 +105,18 @@
     if (devicesView !== 'plane') return old;
     const tabs=document.createElement('div');tabs.innerHTML=rackSubviewTabs();
     tabs.querySelectorAll('button').forEach(button=>{if((button.getAttribute('onclick')||'').includes("'plane'"))button.remove();});
-    const controls = `<div class="ew-view-switch"><button aria-pressed="${mode==='3d'}" class="btn ${mode==='3d'?'primary':''}" onclick="equipmentRackMode('3d')">3D equipment</button><button aria-pressed="${mode==='plane'}" class="btn ${mode==='plane'?'primary':''}" onclick="equipmentRackMode('plane')">48U placement</button>${tabs.innerHTML}</div>`;
+    const controls = `<div class="ew-view-switch"><button aria-pressed="${mode==='3d'}" class="btn ${mode==='3d'?'primary':''}" onclick="equipmentRackMode('3d')">3D \u6a5f\u6ac3</button><button aria-pressed="${mode==='plane'}" class="btn ${mode==='plane'?'primary':''}" onclick="equipmentRackMode('plane')">48U \u914d\u7f6e</button>${tabs.innerHTML}</div>`;
     if (mode === 'plane') return controls + old;
-    const warnings = [...placement.issues.map(x=>`${x.name}: ${x.message}`),...placement.pending.map(x=>`${x.name}: unplaced`)];
+    const warnings = [...placement.issues.map(x=>`${x.name}: ${x.message}`),...placement.pending.map(x=>`${x.name}: \u5c1a\u672a\u653e\u7f6e`)];
     return `${controls}<section class="ew-rack-deck p-surface ${expanded?'is-expanded':''}">
       <div class="ew-rack-stage">
-        <header><div><span class="pd-eyebrow">L11 / RACK ENGINEERING</span><h2>${esc(rackView.project)}</h2></div><button class="btn small ew-expand" aria-pressed="${expanded}" onclick="equipmentRackExpand()">${expanded?'Exit expanded view':'Expand view'}</button></header>
-        <div class="ew-rack-summary"><span><b>${placement.valid.length}</b> installed components</span><span><b>${placement.usedU}</b> / 48U occupied</span><span><b>${48-placement.usedU}</b>U available</span></div>
-        <div class="ew-rack-viewport"><canvas id="ew-rack-canvas" tabindex="0" aria-label="3D rack. Drag to orbit; arrow keys rotate; Home resets. Use component selector for keyboard selection."></canvas><span class="ew-stage-mark" aria-hidden="true">48U<br><small>CONFIGURATION MODEL</small></span></div>
-        <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">Perspective</button><button class="btn small" onclick="equipmentRackCamera('front')">Front</button><button class="btn small" onclick="equipmentRackCamera('rear')">Rear</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="Zoom in">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="Zoom out">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">Reset</button></div><p class="ew-orbit-hint">Drag to orbit / click to select \u00b7 Home: full rack \u00b7 Esc: exit expanded view</p>
+        <header><div><span class="pd-eyebrow">L11\uff0f\u6a5f\u6ac3\u5de5\u7a0b</span><h2>${esc(rackView.project)}</h2></div><button class="btn small ew-expand" aria-pressed="${expanded}" onclick="equipmentRackExpand()">${expanded?'\u96e2\u958b\u653e\u5927\u6aa2\u8996':'\u653e\u5927\u6aa2\u8996'}</button></header>
+        <div class="ew-rack-summary"><span><b>${placement.valid.length}</b> \u500b\u5df2\u5b89\u88dd\u5143\u4ef6</span><span><b>${placement.usedU}</b> / 48U \u5df2\u4f7f\u7528</span><span><b>${48-placement.usedU}</b>U \u53ef\u7528\u7a7a\u9593</span></div>
+        <div class="ew-rack-viewport"><canvas id="ew-rack-canvas" tabindex="0" aria-label="3D \u6a5f\u6ac3\u3002\u62d6\u66f3\u6216\u4f7f\u7528\u65b9\u5411\u9375\u65cb\u8f49\uff1bHome \u56de\u5230\u5168\u6ac3\u3002\u53ef\u4f7f\u7528\u5143\u4ef6\u9078\u55ae\u4ee5\u9375\u76e4\u9078\u53d6\u3002"></canvas><span class="ew-stage-mark" aria-hidden="true">48U<br><small>\u914d\u7f6e\u6a21\u578b</small></span></div>
+        <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">\u900f\u8996</button><button class="btn small" onclick="equipmentRackCamera('front')">\u6b63\u9762</button><button class="btn small" onclick="equipmentRackCamera('rear')">\u80cc\u9762</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="\u653e\u5927">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="\u7e2e\u5c0f">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">\u91cd\u8a2d\u8996\u89d2</button></div><p class="ew-orbit-hint">\u62d6\u66f3\u65cb\u8f49\uff0f\u9ede\u64ca\u9078\u53d6 \u00b7 Home\uff1a\u56de\u5230\u5168\u6ac3 \u00b7 Esc\uff1a\u96e2\u958b\u653e\u5927\u6aa2\u8996</p>
       </div>
-      <aside class="ew-rack-aside"><label for="ew-rack-component">COMPONENT / SAVED POSITION</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">Select component</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'Unplaced'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
-    </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>Placement requires attention</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">Review placement</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
+      <aside class="ew-rack-aside"><label for="ew-rack-component">\u5143\u4ef6\uff0f\u5df2\u5132\u5b58\u4f4d\u7f6e</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">\u9078\u64c7\u5143\u4ef6</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'\u5c1a\u672a\u653e\u7f6e'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
+    </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>\u914d\u7f6e\u9700\u8981\u78ba\u8a8d</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">\u6aa2\u67e5\u914d\u7f6e</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
   };
   const baseRack = RENDERERS.rack;
   RENDERERS.rack = function() {
@@ -123,7 +124,7 @@
     const requested=choices.find(p=>p.name===rackView.project);
     if(requested && !projectMembers(requested.name).filter(isRackItem).some(m=>Number(m.rack_u)>0)) {
       racksProjectDesc=requested.desc||'';
-      return `<header class="rack-hero"><div class="rack-hero-left"><div class="rack-hero-title">Rack Manager</div><div class="rack-hero-sub">${esc(requested.name)} / 48U</div></div><label class="rack-sel">Project<select class="input" onchange="rackSetProject(this.value)">${choices.map(p=>`<option value="${esc(p.name)}" ${p.name===requested.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><button class="btn primary" onclick="productLevel('rack');addRackComponentDialog()">Add component</button></header>${rackLayoutHtml([],[])}`;
+      return `<header class="rack-hero"><div class="rack-hero-left"><div class="rack-hero-title">\u6a5f\u6ac3\u7ba1\u7406</div><div class="rack-hero-sub">${esc(requested.name)} / 48U</div></div><label class="rack-sel">\u5c08\u6848<select class="input" onchange="rackSetProject(this.value)">${choices.map(p=>`<option value="${esc(p.name)}" ${p.name===requested.name?'selected':''}>${esc(p.name)}</option>`).join('')}</select></label><button class="btn primary" onclick="productLevel('rack');addRackComponentDialog()">\u65b0\u589e\u5143\u4ef6</button></header>${rackLayoutHtml([],[])}`;
     }
     const fragment=document.createElement('div');fragment.innerHTML=baseRack();
     const select=fragment.querySelector('.rack-sel select');
@@ -137,7 +138,7 @@
     if (next === canvas) return;
     dispose(); if (!next) return; canvas = next;
     const valid = PAWorkspaceReliability.validatePlacements(rackMembers()).valid;
-    const fallback=()=>{if(!next.parentElement?.querySelector('.ew-gl-fallback'))next.insertAdjacentHTML('afterend','<div class="ew-gl-fallback" role="status">3D is unavailable. All management functions remain available in <button class="btn" onclick="equipmentRackMode(\'plane\')">48U placement</button>.</div>');};
+    const fallback=()=>{if(!next.parentElement?.querySelector('.ew-gl-fallback'))next.insertAdjacentHTML('afterend','<div class="ew-gl-fallback" role="status">\u76ee\u524d\u7121\u6cd5\u986f\u793a 3D\uff0c\u4ecd\u53ef\u4f7f\u7528\u5168\u90e8\u7ba1\u7406\u529f\u80fd\uff1a<button class="btn" onclick="equipmentRackMode(\'plane\')">48U \u914d\u7f6e</button>.</div>');};
     next.addEventListener('pa-rack-fallback',fallback);
     next.addEventListener('pa-rack-ready',()=>next.parentElement?.querySelector('.ew-gl-fallback')?.remove());
     scene = PARackScene.mount(canvas,{components:valid.map(m=>({...m,mgx_type:PAHardwareVisuals.typeOf(m)})),theme:document.documentElement.dataset.theme,onSelect:window.equipmentRackSelect});
@@ -154,7 +155,7 @@
     const fragment=document.createElement('div');fragment.innerHTML=baseDashboard();
     if(!window.PA_PREVIEW){
       for(const selector of ['.p-page-foot span','.cine-footer>span:nth-child(2)','.cine-fleet-total small','.cine-insights-title>span']){
-        const label=fragment.querySelector(selector);if(label)label.textContent='ENGINEERING WORKSPACE';
+        const label=fragment.querySelector(selector);if(label)label.textContent='\u5de5\u7a0b\u5de5\u4f5c\u5340';
       }
     }
     return fragment.innerHTML;
@@ -165,7 +166,7 @@
     if (!window.PA_PREVIEW) {
       document.querySelector('.p-preview-label')?.remove();
       const badge=document.querySelector('.p-side-preview');
-      if(badge)badge.innerHTML='<i class="p-live-dot"></i> ENGINEERING WORKSPACE<small>Live application</small><span id="mode-label" hidden></span>';
+      if(badge)badge.innerHTML='<i class="p-live-dot"></i> \u5de5\u7a0b\u5de5\u4f5c\u5340<small>\u7cfb\u7d71\u7ba1\u7406\u4ecb\u9762</small><span id="mode-label" hidden></span>';
     }
   });
 })();

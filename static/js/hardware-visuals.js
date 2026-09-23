@@ -81,13 +81,16 @@
       content+=rect(214,35,8,3,edge,'#7b7b6d',.6);
       if(units>1) {
         const rows=Math.min(12,units-1), rowHeight=(h-UNIT_HEIGHT)/rows;
+        content+='<g data-hardware-zone="server-extension" data-hardware-material="gray">';
+        content+=rect(30,UNIT_HEIGHT,380,h-UNIT_HEIGHT-2,`url(#${id}-server-extension)`,'#475962',.5);
         content+=line(31,40,409,40,'#e0d4b4',.75);
         for(let row=0;row<rows;row++) {
           const y=UNIT_HEIGHT+(row+.5)*rowHeight, ventHeight=Math.min(31,rowHeight-5);
           content+=grille(35,y-ventHeight/2,370,ventHeight);
-          content+=line(32,y+rowHeight/2-2,408,y+rowHeight/2-2,'#665d46',.8);
+          content+=line(32,y+rowHeight/2-2,408,y+rowHeight/2-2,'#394952',.8);
           content+=screw(31,y,1.15)+screw(409,y,1.15);
         }
+        content+='</g>';
       }
     } else if(type==='switch') {
       const cy=h/2-15;
@@ -199,6 +202,7 @@
       <linearGradient id="${id}-champagne-shadow" x2="0" y2="1"><stop stop-color="#706850"/><stop offset=".36" stop-color="#b1a480"/><stop offset="1" stop-color="#595641"/></linearGradient>
       <linearGradient id="${id}-side" x2="1" y2="1"><stop stop-color="#75888f"/><stop offset=".53" stop-color="#41515c"/><stop offset="1" stop-color="#162931"/></linearGradient>
       <linearGradient id="${id}-dark" x2=".12" y2="1"><stop stop-color="#43505a"/><stop offset=".11" stop-color="#242e36"/><stop offset=".72" stop-color="#1b252d"/><stop offset="1" stop-color="#071017"/></linearGradient>
+      <linearGradient id="${id}-server-extension" x2=".12" y2="1"><stop stop-color="#7b898f"/><stop offset=".18" stop-color="#62727a"/><stop offset=".8" stop-color="#53636b"/><stop offset="1" stop-color="#394952"/></linearGradient>
       <linearGradient id="${id}-edge" x2="1"><stop stop-color="#6d7678"/><stop offset=".21" stop-color="#dbe1da"/><stop offset=".4" stop-color="#a8b2af"/><stop offset=".69" stop-color="#dce1d9"/><stop offset="1" stop-color="#56646a"/></linearGradient>
       <linearGradient id="${id}-satin" x2="1" y2=".15"><stop stop-color="#a4b1b5"/><stop offset=".37" stop-color="#d5ddd9"/><stop offset=".67" stop-color="#b6c1c1"/><stop offset="1" stop-color="#8a9ca4"/></linearGradient>
       <linearGradient id="${id}-cdu-metal" x2=".25" y2="1"><stop stop-color="#383c43"/><stop offset=".26" stop-color="#282d34"/><stop offset=".7" stop-color="#22272e"/><stop offset="1" stop-color="#131a21"/></linearGradient>

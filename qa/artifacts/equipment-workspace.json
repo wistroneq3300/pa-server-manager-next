@@ -3,6 +3,90 @@
   "results": [
     "3D geometry: 35 components / 48U, mixed 1/2/3/4/5U heights, camera, selection, all 9 type identities, 48U edit, 3 widths / 2 themes",
     {
+      "nvlinkPlaneContrast": [
+        {
+          "theme": "dark",
+          "interaction": "default",
+          "foreground": "rgb(232, 240, 255)",
+          "endpoints": [
+            "rgb(60, 72, 82)",
+            "rgb(35, 51, 64)"
+          ],
+          "ratios": [
+            8.18,
+            11.33
+          ]
+        },
+        {
+          "theme": "dark",
+          "interaction": "hover",
+          "foreground": "rgb(232, 240, 255)",
+          "endpoints": [
+            "rgb(60, 72, 82)",
+            "rgb(35, 51, 64)"
+          ],
+          "ratios": [
+            8.18,
+            11.33
+          ]
+        },
+        {
+          "theme": "dark",
+          "interaction": "focus",
+          "foreground": "rgb(232, 240, 255)",
+          "endpoints": [
+            "rgb(60, 72, 82)",
+            "rgb(35, 51, 64)"
+          ],
+          "ratios": [
+            8.18,
+            11.33
+          ]
+        },
+        {
+          "theme": "light",
+          "interaction": "default",
+          "foreground": "rgb(32, 52, 62)",
+          "endpoints": [
+            "rgb(228, 220, 198)",
+            "rgb(203, 189, 156)"
+          ],
+          "ratios": [
+            9.46,
+            6.96
+          ]
+        },
+        {
+          "theme": "light",
+          "interaction": "hover",
+          "foreground": "rgb(32, 52, 62)",
+          "endpoints": [
+            "rgb(237, 229, 208)",
+            "rgb(215, 201, 168)"
+          ],
+          "ratios": [
+            10.31,
+            7.9
+          ]
+        },
+        {
+          "theme": "light",
+          "interaction": "focus",
+          "foreground": "rgb(32, 52, 62)",
+          "endpoints": [
+            "rgb(228, 220, 198)",
+            "rgb(203, 189, 156)"
+          ],
+          "ratios": [
+            9.46,
+            6.96
+          ]
+        }
+      ],
+      "minimumRatio": 4.5,
+      "numberedUnits": 48
+    },
+    {
       "systems": 50,
       "racks": 3
     },

@@ -5,6 +5,7 @@
     "Front/rear/orbit views, selection/focus and both material themes rendered",
     "Drag gestures, full-rack reset, expanded-view Escape, cleanup, arbitrary 6U/7U models and 1/2/3/4/5/48U CDU geometry verified",
     "Detailed CDU front/perspective drawings preserve 1/2/3/4/5/48U dimensions without invalid geometry",
+    "Only multi-U Server drawings contain a gray lower extension; 1U Server and all NVLink/other devices do not inherit it",
     {
       "deviceIllustrations": [
         {
@@ -55,6 +56,7 @@
       ]
     },
     "Single-device illustrations and captions fully contained at 1440/1600/1920; compute, switch, NVLink, power and CDU verified",
+    "Traditional Chinese rack controls, live status labels, expanded-state toggle and WebGL fallback verified; technical names preserved",
     "WebGL restoration and 48U edit fallback remain functional"
   ],
   "errors": [],

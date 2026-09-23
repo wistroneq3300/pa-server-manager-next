@@ -11,8 +11,9 @@
   'use strict';
   const U=.30, HALF=48*U/2, FRONT=3.05, TAU=Math.PI*2;
   const TYPES=new Set(['server','switch','nvlink','powershelf','pdu','cdu','storage','network','blanking']);
-  // Approved finish: compute and NVLink front panels use champagne; all other
-  // device faces, chassis shells, rack rails and rear fittings remain neutral.
+  // Approved finish: the upper compute service face and NVLink front panels use
+  // champagne. Taller compute vent extensions, other device faces, chassis,
+  // rack rails and rear fittings remain neutral.
   const C={silver:[.43,.47,.51],lid:[.50,.53,.57],edge:[.66,.69,.71],steel:[.26,.31,.35],dark:[.048,.065,.077],black:[.013,.023,.030],socket:[.026,.038,.044],blue:[0,.28,.39],green:[.40,.62,.16],gold:[.53,.48,.39],goldEdge:[.74,.69,.58],darkGold:[.24,.22,.18],copper:[.38,.23,.13],amber:[.72,.39,.12],unknown:[.24,.30,.34],label:[.54,.59,.61]};
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
   const identity=()=>new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]);
@@ -76,19 +77,13 @@
     function polygon(points,z,color,metal=.2){for(let i=1;i<points.length-1;i++)for(const p of [points[0],points[i],points[i+1]])vertex([p[0],p[1],z],[0,0,1],color,metal);}
     return {data,box,bevel,tube,ring,disc,face,polygon};
   }
-  // Embossed U numbers are actual geometry; no canvas texture or CSS projection.
-  const SEGMENTS={0:[0,1,2,3,4,5],1:[1,2],2:[0,1,6,4,3],3:[0,1,2,3,6],4:[5,6,1,2],5:[0,5,6,2,3],6:[0,5,6,4,2,3],7:[0,1,2],8:[0,1,2,3,4,5,6],9:[0,1,2,3,5,6]};
-  function digit(m,n,x,y,z){const s=.066,t=.009;for(const k of SEGMENTS[n]){const loc=[[0,s,s,t],[s/2,s/2,t,s],[s/2,-s/2,t,s],[0,-s,s,t],[-s/2,-s/2,t,s],[-s/2,s/2,t,s],[0,0,s,t]][k];m.box(x+loc[0],y+loc[1],z,loc[2],loc[3],.006,C.edge,.15);}}
   function createFrame(){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube;
-    // Numbers sit on an opaque measuring rail: their reverse faces must not
-    // appear as mirrored floating text when inspecting the rear of the rack.
-    B(-2.355,0,3.140,.224,14.46,.061,C.dark,.65);
     for(const side of [-1,1]){
       for(const end of [-1,1])V(side*2.17,0,end*3.15,.21,15.00,.21,C.dark,.035);
       for(const y of [-7.45,7.45])V(side*2.17,y,0,.21,.21,6.48,C.steel,.028);
       B(side*2.085,0,3.14,.075,14.5,.08,C.steel);B(side*2.085,0,-3.11,.075,14.5,.08,C.steel);
-      for(let u=1;u<=48;u++){const y=(u-.5)*U-HALF;B(side*2.087,y,3.191,.038,.072,.012,C.black,.1);B(side*2.087,y,-3.16,.038,.072,.012,C.black,.1);if(side===-1){const num=String(u).padStart(2,'0');digit(m,+num[0],-2.41,y,3.18);digit(m,+num[1],-2.30,y,3.18);}}
+      for(let u=1;u<=48;u++){const y=(u-.5)*U-HALF;B(side*2.087,y,3.191,.038,.072,.012,C.black,.1);B(side*2.087,y,-3.16,.038,.072,.012,C.black,.1);}
       // Open side structure: depth is legible and arbitrary hardware stays visible.
       for(const y of [-7.18,-3.6,3.6,7.18]){B(side*2.19,y,0,.075,.095,6.2,C.dark);for(const z of [-2.8,2.8])T([side*2.235,y,z],[side*2.25,y,z],.028,C.edge,8);}
       B(side*2.20,0,-2.72,.10,14.65,.14,C.steel);B(side*2.21,0,2.76,.025,14.64,.15,C.edge);
@@ -106,7 +101,7 @@
     const z=FRONT-depth/2; m.bevel(0,0,z,3.94,h,depth,color,.023,textured?-.7:.9);m.bevel(0,h/2-.002,z,3.90,.015,Math.max(.05,depth-.04),textured||color===C.dark?color:C.lid,.006,textured?-.7:.9);
     for(const side of [-1,1]){m.box(side*1.988,-h*.30,z,.028,.042,Math.max(.08,depth-.18),C.edge);m.bevel(side*2.002,0,FRONT+.016,.126,h+.008,.105,textured?color:C.steel,.014,textured?-.7:.9);if(!textured)for(const y of [-1,1]){const sy=y*Math.min(h*.35,.30);m.tube([side*2.004,sy,FRONT+.07],[side*2.004,sy,FRONT+.081],.022,C.edge,8);m.box(side*2.004,sy,FRONT+.085,.026,.006,.004,C.black);}
       if(depth>.5){m.box(side*1.976,h/2-.027,z,.008,.009,depth-.07,C.dark);for(let i=0;i<5;i++){const sz=FRONT-.25-(depth-.50)*i/4;m.tube([side*1.977,h*.16,sz],[side*1.984,h*.16,sz],.020,C.steel,8);m.box(side*1.986,h*.16,sz,.003,.006,.021,C.black);m.tube([side*1.78,h/2+.006,sz],[side*1.78,h/2+.012,sz],.019,C.edge,8);}}}
-    if(depth>.5){m.box(0,h/2+.010,FRONT-.45,3.69,.003,.012,C.steel);m.bevel(.88,h/2+.012,z,.30,.017,.20,C.steel,.018);m.bevel(.88,h/2+.022,z,.22,.007,.13,C.dark,.012);}
+    if(depth>.5){m.box(0,h/2+.010,FRONT-.45,3.69,.003,.012,C.steel);m.bevel(.88,h/2+.004,z,.30,.017,.20,C.steel,.018);m.bevel(.88,h/2+.009,z,.22,.007,.13,C.dark,.012);}
     return z;
   }
   function led(m,item,x,y,z){
@@ -151,7 +146,14 @@
       B(.61,bandY-.075,f+.102,.10,.022,.018,C.black);B(.62,bandY+.065,f+.086,.114,.039,.011,C.steel);
       qsfp(m,.94,bandY+.066,f+.086,.10,.064,1,C.goldEdge);qsfp(m,1.21,bandY+.061,f+.086,.19,.043,1,C.goldEdge);qsfp(m,1.44,bandY+.061,f+.086,.19,.043,1,C.goldEdge);
       for(const y of [-.065,0,.065])B(.725,bandY+y,f+.112,.030,.021,.014,C.edge);led(m,item,.726,bandY+.085,f+.121);
-      if(item.size>1){const extra=h-.285,rows=Math.min(12,item.size-1),rh=extra/rows;for(let r=0;r<rows;r++){const y=-h/2+.014+(r+.5)*rh;grille(m,0,y,f+.065,3.34,Math.min(rh-.030,.24),C.goldEdge);B(0,y-rh/2+.005,f+.069,3.48,.010,.013,C.darkGold);}}
+      if(item.size>1){
+        // Only the upper 1U service face is champagne. Extension panels below
+        // that physical boundary are neutral gray; the outer frame stays gold.
+        const extensionPanel=[.24,.255,.27],extensionMesh=[.36,.385,.405],extensionSeam=[.12,.14,.15];
+        V(0,-U/2,f+.057,3.54,h-U,.015,extensionPanel,.008,.78);
+        const extra=h-.285,rows=Math.min(12,item.size-1),rh=extra/rows;
+        for(let r=0;r<rows;r++){const y=-h/2+.014+(r+.5)*rh;grille(m,0,y,f+.065,3.34,Math.min(rh-.030,.24),extensionMesh);B(0,y-rh/2+.005,f+.069,3.48,.010,.013,extensionSeam);}
+      }
       for(const side of [-1,1]){V(side*1.865,0,f+.055,.20,h-.003,.15,C.gold,.025);T([side*1.848,-h/2+.031,f+.155],[side*1.848,h/2-.031,f+.155],.045,C.goldEdge,16);B(side*1.94,0,f+.14,.019,h*.72,.026,C.edge);for(const y of [-1,1])screw(m,side*1.96,y*Math.min(h*.37,.42),f+.152);}
       const rear=FRONT-depth-.035;V(0,0,rear,3.75,h-.024,.085,C.steel,.015);
       const rearY=item.size===1?0:bandY;for(let i=0;i<4;i++){const x=-1.04+i*.69;B(x,rearY,rear-.058,.60,.205,.059,C.black,.15);B(x,rearY,rear-.092,.51,.13,.031,C.steel);for(let p=0;p<10;p++)B(x-.206+p*.046,rearY,rear-.112,.012,.104,.009,C.copper);B(x,rearY+.099,rear-.091,.57,.017,.038,C.edge);}
@@ -325,5 +327,24 @@
       destroy(){if(disposed)return;disposed=true;if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';delete canvas.paRackScene;}
     };canvas.paRackScene=api;sync();requestDraw();return api;
   }
-  window.PARackScene=Object.freeze({mount,inspectPlacement});
+  // CPU-only geometry sharing for the homepage editorial scene. This factory
+  // does not mount a canvas, read application state or mutate a live placement.
+  // Identical type/size meshes are built once so an editorial rack can reuse
+  // the operational model quality without duplicating all of its geometry.
+  function buildEditorialParts(records){
+    const inspected=inspectPlacement(records);
+    if(inspected.invalid.length||inspected.unplaced.length)throw new Error('Editorial rack requires valid, non-overlapping placed components');
+    const equipment={},placements=inspected.valid.map(item=>{
+      const meshKey=item.mgx_type+':'+item.size;
+      if(!equipment[meshKey]){
+        const built=createEquipment(item);
+        equipment[meshKey]=Object.freeze({data:new Float32Array(built.mesh.data),depth:built.depth,min:Object.freeze([...built.min]),max:Object.freeze([...built.max])});
+      }
+      return Object.freeze({name:item.name,type:item.mgx_type,top:item.top,bottom:item.bottom,size:item.size,y:item.y,height:item.height,meshKey});
+    });
+    return Object.freeze({stride:11,unit:U,front:FRONT,
+      frame:Object.freeze({data:new Float32Array(createFrame().data)}),equipment:Object.freeze(equipment),placements:Object.freeze(placements),occupiedU:inspected.occupiedU,
+      bounds:Object.freeze({min:Object.freeze([-2.30,-7.82,-3.48]),max:Object.freeze([2.30,7.83,3.39])})});
+  }
+  window.PARackScene=Object.freeze({mount,inspectPlacement,buildEditorialParts});
 })();

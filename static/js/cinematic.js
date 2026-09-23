@@ -80,7 +80,7 @@
             <div class="cine-hero-actions"><button class="btn primary" onclick="${l11[0] ? `productRack(${esc(JSON.stringify(l11[0].name))})` : `productLevel('rack')`}">進入 Rack 工作區 <span>↗</span></button></div>
             <div class="cine-live-summary"><span><b>${two(l11.length)}</b> L11 專案</span><i></i><span><b>${two(rack.length)}</b> 元件</span></div>
           </div>
-          <div class="cine-object-label"><span class="cine-label-system">L10 / COMPUTE TRAY</span><span class="cine-label-rack">L11 / NVL72 RACK STUDY</span><small>VERA RUBIN–INSPIRED · 3D STUDY</small></div>
+          <div class="cine-object-label"><span class="cine-label-system">L10 / \u904b\u7b97\u7bc0\u9ede</span><span class="cine-label-rack">L11 / GB300 \u6a5f\u6ac3\u793a\u610f</span><small>GB300 \u5916\u89c0\u53c3\u8003 \u00b7 \u975e\u5b98\u65b9 3D \u793a\u610f</small></div>
           <div class="cine-core-tools" id="core-tools"><span id="core-interaction-help">按住拖曳旋轉 · 方向鍵查看 · Home 重設</span><div><button type="button" data-core-view="rear" aria-label="3D 模型背面視角">背面</button><button type="button" data-core-view="reset" aria-label="重設 3D 模型視角">↺ 重設視角</button></div></div>
           <div class="cine-stage-bottom"><div class="cine-scroll-cue"><span>↓</span> 捲動查看 System → Rack <div class="cine-progress"><i></i></div></div><span>結構示意 · 非官方 CAD／即時設備</span><button class="cine-link" onclick="cineProjects()">專案一覽 ↘</button></div>
         </div>
@@ -195,6 +195,9 @@
       stage.style.setProperty('--core-x', `${composition * -60}%`);
       // Reserve a quiet footer beneath the tall rack for its identity and controls.
       stage.style.setProperty('--core-height', `${90 - composition * 14}%`);
+      // Feather only the cropped close-up, never the standalone or full-rack view.
+      const smooth = (a, b) => { const t = Math.max(0, Math.min(1, (progress - a) / (b - a))); return t * t * (3 - 2 * t); };
+      stage.style.setProperty('--core-edge-alpha', (1 - smooth(.14, .32) * (1 - smooth(.78, .94))).toFixed(4));
       stage.dataset.phase = crossed ? 'rack' : 'system';
       const systemVisible = reduced.matches || out > .05;
       const rackVisible = reduced.matches || entering > .05;

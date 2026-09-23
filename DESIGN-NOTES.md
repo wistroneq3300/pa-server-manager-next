@@ -12,6 +12,13 @@ and Next `main` are not modified by this feature branch.
 - Material rule (latest user revision): champagne compute and NVLink tray fronts;
   silver tray bodies/rears, graphite management switches and power modules,
   charcoal CDU with silver tubular handles, dark blanking and PDU enclosures.
+- Multi-U compute refinement: only the top 1U service face is champagne; the added
+  vent panels below are neutral gray, with the gold outer frame retained. The SVG
+  inspector/detail and operational WebGL model use the same visual distinction.
+- Rack workspace labels, controls, statuses, empty/fallback states and sensor-analysis
+  headings are Traditional Chinese; equipment names and technical identifiers remain
+  unchanged. Operational 3D has no left-side U numerals; the 48U plane editor keeps
+  its exact numbered positions for placement work.
 - The latest user-supplied CDU reference supersedes the earlier silver CDU concept:
   textured black fascia, central recessed double-bezel display, right circular button
   and three connector collars, dense lower geometric ventilation and silver handles.
@@ -149,6 +156,16 @@ Changes are in-memory and reset on refresh. IPs use documentation ranges; creden
 - NVIDIA does publish detailed [DSX SimReady assets](https://docs.omniverse.nvidia.com/dsx/latest/simready-assets.html), including the [GB300 DSX dataset](https://catalog.ngc.nvidia.com/orgs/nvidia/omniverse/resources/dsx_dataset/-). That evaluation dataset was not downloaded, embedded or redistributed. Availability is not treated as a general web redistribution license.
 
 ## Validation
+
+Latest 2026-09-24 refinement: the homepage shares GB300-inspired procedural geometry
+with the operational rack. The exact illustrative 41-component / 48U arrangement
+(including the final requested 5U blanking panel between power and CDU),
+reversible U40 insertion, Traditional Chinese rack labels, gold/gray multi-U faces
+and light NVLink contrast are recorded in
+[the insertion handoff](SESSION_HANDOFF_GB300_INSERTION_20260924.md).
+`qa/hero-assembly.cjs` verifies actual browser scroll, both themes and lifecycle;
+`qa/core-scene.cjs` compares real uploaded vertices and draw transforms. The homepage
+illustration does not overwrite operational device placements.
 
 With the preview server running, execute:
 

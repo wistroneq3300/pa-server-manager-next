@@ -136,7 +136,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     return meta.sheets.map(s=>({sheet:s.sheet,count:s.count}));
   });
   await check('11 48U rack placement, multi-U and topology',async()=>{
-    await go('rack/proj_k');await page.getByRole('button',{name:'48U placement',exact:true}).click();await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/48\/48/);
+    await go('rack/proj_k');await page.getByRole('button',{name:'48U \u914d\u7f6e',exact:true}).click();await page.waitForSelector('.rm-rack');const units=await page.locator('.rm-u .mono').allTextContents();assert.equal(units.length,48);assert.equal(units[0],'U48');assert.equal(units.at(-1),'U1');assert.match(await page.locator('.rm-head-stat').innerText(),/48\/48/);
     assert.equal(await page.locator('.rm-row[data-u]').count(),35);assert.equal(await page.locator('.rm-empty-slot').count(),0);
     for(const [top,height]of [[40,4],[36,3],[33,2],[9,5],[4,4]])assert.equal(await page.locator('.rm-row[data-u="'+top+'"]').evaluate(e=>{const s=getComputedStyle(e);return Number(s.gridRowEnd)-Number(s.gridRowStart);}),height);
     await page.waitForSelector('.topo-svg');assert.equal(await page.locator('.topo-svg .topo-edge-group').count(),3);assert.equal(await page.locator('.topo-svg .topo-svg-node').count(),4);

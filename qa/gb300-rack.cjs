@@ -17,41 +17,51 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
  const state=()=>page.evaluate(()=>document.querySelector('#ew-rack-canvas').paRackScene.getState());
  const settle=()=>page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  const select=async name=>{await page.locator('#ew-rack-component').selectOption(name);await settle();};
+ const localizedRack=async()=>{
+  const labels=await page.locator('.ew-rack-deck').evaluate(e=>e.innerText+'\n'+[...e.querySelectorAll('[aria-label]')].map(n=>n.getAttribute('aria-label')).join('\n'));
+  assert.doesNotMatch(labels,/Expand view|Exit expanded view|Inspect in 3D|Perspective|Open component|Placement \/ type|Select component|Select a component|Unplaced|Not configured|Online|Offline|Unknown|installed components|occupied|available|RACK ENGINEERING|CONFIGURATION MODEL|FRONT ELEVATION|SAVED POSITION|Saved rack position|CONNECTION \/ POWER|Not installed in rack|Check placement conflict|Drag to orbit|Zoom in|Zoom out/i,'New rack workspace labels must be localized; project/device names and technical acronyms are exempt');
+  for(const name of ['\u900f\u8996','\u6b63\u9762','\u80cc\u9762','\u91cd\u8a2d\u8996\u89d2','\u805a\u7126 3D \u5143\u4ef6','\u958b\u555f\u5143\u4ef6\u8a73\u60c5','\u4f4d\u7f6e\uff0f\u985e\u578b'])assert.equal(await page.locator('.ew-rack-deck').getByRole('button',{name,exact:true}).count(),1,name);
+ };
  try{
   await page.goto(base+'/#/rack/proj_k');await ready();await settle();
   const initial=await state();assert.equal(initial.count,35);assert.equal(initial.occupiedU,48);assert.equal(initial.invalid.length,0);assert.equal(initial.geometryBuffers,36);
   for(const [name,top,size,type] of expected){const p=initial.placements.find(p=>p.name===name);assert.deepEqual(p,{name,type,top,bottom:top-size+1,size});}
   results.push('Exact approved 35-component / 48U arrangement; mixed 1/2/3/4U and 5U blank; 9 independent NVLink trays');
-  await page.getByRole('button',{name:'Expand view',exact:true}).click();
+  await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u5df2\u9023\u7dda/);assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u5df2\u958b\u6a5f/);
+  await select('PS-03');await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u96e2\u7dda/);
+  await select('BLANK-TOP-01');await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u672a\u77e5/);assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u672a\u8a2d\u5b9a/);await select('SERVER-04U');
+  await page.getByRole('button',{name:'\u653e\u5927\u6aa2\u8996',exact:true}).click();assert.equal(await page.getByRole('button',{name:'\u96e2\u958b\u653e\u5927\u6aa2\u8996',exact:true}).getAttribute('aria-pressed'),'true');
   for(const theme of ['dark','light']){
    await page.evaluate(t=>applyTheme(t),theme);await settle();
-   for(const view of ['Perspective','Front','Rear']){
-    await page.getByRole('button',{name:view,exact:true}).click();await settle();
-    await page.screenshot({path:path.join(output,`gb300-rack-${theme}-${view.toLowerCase()}.png`),animations:'disabled'});
+   for(const [view,label] of [['perspective','\u900f\u8996'],['front','\u6b63\u9762'],['rear','\u80cc\u9762']]){
+    await page.getByRole('button',{name:label,exact:true}).click();await settle();
+    await page.screenshot({path:path.join(output,`gb300-rack-${theme}-${view}.png`),animations:'disabled'});
     assert.equal((await state()).theme,theme);
    }
   }
   await page.evaluate(()=>applyTheme('dark'));
-  await page.getByRole('button',{name:'Perspective',exact:true}).click();
+  await page.getByRole('button',{name:'\u900f\u8996',exact:true}).click();
   for(const name of ['SERVER-04U','SERVER-03U','SERVER-02U','SERVER-01','NVLINK-01','PS-01','SW-01','CDU-01']){
    await select(name);assert.equal((await state()).selected,name);
-   await page.getByRole('button',{name:'Inspect in 3D',exact:true}).click();await settle();
+   await page.getByRole('button',{name:'\u805a\u7126 3D \u5143\u4ef6',exact:true}).click();await settle();
    await page.screenshot({path:path.join(output,`gb300-detail-${name.toLowerCase()}.png`),animations:'disabled'});
   }
   results.push('Front/rear/orbit views, selection/focus and both material themes rendered');
-  await page.getByRole('button',{name:'Reset',exact:true}).click();await settle();
+  await localizedRack();assert.match(await page.locator('#ew-rack-inspector').innerText(),/\u672a\u8a2d\u5b9a/);
+  await page.getByRole('button',{name:'\u91cd\u8a2d\u8996\u89d2',exact:true}).click();await settle();
   assert.equal((await state()).zoom,1);
   await page.locator('.ew-inspector-actions button').last().focus();await page.keyboard.press('Tab');
   assert.equal(await page.locator('.ew-expand').evaluate(e=>e===document.activeElement),true,'Expanded viewport traps focus inside its visible controls');
-  await page.getByRole('button',{name:'Placement / type',exact:true}).click();await page.waitForSelector('#rm-move-u');
+  await page.getByRole('button',{name:'\u4f4d\u7f6e\uff0f\u985e\u578b',exact:true}).click();await page.waitForSelector('#rm-move-u');
   assert.equal(await page.locator('.ew-rack-deck').evaluate(e=>e.classList.contains('is-expanded')),false,'Placement dialog must not be hidden behind the expanded stage');
   await page.locator('#rm-dialog .modal-head button').first().click();
-  await page.getByRole('button',{name:'Expand view',exact:true}).click();
-  await page.locator('#ew-rack-canvas').press('Escape');assert.equal(await page.locator('.ew-rack-deck').evaluate(e=>e.classList.contains('is-expanded')),false);
-  await page.getByRole('button',{name:'Front',exact:true}).click();
+  await page.getByRole('button',{name:'\u653e\u5927\u6aa2\u8996',exact:true}).click();
+  await page.getByRole('button',{name:'\u96e2\u958b\u653e\u5927\u6aa2\u8996',exact:true}).click();assert.equal(await page.locator('.ew-rack-deck').evaluate(e=>e.classList.contains('is-expanded')),false);
+  await page.getByRole('button',{name:'\u653e\u5927\u6aa2\u8996',exact:true}).click();await page.locator('#ew-rack-canvas').press('Escape');assert.equal(await page.locator('.ew-rack-deck').evaluate(e=>e.classList.contains('is-expanded')),false);
+  await page.getByRole('button',{name:'\u6b63\u9762',exact:true}).click();
   const box=await page.locator('#ew-rack-canvas').boundingBox();
   await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x+box.width/2+80,box.y+box.height/2+25,{steps:8});await page.mouse.up();assert.notEqual((await state()).yaw,0);assert.equal((await state()).dragging,false);
-  await page.getByRole('button',{name:'Reset',exact:true}).click();
+  await page.getByRole('button',{name:'\u91cd\u8a2d\u8996\u89d2',exact:true}).click();
   await page.evaluate(()=>{window.__qaOldRackScene=document.querySelector('#ew-rack-canvas').paRackScene;});
   await page.locator('.nav-btn[data-view="dashboard"]').click();await page.waitForSelector('#system-core');assert.equal(await page.evaluate(()=>__qaOldRackScene.getState().disposed),true);assert.equal(await page.evaluate(()=>__qaOldRackScene.getState().geometryBuffers),0);
   await page.goto(base+'/#/rack/proj_k');await ready();
@@ -77,6 +87,13 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   })));
   for(const row of cduSizes){assert.equal(row.reported,row.units);assert.ok(row.valid,`CDU ${row.units}U ${row.view}: invalid SVG geometry`);}
   results.push('Detailed CDU front/perspective drawings preserve 1/2/3/4/5/48U dimensions without invalid geometry');
+  const extensionMaterials=await page.evaluate(()=>['server','nvlink','switch','powershelf','pdu','cdu','storage','network','blanking'].flatMap(type=>[1,2,3,4].flatMap(units=>['front','perspective'].map(view=>{
+   const doc=new DOMParser().parseFromString(PAHardwareVisuals.render({mgx_type:type,rack_size:units},{view}),'image/svg+xml');
+   const zones=[...doc.querySelectorAll('[data-hardware-zone="server-extension"]')];
+   return {type,units,view,zones:zones.map(el=>({material:el.dataset.hardwareMaterial,fill:el.querySelector('rect')?.getAttribute('fill')}))};
+  }))));
+  for(const row of extensionMaterials){assert.equal(row.zones.length,row.type==='server'&&row.units>1?1:0,`${row.type} ${row.units}U ${row.view}: wrong server extension`);for(const zone of row.zones){assert.equal(zone.material,'gray');assert.match(zone.fill,/-server-extension\)/);}}
+  results.push('Only multi-U Server drawings contain a gray lower extension; 1U Server and all NVLink/other devices do not inherit it');
   const gallery=await context.newPage();
   await gallery.goto(base+'/#/machine/host_a');await gallery.waitForSelector('.pd-hardware-stage');
   await gallery.evaluate(()=>{
@@ -111,7 +128,8 @@ const expected=[['BLANK-TOP-01',48,1,'blanking'],['BLANK-TOP-02',47,1,'blanking'
   await page.evaluate(()=>__qaRackLoss.restoreContext());await ready();await page.waitForSelector('.ew-gl-fallback',{state:'detached'});
   const fallback=await context.newPage();
   await fallback.addInitScript(()=>{const native=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){return /webgl/i.test(kind)?null:native.call(this,kind,...args);};});
-  await fallback.goto(base+'/#/rack/proj_k');await fallback.waitForSelector('.ew-gl-fallback');await fallback.locator('.ew-gl-fallback').getByRole('button',{name:'48U placement',exact:true}).click();assert.equal(await fallback.locator('.rm-u .mono').count(),48);await fallback.close();
+  await fallback.goto(base+'/#/rack/proj_k');await fallback.waitForSelector('.ew-gl-fallback');assert.match(await fallback.locator('.ew-gl-fallback').innerText(),/[\u4e00-\u9fff]/);assert.doesNotMatch(await fallback.locator('.ew-gl-fallback').innerText(),/unavailable|All management functions|placement/i);await fallback.locator('.ew-gl-fallback').getByRole('button',{name:'48U \u914d\u7f6e',exact:true}).click();assert.equal(await fallback.locator('.rm-u .mono').count(),48);await fallback.close();
+  results.push('Traditional Chinese rack controls, live status labels, expanded-state toggle and WebGL fallback verified; technical names preserved');
   results.push('WebGL restoration and 48U edit fallback remain functional');
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
   fs.writeFileSync(path.join(output,'gb300-rack.json'),JSON.stringify({passed:true,results,errors,external},null,2));
