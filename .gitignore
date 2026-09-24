@@ -36,3 +36,6 @@ prod-data/
 server7000.log
 bridge7001.log
 *.log
+
+# Synthetic regression test scratch space
+qa/tmp/

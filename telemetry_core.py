@@ -808,6 +808,13 @@ def get_os_series(name, minutes):
     return {"os": [dict(r) for r in os_rows], "net": net_series, "disk": disk_series}
 
 
+def is_rack_member(m, project):
+    if (m.get("project") or "").casefold() != (project or "").casefold() or m.get("level") != "rack":
+        return False
+    return kind_of(m) != "blanking" and ((m.get("rack_u") or 0) > 0 or
+        (m.get("rack_mount") == "external" and kind_of(m) == "cdu"))
+
+
 def get_rack_series(project, minutes):
     """依專案拉取「類型化」rack telemetry。
     回傳按 kind 分組：{kind: {metrics 定義, machines: 每台最新值, history: 每 metric 聚合}}，
@@ -819,7 +826,7 @@ def get_rack_series(project, minutes):
     # 專案名比對用「大小寫不敏感」（proj_k/proj_k/proj_k 都視為同一專案）
     want = (project or "").casefold()
     members = {n: m for n, m in all_m.items()
-               if (m.get("project") or "").casefold() == want and m.get("level") == "rack"}
+               if is_rack_member(m, project)}
     if not members:
         return {}
 

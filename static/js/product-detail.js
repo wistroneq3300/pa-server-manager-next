@@ -60,7 +60,7 @@
     return b.outerHTML;
   }
   function kv(label, value, cls = '') { return `<div class="pd-key-value ${cls}"><span>${label}</span><strong>${esc(value || '—')}</strong></div>`; }
-  function stateDot(online, label) { return `<span class="pd-state ${online ? 'pd-state-online' : 'pd-state-offline'}"><i></i>${label}</span>`; }
+  function stateDot(online, label) { return `<span class="pd-state ${online === true ? 'pd-state-online' : online === false ? 'pd-state-offline' : ''}"><i></i>${online===true?'Ping \u53ef\u9054':online===false?'Ping \u672a\u56de\u61c9':'\u5c1a\u672a\u89c0\u6e2c'}</span>`; }
   let tabs = [['overview','Overview','系統概覽'],['hardware','Hardware','硬體配置'],['osslots','OS Slots','獨立 OS'],['sensors','Sensors & firmware','感測與韌體'],['telemetry','Telemetry','效能遙測'],['tasks','Test tasks','測試任務']];
   // Keep the asynchronously produced report attached to its new workspace panel.
   sensorAnalyze = async function(name) {
@@ -92,7 +92,7 @@
     const rack = b.level === 'rack';
     const level = rack ? 'L11' : 'L10';
     // 只有 L11（機櫃管理 rack level）機台才提供「獨立 OS」功能；L10 系統不顯示該分頁
-    const viewTabs = rack ? tabs : tabs.filter(t => t[0] !== 'osslots');
+    const viewTabs = mgxTypeOf(m)==='cdu' ? tabs.filter(t=>['overview','telemetry'].includes(t[0])) : rack ? tabs : tabs.filter(t => t[0] !== 'osslots');
     let selected = selectedTabs.get(name) || 'overview';
     if (!viewTabs.some(t => t[0] === selected)) selected = 'overview';
     const holder = document.createElement('div');
@@ -221,8 +221,11 @@
   };
   // 多 OS 機框：切換「目前選定 OS」。後端會把該 slot 帳密同步到 os_ip/...（成為終端/SSH 目標），
   // 前端更新本地 machine 資料後重繪詳情頁。BMC 電源維持機框級不受影響。
+  const selectingOs = new Set();
   window.pdSelectOs = async function(name, slot) {
-    if (!name || !(slot >= 1)) return;
+    if (!name || !(slot >= 1) || selectingOs.has(name)) return;
+    selectingOs.add(name);
+    const picker=document.querySelector('.pd-os-select-box');if(picker)picker.disabled=true;
     try {
       const res = await fetch(`/api/machines/${encodeURIComponent(name)}/select-os`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -237,7 +240,8 @@
         m.os_ip = nm.os_ip; m.os_user = nm.os_user; m.os_pass = nm.os_pass;
         m.os_port = nm.os_port; m.active_os = nm.active_os;
         m.os = nm.os; m.os_alive_map = nm.os_alive_map;
-        m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_alive = nm.bmc_alive;
+        m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_pass = nm.bmc_pass; m.bmc_alive = nm.bmc_alive;
+        m.os_alive = nm.os_alive; m.connectivity = nm.connectivity;
       }
       // 切換 OS 時，整套配置跟著換成新選定 OS 的（硬體/OS 資訊 + BMC fw/power + 感測器）。
       // 後端 select-os 已把該 slot 的 os_ip/os_user/bmc_ip...同步到機台層級，所以清快取後
@@ -256,7 +260,7 @@
           if (_activeMachine === name) setView('machine');
         }
       }
-    } catch (e) { alert(`切換 OS 失敗：${e.message}`); }
+    } catch (e) { alert(`切換 OS 失敗：${e.message}`); } finally { selectingOs.delete(name);const current=document.querySelector('.pd-os-select-box');if(current)current.disabled=false; }
   };
 
   // 多 OS 管理：新增一個節點（OS + 配對 BMC）。opts 可帶預先探測好的 label/bmc_ip（避免新增後再抓、失敗殘留）
@@ -278,7 +282,8 @@
       if (!data.ok) { window.pdOsToast(`新增節點失敗：${data.detail || ''}`, false); return; }
       const nm = data.machine;
       const m = machines.find(x => x.name === name);
-      if (m && nm) { m.os = nm.os; m.active_os = nm.active_os; m.os_ip = nm.os_ip; m.os_user = nm.os_user; m.os_pass = nm.os_pass; m.os_port = nm.os_port; m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_alive = nm.bmc_alive; }
+      if (m && nm) { m.os = nm.os; m.active_os = nm.active_os; m.os_ip = nm.os_ip; m.os_user = nm.os_user; m.os_pass = nm.os_pass; m.os_port = nm.os_port; m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_pass = nm.bmc_pass; m.bmc_alive = nm.bmc_alive;
+        m.os_alive = nm.os_alive; m.connectivity = nm.connectivity; }
       return nm;
     } catch (e) { window.pdOsToast(`新增失敗：${e.message}`, false); }
   };
@@ -372,7 +377,8 @@
       if (!data.ok) { alert(`儲存節點失敗：${data.detail || ''}`); return; }
       const nm = data.machine;
       const m = machines.find(x => x.name === name);
-      if (m && nm) { m.os = nm.os; m.active_os = nm.active_os; m.os_ip = nm.os_ip; m.os_user = nm.os_user; m.os_pass = nm.os_pass; m.os_port = nm.os_port; m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_alive = nm.bmc_alive; }
+      if (m && nm) { m.os = nm.os; m.active_os = nm.active_os; m.os_ip = nm.os_ip; m.os_user = nm.os_user; m.os_pass = nm.os_pass; m.os_port = nm.os_port; m.bmc_ip = nm.bmc_ip; m.bmc_user = nm.bmc_user; m.bmc_pass = nm.bmc_pass; m.bmc_alive = nm.bmc_alive;
+        m.os_alive = nm.os_alive; m.connectivity = nm.connectivity; }
       if (_activeMachine === name && state.view === 'machine') setView('machine');
       else alert(`節點 ${slot} 已儲存`);
     } catch (e) { alert(`儲存節點失敗：${e.message}`); }

@@ -1,3 +1,4 @@
+from test_support import WorkspaceTemporaryDirectory
 """Isolated real-function regressions; temporary storage, no service or hardware."""
 import ast
 import copy
@@ -38,7 +39,7 @@ def extract(file, names, scope):
 
 class Reliability(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        self.tmp = WorkspaceTemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.s = dict(copy=copy, tempfile=tempfile, wraps=wraps, os=os, json=json,
                       datetime=datetime, HTTPException=ApiError, _DATA_LOCK=threading.RLock(),
@@ -49,7 +50,7 @@ class Reliability(unittest.TestCase):
                       telemetry_core=SimpleNamespace(kind_of=lambda m, n='':
                           m.get('mgx_type') or ('cdu' if (n or m.get('name','')).lower().startswith('cdu') else 'server')))
         extract('main.py', ['_data_transaction', '_save_data', '_rack_integer',
-                '_validate_rack', 'edit_machine', 'add_rack_passive', 'add_project'], self.s)
+                '_validate_rack', 'edit_machine', 'place_machine', 'set_cdu_installation', 'add_rack_passive', 'add_project'], self.s)
         self.s['_save_data']()
 
     def machine(self, name='node', **kw):
@@ -90,14 +91,14 @@ class Reliability(unittest.TestCase):
             self.assertEqual(self.s['machines'], before)
 
     def test_full_height_and_unplacement(self):
-        self.machine()
-        self.s['edit_machine']('node', {'rack_u': 48, 'rack_size': 48})
+        self.machine(rack_size=48)
+        self.s['edit_machine']('node', {'rack_u': 48})
         self.s['edit_machine']('node', {'rack_u': 0})
         self.assertEqual(self.s['machines']['node']['rack_u'], 0)
 
     def test_overlap_cross_face_and_adjacency(self):
         self.machine('a', rack_u=8, rack_size=4)
-        self.machine('b')
+        self.machine('b', rack_size=4)
         with self.assertRaises(ApiError):
             self.s['edit_machine']('b', {'rack_u': 5, 'rack_side': 'rear'})
         self.s['edit_machine']('b', {'rack_u': 4, 'rack_size': 4})
@@ -146,9 +147,9 @@ class Reliability(unittest.TestCase):
             def __exit__(self, *args): pass
             def execute(self, *args): return self
             def fetchall(self): return rows
-        scope = dict(time=time, os=os, _conn=Conn, RACK_METRIC_DEF={}, kind_of=lambda m,n:'pdu',
+        scope = dict(time=time, os=os, _conn=Conn, RACK_METRIC_DEF={}, kind_of=lambda m,n='':'pdu',
                      _load_machines=lambda:{n:dict(project='rack', level='rack', rack_u=i+1) for i,n in enumerate(('a','b'))})
-        extract('telemetry_core.py', ['get_rack_series'], scope)
+        extract('telemetry_core.py', ['is_rack_member', 'get_rack_series'], scope)
         h = scope['get_rack_series']('rack', 60)['pdu']['history']
         self.assertEqual(h['power_w']['values'], [300, 50])
         self.assertEqual(h['temp']['values'], [150, 50])

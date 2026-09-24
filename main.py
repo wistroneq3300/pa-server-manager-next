@@ -58,34 +58,42 @@ def _data_dir():
 
 DATA_FILE = os.path.join(_data_dir(), "data.json")
 
+_DATA_LOAD_ERROR = None
+
 def _load_data():
-    global machines, projects, _seq, links
-    machines = {}
-    projects = {}
-    links = []          # 機櫃拓樸連線：[{"a": 名稱, "b": 名稱, "type": "eth"|"ib"|"power"|"coolant"}]
-    _seq = 1
+    global machines, projects, _seq, links, _DATA_LOAD_ERROR
+    loaded_machines = {}
+    loaded_projects = {}
+    loaded_links = []          # 機櫃拓樸連線：[{"a": 名稱, "b": 名稱, "type": "eth"|"ib"|"power"|"coolant"}]
+    loaded_seq = 1
     try:
         if os.path.exists(DATA_FILE):
             with open(DATA_FILE, "r", encoding="utf-8") as f:
                 d = json.load(f)
-            machines = d.get("machines", {})
-            projects = d.get("projects", {})
-            links = d.get("links", []) or []
-            _seq = d.get("seq", 1)
+            if not isinstance(d, dict) or not isinstance(d.get("machines", {}), dict) or not isinstance(d.get("projects", {}), dict) or not isinstance(d.get("links", []) or [], list):
+                raise ValueError("Invalid inventory structure")
+            loaded_machines = d.get("machines", {})
+            loaded_projects = d.get("projects", {})
+            loaded_links = d.get("links", []) or []
+            loaded_seq = d.get("seq", 1)
         # 遷移：若缺 order 欄位，依插入順序補上
-        if not any("order" in p for p in projects.values()):
-            for i, n in enumerate(projects):
-                projects[n]["order"] = i
-        for n, p in projects.items():
+        if not any("order" in p for p in loaded_projects.values()):
+            for i, n in enumerate(loaded_projects):
+                loaded_projects[n]["order"] = i
+        for n, p in loaded_projects.items():
             p.setdefault("order", 0)
-        if not any("order" in m for m in machines.values()):
-            for i, n in enumerate(machines):
-                machines[n]["order"] = i
-        for n, m in machines.items():
+        if not any("order" in m for m in loaded_machines.values()):
+            for i, n in enumerate(loaded_machines):
+                loaded_machines[n]["order"] = i
+        for n, m in loaded_machines.items():
             m.setdefault("order", 0)
             m.setdefault("level", "system")   # system = L10 單機; rack = L11 整櫃
+        machines, projects, links, _seq = loaded_machines, loaded_projects, loaded_links, loaded_seq
+        _DATA_LOAD_ERROR = None
     except Exception as e:
-        print("載入 data.json 失敗：", e)
+        _DATA_LOAD_ERROR = "Inventory could not be loaded; restore a validated backup and restart"
+        raise RuntimeError("Cannot load data.json; restore a validated backup before restarting. No data was saved.") from e
+
 
 
 def _reindex_projects():
@@ -121,6 +129,8 @@ def _data_transaction(fn):
 
 
 def _save_data():
+    if globals().get("_DATA_LOAD_ERROR"):
+        raise HTTPException(503, _DATA_LOAD_ERROR)
     tmp = None
     with _DATA_LOCK:
         try:
@@ -609,9 +619,10 @@ def add_machine(body: AddMachine):
 
 
 class ProbeBMC(BaseModel):
+    machine_name: str = ""
     os_ip: str
-    os_user: str
-    os_pass: str
+    os_user: str = ""
+    os_pass: str = ""
     os_port: int = 22
     expected_hostname: str = ""   # 非空時：OS hostname 必須等於此值才抓 BMC IP（變更 IP 用）
 
@@ -645,6 +656,14 @@ def probe_bmc(body: ProbeBMC):
     """新增系統前探測：用 OS SSH 抓 hostname，並用 OS 本機 ipmitool lan print
     自動取得 BMC IP Address（填入表單自動帶入）。若 OS 內無 ipmitool 則回傳
     ipmitool_ok=False，由前端提示需下載/安裝 ipmitool。"""
+    if body.machine_name:
+        stored = machines.get(body.machine_name)
+        if not stored:
+            raise HTTPException(404, "Machine not found")
+        body.os_user = stored.get("os_user", "")
+        body.os_pass = stored.get("os_pass", "")
+        body.os_port = stored.get("os_port") or 22
+        body.expected_hostname = stored["name"]
     if not body.os_ip or not body.os_user or not body.os_pass:
         raise HTTPException(400, "請填 OS IP / SSH 帳號 / 密碼")
     hostname, rc, err = ssh_run(body.os_ip, body.os_user, body.os_pass, body.os_port, "hostname", timeout=12)
@@ -714,6 +733,13 @@ def edit_machine(name: str, body: dict):
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
     m = copy.deepcopy(machines[name])
+    if m.get("level") == "rack":
+        fixed = {"mgx_type": telemetry_core.kind_of(m, name), "rack_size": m.get("rack_size", 1),
+                 "rack_mount": m.get("rack_mount", "internal")}
+        for field, value in fixed.items():
+            if field in body and (body[field] != value or type(body[field]) is not type(value)):
+                raise HTTPException(400, "Existing L11 specifications are fixed: " + field)
+
     if "project" in body:
         tgt = body["project"]
         if tgt and tgt not in projects:
@@ -752,6 +778,46 @@ def edit_machine(name: str, body: dict):
             m["bmc_port"] = int(body["bmc_port"]) or 623
         except Exception:
             pass
+    _validate_rack(m, name)
+    machines[name] = m
+    _save_data()
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
+@app.patch("/api/machines/{name}/placement")
+@_data_transaction
+def place_machine(name: str, body: dict):
+    if name not in machines:
+        raise HTTPException(404, "Machine not found")
+    m = machines[name]
+    if m.get("level") != "rack":
+        raise HTTPException(400, "Only existing L11 equipment can be placed")
+    if set(body) - {"rack_u", "expected_project"} or "rack_u" not in body:
+        raise HTTPException(400, "Placement accepts only rack_u and expected_project")
+    if body.get("expected_project") != m.get("project"):
+        raise HTTPException(409, "Project changed; reload the equipment before placing it")
+    return edit_machine(name, {"rack_u": body["rack_u"]})
+
+
+@app.patch("/api/machines/{name}/cdu-installation")
+@_data_transaction
+def set_cdu_installation(name: str, body: dict):
+    if name not in machines:
+        raise HTTPException(404, "Machine not found")
+    m = copy.deepcopy(machines[name])
+    if m.get("level") != "rack" or telemetry_core.kind_of(m, name) != "cdu":
+        raise HTTPException(400, "Only CDU installation can be changed here")
+    if set(body) - {"rack_mount", "rack_size", "expected_project"}:
+        raise HTTPException(400, "Unexpected installation field")
+    if body.get("expected_project") != m.get("project"):
+        raise HTTPException(409, "Project changed; reload equipment")
+    mount = body.get("rack_mount")
+    if mount not in ("internal", "external"):
+        raise HTTPException(400, "Choose internal or external")
+    size = 0 if mount == "external" else _rack_integer(body.get("rack_size"), "rack_size", 1, 48)
+    if mount == "internal" and m.get("rack_mount", "internal") == "internal" and size != m.get("rack_size", 1):
+        raise HTTPException(400, "Existing internal CDU height is fixed")
+    m.update(rack_mount=mount, rack_size=size, rack_u=size)
     _validate_rack(m, name)
     machines[name] = m
     _save_data()
@@ -803,9 +869,14 @@ def change_os_ip(name: str, body: ChangeOsIp):
 
     old_ip = m.get("os_ip")
     m["os_ip"] = new_ip
+    slots = m.get("os") or []
+    if slots:
+        slots[int(m.get("active_os") or 1) - 1]["ip"] = new_ip
+        _sync_active_os(m)
     _save_data()
+    _invalidate_machine_cache(name)
     return {"ok": True, "changed": True, "msg": f"已將 OS IP 由 {old_ip} 更新為 {new_ip}。",
-            "machine": m}
+            "machine": _bmc_safe(m)}
 
 
 class ChangeBmcIp(BaseModel):
@@ -829,9 +900,14 @@ def change_bmc_ip(name: str, body: ChangeBmcIp):
                 "msg": f"Ping 不到新 BMC IP {new_ip}，未變更。請確認該 IP 現在是線上。"}
     old_ip = m.get("bmc_ip") or "(無)"
     m["bmc_ip"] = new_ip
+    slots = m.get("os") or []
+    if slots:
+        slots[int(m.get("active_os") or 1) - 1]["bmc_ip"] = new_ip
+        _sync_active_os(m)
     _save_data()
+    _invalidate_machine_cache(name)
     return {"ok": True, "changed": True, "msg": f"已將 BMC IP 由 {old_ip} 更新為 {new_ip}。",
-            "machine": m}
+            "machine": _bmc_safe(m)}
 
 
 # ---- 多 OS 機框（一台 server 含多個獨立 OS，每個 OS 配對一個 BMC）CRUD ----
@@ -980,6 +1056,7 @@ def machine_update_os(name: str, slot: int, body: UpdateOs):
     if slot == int(m.get("active_os") or 1):
         _sync_active_os(m)
     _save_data()
+    _invalidate_machine_cache(name)
     return {"ok": True, "machine": _bmc_safe(m)}
 
 
@@ -1001,8 +1078,13 @@ def machine_delete_os(name: str, slot: int):
     for i, e in enumerate(os_list, start=1):
         e["slot"] = i
     # 若移除的是 active，回退到 OS 1
-    if active >= slot:
+    if active == slot:
         m["active_os"] = 1
+    elif active > slot:
+        m["active_os"] = active - 1
+    m["os"] = os_list
+    _sync_active_os(m)
+    _invalidate_machine_cache(name)
     if len(os_list) <= 1:
         # 只剩一個 OS → 退化回單 OS（移除 os 陣列，維持既有結構）
         m.pop("os", None)
@@ -1030,17 +1112,7 @@ def machine_select_os(name: str, body: SelectOs):
     _sync_active_os(m)
     _save_data()
     # 換 OS → 舊快取不屬於新 OS，全部清掉，重抓
-    _os_info_cache.pop(name, None)
-    _os_info_time.pop(name, None)
-    _os_hw_cache.pop(name, None)
-    _os_hw_time.pop(name, None)
-    _bmc_fw_cache.pop(name, None)
-    _bmc_pwr_cache.pop(name, None)
-    _bmc_pending.discard(name)
-    with _sensors_lock:
-        _sensors_cache.pop(name, None)
-        _sensors_time.pop(name, None)
-        _sensors_pending.pop(name, None)
+    _invalidate_machine_cache(name)
     return {"ok": True, "machine": _bmc_safe(m)}
 
 
@@ -1180,6 +1252,8 @@ def _collect_power():
         list(ex.map(pjob, targets))
 
 
+_status_observed = {}
+
 def _refresh_status(force=False):
     """並行掃描所有機台的 OS / BMC 線上狀態與健康度，寫入快取。"""
     global _STATUS_TIME
@@ -1196,7 +1270,10 @@ def _refresh_status(force=False):
     def scan(kind, name):
         ip = machines[name].get("os_ip" if kind == "os" else "bmc_ip")
         key = (kind, name)
-        _status_cache[key] = ping_check(ip)
+        alive = ping_check(ip)
+        if machines.get(name, {}).get("os_ip" if kind == "os" else "bmc_ip") == ip:
+            _status_cache[key] = alive
+            _status_observed[key] = time.time()
 
     with ThreadPoolExecutor(max_workers=32) as ex:
         list(ex.map(lambda h: scan(*h), list(hosts)))
@@ -1246,7 +1323,9 @@ def list_machines(force_scan: bool = False):
         c = dict(m)
         c["os_pass"] = "****" if c.get("os_pass") else ""
         c["bmc_pass"] = "****" if c.get("bmc_pass") else ""
-        c["os_alive"] = _status_cache.get(("os", name), False)
+        c["os_alive"] = _status_cache.get(("os", name))
+        c["connectivity"] = {kind: {"source": "ICMP ping", "observed_at": _status_observed.get((kind, name)),
+            "configured": bool(m.get(kind + "_ip"))} for kind in ("os", "bmc")}
         c["power"] = (_POWER.get(name) or {}).get("v")
         c["bmc_alive"] = _status_cache.get(("bmc", name)) if m.get("bmc_ip") else None
         c["health"] = _health_cache.get(name, ("unknown", 0))[0]
@@ -1492,6 +1571,8 @@ def _bmc_safe(m):
     c["os_alive"] = ping_check(m.get("os_ip"), 2) if m.get("os_ip") else None
     c["bmc_alive"] = ping_check(m.get("bmc_ip"), 2) if m.get("bmc_ip") else None
     c["os"] = _mask_os_list(m.get("os"))
+    c["connectivity"] = {kind: {"source": "ICMP ping", "observed_at": time.time() if m.get(kind + "_ip") else None,
+        "configured": bool(m.get(kind + "_ip"))} for kind in ("os", "bmc")}
     return c
 
 
@@ -1539,6 +1620,15 @@ def _norm_os_entry(e, slot):
     }
 
 
+def _invalidate_machine_cache(name):
+    for cache_name in ("_os_info_cache", "_os_info_time", "_os_hw_cache", "_os_hw_time",
+                       "_bmc_fw_cache", "_bmc_pwr_cache", "_os_access_cache", "_sensors_cache", "_sensors_time", "_POWER", "_health_cache"):
+        globals().get(cache_name, {}).pop(name, None)
+    for kind in ("os", "bmc"):
+        globals().get("_status_cache", {}).pop((kind, name), None)
+        globals().get("_status_observed", {}).pop((kind, name), None)
+
+
 def _sync_active_os(m):
     """把 m 的 active OS（os[active_os-1]）同步到 m 的 os_ip/os_user/os_pass/os_port，
     以及該 OS 節點配對的 BMC（bmc_ip/bmc_user/bmc_pass）。
@@ -1546,23 +1636,22 @@ def _sync_active_os(m):
     所有既有邏輯（ssh_run / ssh_ipmi / status / terminal / 電源 / KVM）的目標。
     BMC port 固定 623（IPMI 標準），不存於資料模型。"""
     os_list = m.get("os") or []
-    if len(os_list) <= 1:
+    if not os_list:
         return
     active = int(m.get("active_os") or 1)
     if not (1 <= active <= len(os_list)):
         active = 1
         m["active_os"] = 1
     cur = os_list[active - 1]
-    m["os_ip"] = cur.get("ip", m.get("os_ip", ""))
-    m["os_user"] = cur.get("user", m.get("os_user", ""))
-    m["os_pass"] = cur.get("pass", m.get("os_pass", ""))
-    m["os_port"] = int(cur.get("port") or m.get("os_port") or 22)
-    # 同步該節點配對的 BMC（只有該 OS 有填 BMC 才覆蓋，避免清空舊值）
-    if cur.get("bmc_ip"):
-        m["bmc_ip"] = cur.get("bmc_ip")
-        m["bmc_user"] = cur.get("bmc_user", "")
-        m["bmc_pass"] = cur.get("bmc_pass", "")
-        m["bmc_port"] = 623
+    m["os_ip"] = cur.get("ip", "")
+    m["os_user"] = cur.get("user", "")
+    m["os_pass"] = cur.get("pass", "")
+    m["os_port"] = int(cur.get("port") or 22)
+    # An unpaired OS must never inherit another slot's BMC credentials.
+    m["bmc_ip"] = cur.get("bmc_ip", "")
+    m["bmc_user"] = cur.get("bmc_user", "")
+    m["bmc_pass"] = cur.get("bmc_pass", "")
+    m["bmc_port"] = 623
     m["active_os"] = active
 
 
@@ -1645,13 +1734,26 @@ def delete_link(body: dict):
     return {"ok": True, "note": "未找到", "links": links}
 
 
+def _operation_target(name, body):
+    with _DATA_LOCK:
+        m = copy.deepcopy(machines[name])
+    expected = (body or {}).get("expected_target")
+    if expected is not None:
+        actual = {"active_os": int(m.get("active_os") or 1), "os_ip": m.get("os_ip") or "", "bmc_ip": m.get("bmc_ip") or ""}
+        if expected != actual:
+            raise HTTPException(409, "Operation target changed. Reload and confirm the selected OS and BMC.")
+    return m
+
+
 @app.post("/api/machine/{name}/power")
 def machine_power(name: str, body: dict):
     """對機台開/關機。body: {on: bool}。優先使用該機台的自訂 power 指令。"""
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
+    if type(body.get("on")) is not bool:
+        raise HTTPException(422, "on must be a boolean")
     _POWER.pop(name, None)  # 開/關機後狀態作廢
-    m = machines[name]
+    m = _operation_target(name, body)
     action = "poweron" if body.get("on") else "poweroff"
     ok, info = run_control_cmd(m, action)
     # 狀態查詢：自訂指令不存在 power status → 略過
@@ -1667,7 +1769,7 @@ def machine_aux_cycle(name: str, body: dict = None):
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
     _POWER.pop(name, None)  # AC cycle 後狀態作廢
-    m = machines[name]
+    m = _operation_target(name, body)
     ok, info = run_control_cmd(m, "aux")
     return {"ok": ok, "action": "aux", "info": info}
 
@@ -1677,7 +1779,7 @@ def machine_reboot(name: str, body: dict = None):
     """對機台執行 OS reboot。透過 sshpass/ssh 到 OS 下 reboot；無 OS 才改用 BMC chassis power reset。"""
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
-    m = machines[name]
+    m = _operation_target(name, body)
     ok, info = _reboot_machine(m)
     return {"ok": ok, "action": "reboot", "info": info}
 
@@ -1687,11 +1789,10 @@ def _reboot_machine(m):
     if m.get("os_ip") and m.get("os_user") and m.get("os_pass"):
         out, rc, err = ssh_run(m["os_ip"], m.get("os_user", ""), m.get("os_pass", ""),
                                m.get("os_port", 22), "sudo -n true 2>/dev/null && sudo reboot || reboot", timeout=10)
-        if rc == 0 or ("reboot" in (out or "") or "Connection" in (err or "")):
+        if rc == 0:
             return True, "已送出 reboot（OS）— SSH 可能馬上斷線代表正在重開"
-        # ssh 執行 reboot 後連線通常會立刻斷，rc 可能非 0，但能連上且送出即視為成功
-        if err and ("closed" in err.lower() or "refused" in err.lower() or "broken" in err.lower()):
-            return True, "已送出 reboot（OS 連線中斷，代表正在重開）"
+        if err and ("closed" in err.lower() or "broken" in err.lower()):
+            return False, "SSH disconnected; reboot acceptance is unconfirmed. Check power state before retrying."
         return False, f"SSH 無法送 reboot：{err or '無回應'}"
     if m.get("bmc_ip") and m.get("bmc_user") and m.get("bmc_pass"):
         ok, info = ipmi_power(m, "reset")
@@ -1955,15 +2056,21 @@ def _network_identity(m, refresh=False):
     return {**empty, "loading": True}
 
 
+_os_access_cache = {}
+
 @app.get("/api/machine/{name}/detail")
 def machine_detail(name: str, refresh: int = 0):
     """單機詳細頁：BMC/OS 資訊（只讀，不做開關機）。
     refresh=1 時強制重新抓取 OS/HW 資訊（「重新整理」按鈕）。"""
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
-    m = machines[name]
+    m = copy.deepcopy(machines[name])
     base = _bmc_safe(m)
     out = {"machine": base}
+    if telemetry_core.kind_of(m, name) == "cdu":
+        out["cdu"] = {"collector": "not_implemented", "management_ip": m.get("os_ip") or "",
+                      "installation": m.get("rack_mount") or "internal"}
+        return out
     out["network_identity"] = _network_identity(copy.deepcopy(m), bool(refresh))
     now = datetime.datetime.now()
 
@@ -1973,7 +2080,12 @@ def machine_detail(name: str, refresh: int = 0):
         if want_fresh:
             hostname, rc, err = ssh_run(m["os_ip"], m.get("os_user",""), m.get("os_pass",""), m.get("os_port",22),
                                         "uname -a && echo ---OSREL--- && cat /etc/os-release 2>/dev/null | head -4 && echo ---UPTIME--- && uptime && echo ---CPU--- && nproc && echo ---MEM--- && free -h | head -2 && echo ---GPU--- && (nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu --format=csv,noheader 2>/dev/null || (command -v rocm-smi >/dev/null 2>&1 && { rocm-smi --showuse 2>/dev/null; rocm-smi --showmemuse vram 2>/dev/null })) | head -20")
+            if machines.get(name) == m:
+                _os_access_cache[name] = {"source": "SSH", "observed_at": time.time(),
+                    "state": "success" if rc == 0 else "authentication_failed" if any(t in (err or "").lower() for t in ("authentication", "permission denied")) else "connection_failed"}
             if rc == 0 and hostname:
+                if machines.get(name) != m:
+                    raise HTTPException(409, "Target changed; reload the selected OS")
                 _os_info_cache[name] = hostname
                 _os_info_time[name] = now.isoformat(timespec="seconds")
         # 硬體型號（CPU/DIMM/SSD/NIC/GPU）— 變化極低；refresh 時也重新抓
@@ -1982,7 +2094,7 @@ def machine_detail(name: str, refresh: int = 0):
                 hwout, hw_rc, _ = ssh_run(m["os_ip"], m.get("os_user",""), m.get("os_pass",""), m.get("os_port",22),
                                           _HW_CMD, timeout=20)
                 hw = parse_hw(hwout) if hw_rc == 0 else None
-                if hw:
+                if hw and machines.get(name) == m:
                     _os_hw_cache[name] = hw
                     _os_hw_time[name] = now.isoformat(timespec="seconds")
             except Exception:
@@ -2015,9 +2127,9 @@ def machine_detail(name: str, refresh: int = 0):
         pwr_ts, pwr = _bmc_pwr_cache.get(name, (0, ""))
         fw_fresh = (nowts - fw_ts) < _BMC_TTL
         pwr_fresh = (nowts - pwr_ts) < _BMC_TTL
-        if fw_fresh and pwr_fresh:
+        if fw_fresh and pwr_fresh and not refresh:
             out["fw"], out["power"] = fw, pwr
-        elif refresh or name in _bmc_pending:
+        elif name in _bmc_pending:
             # refresh 明確要求，或背景抓取已進行中 → 回目前快取（可能為空）
             out["fw"], out["power"] = fw, pwr
             out["bmc_loading"] = (name in _bmc_pending)
@@ -2026,10 +2138,13 @@ def machine_detail(name: str, refresh: int = 0):
             _bmc_pending.add(name)
             out["fw"], out["power"] = fw, pwr
             out["bmc_loading"] = True
+            snapshot = copy.deepcopy(m)
             def _bg(name=name):
                 try:
-                    nf = ipmi_fw_list(machines.get(name) or m)
-                    ok, npwr = ipmi_power(machines.get(name) or m, "status")
+                    nf = ipmi_fw_list(snapshot)
+                    ok, npwr = ipmi_power(snapshot, "status")
+                    if machines.get(name) != snapshot:
+                        return
                     _bmc_fw_cache[name] = (time.time(), nf)
                     _bmc_pwr_cache[name] = (time.time(), npwr)
                 except Exception:
@@ -2038,6 +2153,8 @@ def machine_detail(name: str, refresh: int = 0):
                     _bmc_pending.discard(name)
             threading.Thread(target=_bg, daemon=True).start()
         # 感測器（sdr list）很慢，由前端呼叫 /sensors 非同步載入。
+    out["ssh_observation"] = _os_access_cache.get(name)
+    out["bmc_fetched_at"] = {"firmware": _bmc_fw_cache.get(name, (None,))[0], "power": _bmc_pwr_cache.get(name, (None,))[0]}
     return out
 
 
@@ -2055,10 +2172,12 @@ def _fetch_sensors_async(name: str):
             return
         _sensors_pending[name] = True
     try:
-        m = machines.get(name)
+        m = copy.deepcopy(machines.get(name))
         if not m:
             return
         data = ipmi_sensor_summary(m)
+        if machines.get(name) != m:
+            return
         with _sensors_lock:
             _sensors_cache[name] = data
             _sensors_time[name] = time.time()
@@ -2083,7 +2202,7 @@ def machine_sensors(name: str, refresh: int = 0):
         fresh = t is not None and (now - t) < _SENSORS_TTL
         cached = _sensors_cache.get(name)
     if fresh and cached is not None:
-        return {"machine": name, "sensors": cached, "loading": False, "cached": True}
+        return {"machine": name, "sensors": cached, "fetched_at": t, "loading": False, "cached": True}
     if cached is not None:
         # 快取過期：先回舊值，背後重新抓
         with _sensors_lock:
@@ -2091,7 +2210,7 @@ def machine_sensors(name: str, refresh: int = 0):
         if not pending:
             th = threading.Thread(target=_fetch_sensors_async, args=(name,), daemon=True)
             th.start()
-        return {"machine": name, "sensors": cached, "loading": True, "cached": True, "refreshing": True}
+        return {"machine": name, "sensors": cached, "fetched_at": t, "loading": True, "cached": True, "refreshing": True}
     # 完全沒有快取：啟動背景抓取，回傳 loading
     with _sensors_lock:
         pending = _sensors_pending.get(name)
@@ -3176,11 +3295,7 @@ def rack_telemetry(project: str, minutes: int = 60):
     # 只撈「在此專案 Rack（L11 機櫃）平面圖上」的元件（level=="rack"）：排除 L10 單機（level=="system"）如 proj_k-app-1
     # 專案名大小寫不敏感（proj_k/proj_k 視為同一專案）
     want_proj = (proj or "").casefold()
-    members = [m for m in machines.values()
-               if (m.get("project") or "").casefold() == want_proj
-               and m.get("level") == "rack"
-               and ((m.get("rack_u") or 0) > 0
-                    or (m.get("rack_mount") == "external" and telemetry_core.kind_of(m) == "cdu"))]
+    members = [m for m in machines.values() if telemetry_core.is_rack_member(m, proj)]
     # 排除 blanking 擋板（passive 且無監控指標），不列入監控類型
     components = sorted([
         {"name": m.get("name", ""), "kind": telemetry_core.kind_of(m)}

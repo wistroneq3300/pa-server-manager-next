@@ -21,7 +21,7 @@
   if (typeof RENDERERS === 'undefined') return;
   const q = v => esc(JSON.stringify(String(v)));
   const table = (head, rows) => `<div class="eng-table-scroll"><table class="eng-table"><thead><tr>${head.map(h=>`<th scope="col">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(c=>`<td>${esc(display(c))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-  const section = (id, label, note, body) => `<section class="eng-section hw-item" id="eng-hw-${id}"><header><h3>${label}</h3><span>${esc(note)}</span></header>${body}</section>`;
+  const section = (id, label, note, body) => `<section class="eng-section hw-item" id="eng-hw-${id}"><header><h3>${label}</h3><span>${esc(note)}</span></header><div class="eng-hw-controls"><button class="btn small" aria-expanded="true" onclick="engToggleHardware('${id}',this)">\u6536\u5408</button><input class="input" type="search" aria-label="${label} \u641c\u5c0b" placeholder="\u641c\u5c0b\u6b64\u985e\u786c\u9ad4" oninput="engSearchHardware('${id}',this.value)"><button class="btn small" onclick="engCopyHardware('${id}')">\u8907\u88fd\u53ef\u898b\u8cc7\u6599</button><span class="eng-hw-feedback" role="status"></span></div><div class="eng-hw-content">${body}</div></section>`;
   const empty = label => `<p class="eng-empty">${label}</p>`;
   const rowsOrEmpty = (value, head, rows) => !Array.isArray(value) ? empty('\u4f86\u6e90\u672a\u56de\u5831\u6b64\u985e\u578b\u6e05\u55ae') : value.length ? table(head, rows) : empty('\u672c\u6b21\u56de\u5831\u672a\u5217\u51fa\u88dd\u7f6e');
   const baseHardware = hwHtml;
@@ -41,7 +41,11 @@
     html+=oi.raw?`<details class="hw-raw"><summary>\u539f\u59cb\u63a1\u96c6\u8f38\u51fa</summary><pre>${esc(oi.raw)}</pre></details>`:'';
     return html+'</div>';
   };
-  window.engFocusHardware=id=>{const node=document.getElementById('eng-hw-'+id);if(!node)return;node.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});node.setAttribute('tabindex','-1');node.focus({preventScroll:true});node.classList.remove('eng-highlight');void node.offsetWidth;node.classList.add('eng-highlight');};
+
+  window.engToggleHardware=(id,button)=>{const body=document.querySelector('#eng-hw-'+id+' .eng-hw-content');body.hidden=!body.hidden;button.setAttribute('aria-expanded',String(!body.hidden));button.textContent=body.hidden?'\u5c55\u958b':'\u6536\u5408';};
+  window.engSearchHardware=(id,value)=>{const section=document.getElementById('eng-hw-'+id),rows=[...section.querySelectorAll('tbody tr')],term=value.trim().toLocaleLowerCase();rows.forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(term));section.querySelector('.eng-hw-feedback').textContent=`${rows.filter(r=>!r.hidden).length} / ${rows.length}`;};
+  window.engCopyHardware=async id=>{const section=document.getElementById('eng-hw-'+id),rows=[...section.querySelectorAll('tr')].filter(r=>!r.hidden);const text=rows.map(row=>[...row.cells].map(c=>c.textContent.trim()).join('\t')).join('\n');const status=section.querySelector('.eng-hw-feedback');try{await navigator.clipboard.writeText(text);status.textContent='\u5df2\u8907\u88fd';}catch(error){status.textContent='\u7121\u6cd5\u5b58\u53d6\u526a\u8cbc\u7c3f\uff0c\u8acb\u624b\u52d5\u8907\u88fd';}};
+  window.engFocusHardware=id=>{const node=document.getElementById('eng-hw-'+id);if(!node)return;const body=node.querySelector('.eng-hw-content');if(body?.hidden)engToggleHardware(id,node.querySelector('[aria-expanded]'));node.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});node.setAttribute('tabindex','-1');node.focus({preventScroll:true});node.classList.remove('eng-highlight');void node.offsetWidth;node.classList.add('eng-highlight');};
 
   const baseSensors=machineSensorsHtml;
   machineSensorsHtml=function(d,base,name){
@@ -88,7 +92,7 @@
   const baseRender=_renderMachine;_renderMachine=function(...args){const result=baseRender(...args);filterRows();return result;};
 
   const baseDevices=devicesHtml;
-  devicesHtml=function(members,pinged){const root=document.createElement('div');root.innerHTML=baseDevices(members,pinged);root.querySelectorAll('tbody tr').forEach(row=>{const name=row.querySelector('a')?.textContent,m=members.find(m=>m.name===name);if(!m)return;const u=Number(m.rack_u),height=Number(m.rack_size)||1;row.cells[0].textContent=u?`${height>1?`U${u}\u2013U${u-height+1}`:`U${u}`} \u00b7 ${height}U`:'\u5c1a\u672a\u653e\u7f6e';row.querySelectorAll('button').forEach(b=>{if(b.textContent==='\u522a\u9664')b.textContent='\u79fb\u51fa\u6a5f\u6ac3';});});return root.innerHTML;};
+  devicesHtml=function(members,pinged){const root=document.createElement('div');root.innerHTML=baseDevices(members,pinged);root.querySelectorAll('tbody tr').forEach(row=>{const name=row.querySelector('a')?.textContent,m=members.find(m=>m.name===name);if(!m)return;const u=Number(m.rack_u),height=Number(m.rack_size)||1;row.cells[0].textContent=rackIsExternal(m)?'\u5916\u7f6e CDU / 0U':u?`${height>1?`U${u}\u2013U${u-height+1}`:`U${u}`} \u00b7 ${height}U`:'\u5c1a\u672a\u653e\u7f6e';row.querySelectorAll('button').forEach(b=>{if(b.textContent==='\u522a\u9664')b.textContent='\u79fb\u51fa\u6a5f\u6ac3';});});return root.innerHTML;};
 
   // Add numeric summaries without changing sampling, datasets or aggregation semantics.
   if(window.Chart)Chart.register({id:'paEngineeringReadout',afterUpdate(chart){

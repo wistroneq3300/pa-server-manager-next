@@ -135,6 +135,7 @@ function kvmToggleMax() {
 
 /* ---------- 連線一台 ---------- */
 function connectOne(name, bmcIp) {
+  const generation = kvmGeneration;
   const grid = $("kvm-grid");
   const box = document.createElement("div");
   box.className = "kvm-box";
@@ -191,12 +192,14 @@ function connectOne(name, bmcIp) {
     }, 100);
   } catch (e) {}
 
-  rfb.addEventListener("connect", () => { markMasterUI(); });
+  rfb.addEventListener("connect", () => { if (generation === kvmGeneration) markMasterUI(); });
   rfb.addEventListener("disconnect", (e) => {
+    if (generation !== kvmGeneration) return;
     const detail = e && e.detail && e.detail.clean ? "" : "\uff08\u8acb\u91cd\u65b0\u958b\u555f KVM\uff09";
     showStatus(`${name} 斷線${detail}`);
   });
   rfb.addEventListener("securityfailure", (e) => {
+    if (generation !== kvmGeneration) return;
     head.querySelector(".kvm-dot").style.background = "#ffb020";
     showStatus(`${name} 認證失敗：${e.detail ? e.detail.reason : "未知"}`);
   });
@@ -213,6 +216,7 @@ function connectOne(name, bmcIp) {
   // 不依賴 connect 事件：用輪詢讀 noVNC 真實連線狀態，作為 alive / 紅綠點判斷
   const dot = head.querySelector(".kvm-dot");
   (function poll() {
+    if (generation !== kvmGeneration) return;
     rec.pollT = setTimeout(poll, 600);
     const st = rec.rfb ? rec.rfb._rfbConnectionState : null;
     const isUp = st === "connected";
@@ -442,7 +446,10 @@ function offlineCard(name, baseLabel, ip, reason) {
 }
 
 /* ---------- 主流程：開啟 ---------- */
+let kvmGeneration = 0;
 async function openKvmBroadcast(project) {
+  closeKvmBroadcast();
+  const generation = kvmGeneration;
   const cands = kvmCandidates(project);
   if (!cands.length) {
     alert(`專案「${project}」目前沒有帶 BMC IP 的系統可開 KVM。`);
@@ -468,6 +475,7 @@ async function openKvmBroadcast(project) {
 
   // 1) 偵測
   const det = await detectProjectBasecodes(project);
+  if (generation !== kvmGeneration) return;
   const detMap = det.ok ? (det.data.machines || {}) : {};
   if (!det.ok) {
     setBanner(`⚠ 偵測失敗（${esc(det.error)}）。將以「全部當 RFB」方式嘗試（可能部分失敗）。`, "warn");
@@ -561,6 +569,7 @@ async function openKvmBroadcast(project) {
 }
 
 function closeKvmBroadcast() {
+  kvmGeneration++;
   K.rfbMap.forEach(rec => {
     try { rec.rfb && rec.rfb.disconnect(); } catch (e) {}
     clearTimeout(rec.pollT);

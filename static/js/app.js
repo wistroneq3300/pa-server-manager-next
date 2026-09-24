@@ -32,9 +32,16 @@ async function api(path, options) {
   options = options || {};
   // 停用瀏覽器 HTTP 快取：確保新增/刪除/重新掃描後一定拿到伺服器最新資料，不需 Ctrl+Shift+R
   if (!("cache" in options)) options.cache = "no-store";
+  const operation = path.match(/^\/api\/machine\/([^/]+)\/(power|reboot|aux)$/);
+  if (operation && options.method === "POST") {
+    const body = options.body ? JSON.parse(options.body) : {};
+    if (!body.expected_target) body.expected_target = operationTarget(decodeURIComponent(operation[1]));
+    options.headers = {...options.headers, "Content-Type": "application/json"};
+    options.body = JSON.stringify(body);
+  }
   const r = await fetch(path, options);
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(data.detail || "請求失敗"); e.data = data; throw e; }
+  if (!r.ok) { const e = new Error((Array.isArray(data.detail) ? data.detail.map(x => `${(x.loc||[]).slice(1).join(".")}: ${x.msg}`).join("; ") : data.detail) || "請求失敗"); e.data = data; throw e; }
   return data;
 }
 // 帶 timeout 的 api：AI 分析類請求避免因後端 LLM 忙碌而無限期卡住 spinner
@@ -46,31 +53,15 @@ async function apiWithTimeout(path, timeoutMs) {
 }
 async function loadMachines(assignMissingU) {
   const data = await api("/api/machines");
-  machines = data.machines || [];
+  if (!Array.isArray(data.machines)) throw new Error("Invalid machine inventory response");
+  machines = data.machines;
   if (data.last_scan) window.__lastScan = data.last_scan;
-  // 一次性：為尚未有 rack_u 的 rack 機台指派 U（依專案內既有 order，由上往下 48→…）
-  if (assignMissingU !== false) {
-    const racks = machines.filter(m => m.level === "rack");
-    const byProj = {};
-    racks.forEach(m => { (byProj[m.project] = byProj[m.project] || []).push(m); });
-    for (const p of Object.keys(byProj)) {
-      const ms = byProj[p].sort((a,b)=>(a.order||0)-(b.order||0));
-      let u = RACK_U;
-      for (const m of ms) {
-        if (m.rack_u === 0) continue; // 已「✕ 從機櫃移除」：只是維持 L11、取消 U 位置，不要自動補 U（避免重整後又出現）
-        if (typeof m.rack_u !== "number" || m.rack_u < 1) {
-          m.rack_u = u;
-          // 同步寫回後端（非等待，失敗也不影響顯示）
-          rackAssign(m.name, { rack_u: u }).catch(()=>{});
-          u--;
-        }
-      }
-    }
-  }
 }
+
 async function loadProjects() {
   const data = await api("/api/projects");
-  projects = data.projects || [];
+  if (!Array.isArray(data.projects)) throw new Error("Invalid project inventory response");
+  projects = data.projects;
 }
 // BMC 電源狀態 cell（System Manager 表格用）
 function powerCell(m) {
@@ -80,10 +71,12 @@ function powerCell(m) {
   // 未知：BMC 離線 / 無 BMC / 尚未抓到
   return `<span style="color:var(--text-faint)">—</span>`;
 }
-function statusBadge(alive) {
-  if (alive === true) return `<span class="badge green"><span class="dot"></span>在線</span>`;
-  if (alive === false) return `<span class="badge red"><span class="dot"></span>離線</span>`;
-  return `<span class="badge" style="background:var(--bg-panel-2);color:var(--text-faint)">未設定</span>`;
+function statusBadge(alive, ip, observation) {
+  const configured = ip === undefined || Boolean(ip);
+  const text = !configured ? '\u672a\u8a2d\u5b9a' : alive === true ? 'Ping \u53ef\u9054' : alive === false ? 'Ping \u672a\u56de\u61c9' : '\u5c1a\u672a\u89c0\u6e2c';
+  const stamp = observation?.observed_at;
+  const note = stamp ? new Date(stamp*1000).toLocaleString() + (Date.now()/1000-stamp>60?' / \u820a\u8cc7\u6599':'') : '\u4f86\u6e90\u672a\u63d0\u4f9b\u6642\u9593';
+  return `<span class="badge ${configured&&alive===true?'green':configured&&alive===false?'red':''}" title="ICMP / ${esc(note)}">${text}</span>`;
 }
 // BMC 電源狀態：解析 ipmitool 原始輸出（如 "Chassis Power is on/off"）→ 彩色 badge
 function powerBadge(raw) {
@@ -481,6 +474,7 @@ function rackBulkDialog(kind) {
   // 其餘 server/switch/pdu 等全部列出供勾選（即使尚未填 IP，未來填入即可批次發送）。
   // 整櫃操作需要能控制（具 OS 或 BMC IP）：過濾掉空檔板(blanking)與「沒有 IP」的元件。
   racks = racks.filter(m => (m.os_ip || m.bmc_ip) && mgxTypeOf(m) !== "blanking");
+  if (kind === "on" || kind === "off") racks = racks.filter(m => mgxTypeOf(m) !== "cdu");
   if (!racks.length) return alert("此專案沒有可控制（具 OS/BMC IP）的整櫃機台");
   const mode = kind === "on" ? "開機" : kind === "off" ? "關機" : kind === "reboot" ? "Reboot" : "AUX / AC cycle";
   const icon = kind === "on" || kind === "off" ? "⏻" : kind === "reboot" ? "⟳" : "⚡";
@@ -489,12 +483,12 @@ function rackBulkDialog(kind) {
     const badge = m.os_ip || m.bmc_ip ? `<span class="mono" style="color:var(--text-dim)">${esc(m.os_ip || m.bmc_ip)}</span>` : `${info.icon} ${esc(info.label)}`;
     return `<label class="bc-check" style="display:block;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer">
       <input type="checkbox" class="rcp-chk" value="${esc(m.name)}" checked>
-      <b>${esc(m.name)}</b> ${badge}
+      <b>${esc(m.name)}</b> ${badge}${kind==='on'||kind==='off'?`<small style="display:block">OS ${m.active_os||1}: ${esc(m.os_ip||'\u672a\u8a2d\u5b9a')} / BMC: ${esc(m.bmc_ip||'\u672a\u914d\u5c0d')}</small>`:''}
     </label>`;
   }).join("");
   showDialog(`${icon} ${mode}整櫃 — 選擇要一起 ${mode} 的機台`, `
     <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:10px">
-      勾選要一起「${mode}」的機台，會同時送出控制指令（不勾的機台會保持現狀）。
+      勾選要一起「${mode}」的機台，${kind==='on'||kind==='off'?'\u6703\u4f9d\u5e8f\u9001\u51fa\u63a7\u5236\u6307\u4ee4':'\u6703\u540c\u6642\u9001\u51fa\u63a7\u5236\u6307\u4ee4'}（不勾的機台會保持現狀）。
     </label>
     <div class="table-scroll" style="max-height:46vh;overflow:auto;margin-bottom:12px">${rows}</div>
     <div style="display:flex;gap:8px">
@@ -529,20 +523,7 @@ async function rackBulkRun(kind, names) {
     alert(`「${label}」尚未實作接上系統指令。\n\n已選取 ${names.length} 台：\n${namesStr}\n\n之後會批次送出 ${label} 指令。`);
     return;
   }
-  const okTag = kind === "on" ? "已開機 \ud83d\udfe2" : "已關機 \u26aa";
-  const done = [];
-  for (const name of names) {
-    let url, body;
-    url = `/api/machine/${encodeURIComponent(name)}/power`; body = JSON.stringify({ on: kind === "on" });
-    try {
-      const r = await api(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-      done.push(`${name}: ${r.ok ? okTag : "失敗：" + (r.info || "")}`);
-    } catch (e) {
-      done.push(`${name}: 錯誤 ${e.message}`);
-    }
-  }
-  setView("rack");
-  setTimeout(() => alert(`正在執行 ${label} ${names.length} 台…\n\n` + done.join("\n")), 200);
+  return runPowerBatch(kind, names);
 }
 
 async function rackPowerAllNames(names, on) {
@@ -702,7 +683,7 @@ let rackCduState = null;
 function rackCduDialog(proj, sourceName) {
   const existing = rackProjectCdu(proj);
   const source = existing || machines.find(m => m.name === sourceName && m.project === proj);
-  rackCduState = {project:proj,name:source?.name||'',busy:false,size:source?.rack_size > 0 ? Number(source.rack_size) : 4};
+  rackCduState = {project:proj,name:source?.name||'',busy:false,originalMount:source?.rack_mount||'internal',size:source?.rack_size > 0 ? Number(source.rack_size) : 4};
   showDialog(source ? "CDU \u5b89\u88dd\u8a2d\u5b9a" : "\u65b0\u589e CDU", `<div class="rm-modal-body cdu-config"><p class="hint-msg">${esc(proj)} / \u6bcf\u6ac3\u4e00\u5957 CDU</p>${existing?`<p class="cdu-existing">\u7de8\u8f2f\u73fe\u6709 ${esc(existing.name)}\uff0c\u4e0d\u6703\u5efa\u7acb\u7b2c\u4e8c\u53f0\u3002</p>`:''}<label for="cdu-name">\u5143\u4ef6\u540d\u7a31</label><input class="input" id="cdu-name" value="${esc(source?.name||'')}" placeholder="CDU-01" ${source?'readonly':''}><label for="cdu-mount">\u5b89\u88dd\u65b9\u5f0f</label><select class="input" id="cdu-mount" onchange="rackCduRefresh()"><option value="internal" ${!rackIsExternal(source||{})?'selected':''}>\u6ac3\u5167\uff08\u56fa\u5b9a\u6700\u5e95\u90e8\uff09</option><option value="external" ${rackIsExternal(source||{})?'selected':''}>\u5916\u7f6e\uff08\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074\uff09</option></select><div id="cdu-placement"></div>${source?'':`<label for="cdu-ip">\u7ba1\u7406 IP\uff08\u9078\u586b\uff09</label><input class="input" id="cdu-ip" placeholder="\u672a\u8a2d\u5b9a"><p class="hint-msg">\u586b\u5beb IP \u6642\u5148\u78ba\u8a8d Ping \u9023\u7dda\u3002</p>`}<p id="cdu-message" role="status"></p></div>`,[
     {txt:"\u53d6\u6d88",cls:"",fn:closeDialog},
     {txt:source?"\u5132\u5b58\u8a2d\u5b9a":"\u5efa\u7acb CDU",cls:"primary",fn:rackCduSave}
@@ -721,11 +702,12 @@ function rackCduRefresh() {
   const size = rackCduState.size;
   $("cdu-placement").innerHTML = external
     ? '<p class="cdu-location-note">\u653e\u5728\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074\uff0c\u4e0d\u5360 U \u4f4d\u3002\u5916\u89c0\u70ba\u793a\u610f\uff0c\u4e0d\u9650\u5b9a\u8a2d\u5099\u578b\u865f\u3002</p>'
-    : `<label for="cdu-size">\u5360\u7528\u9ad8\u5ea6</label><select class="input" id="cdu-size" onchange="rackCduRefresh()">${RACK_SIZES.map(u=>`<option value="${u}" ${u===size?'selected':''}>${u}U</option>`).join('')}</select><p class="cdu-location-note">\u56fa\u5b9a\u5728\u6a5f\u6ac3\u6700\u5e95\u90e8 U1${size>1?`\u2013U${size}`:''}\uff0c\u4e0d\u53d7\u9ede\u9078\u7684\u7a7a\u69fd\u4f4d\u7f6e\u5f71\u97ff\u3002</p>`;
+    : `<label for="cdu-size">\u5360\u7528\u9ad8\u5ea6</label><select class="input" id="cdu-size" ${rackCduState.name&&rackCduState.originalMount!=='external'?'disabled':''} onchange="rackCduRefresh()">${RACK_SIZES.map(u=>`<option value="${u}" ${u===size?'selected':''}>${u}U</option>`).join('')}</select><p class="cdu-location-note">\u56fa\u5b9a\u5728\u6a5f\u6ac3\u6700\u5e95\u90e8 U1${size>1?`\u2013U${size}`:''}\uff0c\u4e0d\u53d7\u9ede\u9078\u7684\u7a7a\u69fd\u4f4d\u7f6e\u5f71\u97ff\u3002</p>`;
   const conflicts = external ? [] : rackCduConflicts(size);
   const message = $("cdu-message");
   message.textContent = conflicts.length ? `U1\u2013U${size} \u5df2\u88ab ${conflicts.map(m=>m.name).join(' / ')} \u5360\u7528\u3002\u8acb\u5148\u9a30\u51fa\u5e95\u90e8\u7a7a\u9593\uff0c\u6216\u9078\u64c7\u5916\u7f6e CDU\u3002` : '';
   message.className = conflicts.length ? 'cdu-conflict' : '';
+  if (typeof placementPreview === 'function') { const panel=document.createElement('div');panel.innerHTML=placementPreview(rackCduState.project,rackCduState.name,size,size,external).html; $('cdu-placement').appendChild(panel); }
   const button = document.querySelector('#rm-dialog-foot .primary');
   if (button) button.disabled = conflicts.length>0 || rackCduState.busy;
 }
@@ -741,7 +723,10 @@ async function rackCduSave() {
   current.busy = true;
   const button=document.querySelector('#rm-dialog-foot .primary');if(button)button.disabled=true;
   try {
-    if (current.name) await rackAssign(current.name,patch);
+    if (current.name) {
+      await api(`/api/machines/${encodeURIComponent(current.name)}/cdu-installation`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({rack_mount:patch.rack_mount,rack_size:size,expected_project:current.project})});
+      await loadMachines(false);
+    }
     else {
       const ip = $("cdu-ip")?.value.trim()||'';
       if (ip) {const ping = await api(`/api/ping-ip?ip=${encodeURIComponent(ip)}`);if(!ping.alive)throw new Error('\u7ba1\u7406 IP \u7121\u6cd5 Ping\uff0c\u8acb\u78ba\u8a8d\u9023\u7dda\u5f8c\u518d\u8a66\u3002');}
@@ -754,63 +739,21 @@ async function rackCduSave() {
   finally {current.busy=false;if(button)button.disabled=false;}
 }
 
-function rackMoveDialog(name) {
-  const m = machines.find(x => x.name === name);
-  if (!m) return;
-  if (mgxTypeOf(m) === "cdu") return rackCduDialog(m.project, m.name);
-  // quick jump：直接輸入目標 U（取代慢慢按）
-  quickJumpTo = "";
-  const proj = m.project;
-  const members = machines.filter(x => x.level === "rack" && x.project === proj);
-  // 找出所有被「其他元件」占用的 U 範圍（含多 U 延伸），以及目前機台自身占用的範圍
-  const curSize = clampU(m.rack_size || 1);
-  const curU = (typeof m.rack_u === "number" && m.rack_u > 0) ? m.rack_u : RACK_U;
-  const occupied = new Set();
-  members.forEach(x => {
-    if (x.name === name || !Number.isInteger(Number(x.rack_u)) || Number(x.rack_u) <= 0 || Number(x.rack_u) > RACK_U) return;
-    const xu = Number(x.rack_u);
-    const xs = clampU(x.rack_size || 1);
-    for (let k = xu; k >= Math.max(xu - xs + 1, 1); k--) occupied.add(k);
-  });
-  let opts = "";
-  for (let u = RACK_U; u >= 1; u--) {
-    const take = (curU <= u && u <= curU + curSize - 1);
-    const blocked = occupied.has(u);
-    opts += `<option value="${u}" ${u === curU ? "selected" : ""} ${blocked ? "disabled" : ""} title="${blocked ? "被其他元件占用" : `U${u}`}">U${u}${blocked ? "（占用）" : ""}</option>`;
-  }
-  const typeBtns = Object.entries(MGX_TYPES)
-    .map(([k, v]) => `<button class="btn small ${mgxTypeOf(m) === k ? "active" : ""}" onclick="rackMoveSetType('${esc(m.name)}','${k}')">${v.icon} ${esc(v.label)}</button>`)
-    .join("");
-  const sizeOpts = RACK_SIZES
-    .map(s => `<option value="${s}" ${s === curSize ? "selected" : ""}>${s}U</option>`).join("");
-  showDialog("⇅ 移動 / 設定位置", `
-    <div class="rm-modal-body">
-      <p style="margin-bottom:12px">機台：<b>${esc(m.name)}</b>（目前 ${curSize}U，起始 U${curU}）</p>
-      <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">快速跳到 U</label>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="input" id="rm-move-jump" type="number" min="1" max="${RACK_U}" placeholder="輸入 1–${RACK_U}" style="flex:1;padding:8px" onkeydown="if(event.key==='Enter')rackMoveJump()">
-        <button class="btn" onclick="rackMoveJump()">跳</button>
-      </div>
-      <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">選擇目標 U 槽（已占用顯示灰）</label>
-      <select class="input" id="rm-move-u" style="width:100%;padding:8px">${opts}</select>
-      <div style="margin-top:12px">
-        <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">占用高度（U 數，支援 >1U 大元件）</label>
-        <select class="input" id="rm-move-size" style="width:100%;padding:8px">${sizeOpts}</select>
-      </div>
-      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">${typeBtns}</div>
-      <p style="font-size:11px;color:var(--text-faint);margin-top:10px">元件類型：<b id="rm-newtype">${esc(MGX_TYPES[mgxTypeOf(m)].label)}</b></p>
-    </div>`,
-    [
-      { txt: "取消", cls: "", fn: () => closeDialog() },
-      { txt: "儲存位置", cls: "primary", fn: () => {
-        const u = +$("rm-move-u").value;
-        const sz = +$("rm-move-size").value || 1;
-        const patch = { rack_u: u, rack_size: sz };
-        if (rackMoveTargetType) patch.mgx_type = rackMoveTargetType;
-        rackAssign(m.name, patch).then(() => { closeDialog(); setView("rack"); });
-      } },
-    ]);
+async function rackPlace(name, u, project) {
+  await api(`/api/machines/${encodeURIComponent(name)}/placement`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({rack_u:u,expected_project:project})});
+  await loadMachines(false);
 }
+function rackMoveDialog(name) {
+  window.placementMachineName=name;
+  const m=machines.find(x=>x.name===name);if(!m)return;
+  if(mgxTypeOf(m)==='cdu')return rackCduDialog(m.project,m.name);
+  const size=Number(m.rack_size),top=Number(m.rack_u)||RACK_U;
+  showDialog('\u79fb\u52d5\u6a5f\u6ac3\u4f4d\u7f6e',`<p>${esc(m.name)}</p><p>\u65e2\u6709 L11 \u898f\u683c\uff1a${esc(mgxTypeLabel(m))} / ${size}U\uff08\u56fa\u5b9a\uff09</p><label for="rm-move-u">\u8d77\u59cb U \u69fd</label><select id="rm-move-u" class="input">${Array.from({length:RACK_U},(_,i)=>RACK_U-i).map(u=>`<option value="${u}" ${u===top?'selected':''}>U${u}</option>`).join('')}</select><select id="rm-move-size" disabled hidden><option value="${size}">${size}U</option></select>`,[
+    {txt:'\u53d6\u6d88',fn:closeDialog},
+    {txt:'\u5132\u5b58\u4f4d\u7f6e',cls:'primary',fn:async()=>{await rackPlace(name,Number($('rm-move-u').value),m.project);closeDialog();setView('rack');}}
+  ]);
+}
+
 function clampU(s) { return (typeof s === "number" && s > 0 && s <= RACK_U) ? Math.floor(s) : 1; }
 let quickJumpTo = "";
 function rackMoveJump() {
@@ -823,6 +766,7 @@ function rackMoveJump() {
   const opt = [...sel.options].find(o => +o.value === v && !o.disabled);
   if (!opt) { alert(`U${v} 已被其他元件占用`); return; }
   sel.value = String(v);
+  sel.dispatchEvent(new Event("change", {bubbles:true}));
   el.value = "";
 }
 function rackMoveSetType(name, type) {
@@ -840,7 +784,7 @@ function rackAddPassiveWithU(u, projOverride) {
     <div class="rm-modal-body">
       <p style="margin-bottom:12px;font-size:12px;color:var(--text-faint)">用於加入 switch / power shelf / CDU / PDU / Storage 等<b>沒有 OS 或 BMC</b>的元件。只需名稱 + 類型 + U 槽即可。</p>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">元件名稱 *</label>
-      <input class="input" id="rp-name" style="width:100%;padding:8px;margin-bottom:12px" placeholder="例如 SW-01 / CDU-1 / PS-3">
+      <input class="input" id="rp-name" required style="width:100%;padding:8px;margin-bottom:12px" placeholder="例如 SW-01 / CDU-1 / PS-3">
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">類型</label>
       <select class="input" id="rp-type" onchange="if(this.value==='cdu')rackCduDialog(_rackAddProj)" style="width:100%;padding:8px;margin-bottom:12px">
         ${Object.entries(MGX_TYPES).map(([k,v]) => `<option value="${k}">${v.icon} ${esc(v.label)}</option>`).join("")}
@@ -860,22 +804,13 @@ function rackAddPassiveWithU(u, projOverride) {
     </div>`,
     [
       { txt: "取消", cls: "", fn: () => closeDialog() },
-      { txt: "建立並加入", cls: "primary", fn: () => {
-        const name = $("rp-name").value.trim();
-        if (!name) return alert("請填元件名稱");
-        const showLoading = (on) => {
-          const l = $("rp-loading"), b = document.querySelector("#rm-dialog-foot .primary");
-          if (l) l.style.display = on ? "flex" : "none";
-          if (b) b.disabled = on;
-        };
-        showLoading(true);
-        rackCheckPingAdd($("rp-ip").value.trim(), () => {
-          api("/api/rack/passive", { method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, mgx_type: $("rp-type").value, rack_u: +$("rp-u").value, rack_size: +$("rp-size").value || 1, manage_ip: $("rp-ip").value.trim(), project: proj }) })
-            .then(() => loadMachines())
-            .then(() => { closeDialog(); setView("rack"); })
-            .catch(e => { showLoading(false); alert("建立失敗：" + e.message); });
-        });
+      { txt: "\u5efa\u7acb\u4e26\u52a0\u5165", cls: "primary", fn: async () => {
+        const name = $("rp-name").value.trim(), ip = $("rp-ip").value.trim();
+        if (!name) throw new Error("\u8acb\u586b\u5143\u4ef6\u540d\u7a31");
+        const payload={name, mgx_type:$("rp-type").value,rack_u:Number($("rp-u").value),rack_size:Number($("rp-size").value),manage_ip:ip,project:proj};
+        if(ip){const probe=await api(`/api/ping-ip?ip=${encodeURIComponent(ip)}`);if(!probe.alive)throw new Error("\u7ba1\u7406 IP Ping \u672a\u56de\u61c9\uff0c\u5c1a\u672a\u65b0\u589e");}
+        await api("/api/rack/passive",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+        await loadMachines(false);closeDialog();setView("rack");
       } },
     ]);
   rackAddRefreshU("rp-u", "rp-size");
@@ -927,10 +862,10 @@ function rackAddRefreshU(uSel, sizeSel) {
 }
 function rackAddDialog(presetU) {
   const proj = rackView.project;
-  const inRack = new Set(machines.filter(x => x.project === proj && x.level === "rack" && (x.rack_u||0) > 0).map(x => x.name));
+  const inRack = new Set(machines.filter(x => x.project === proj && x.level === "rack" && ((x.rack_u||0) > 0 || rackIsExternal(x))).map(x => x.name));
   // 需求：加入機櫃只能選「L11（rack）」系統。L10 若要變 L11，請先在 System Manager 升為 L11。
   // 需求：+ 號只能加「System Manager 同專案」的 L11 系統（不同專案的 L11 不得跨專案加入）
-  const candidates = machines.filter(x => x.project === proj && x.level === "rack" && !inRack.has(x.name) && mgxTypeOf(x) !== "cdu");
+  const candidates = machines.filter(x => x.project === proj && x.level === "rack" && !inRack.has(x.name));
   if (!candidates.length) {
     const otherProjects = machines.filter(x => x.level === "rack" && x.project !== proj);
     alert(otherProjects.length
@@ -947,30 +882,30 @@ function rackAddDialog(presetU) {
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">選擇機台</label>
       <select class="input" id="rm-add-m" style="width:100%;padding:8px;margin-bottom:12px" onchange="rackAddPickMachine()">${selOpts}</select>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">占用高度（U 數）<span class="hint" id="rm-add-size-hint"></span></label>
-      <select class="input" id="rm-add-size" style="width:100%;padding:8px;margin-bottom:12px" onchange="rackAddRefreshU()">
+      <select class="input" id="rm-add-size" disabled style="width:100%;padding:8px;margin-bottom:12px" onchange="rackAddRefreshU()">
         ${RACK_SIZES.map(s => `<option value="${s}" ${s===1?"selected":""}>${s}U${s>1 ? "（需連續空位）" : ""}</option>`).join("")}
       </select>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:6px">選擇起始 U 槽</label>
       <select class="input" id="rm-add-u" style="width:100%;padding:8px"></select>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:12px 0 6px">元件類型</label>
-      <select class="input" id="rm-add-type" onchange="if(this.value==='cdu')rackCduDialog(rackView.project,$('rm-add-m').value)" style="width:100%;padding:8px">
+      <select class="input" id="rm-add-type" disabled style="width:100%;padding:8px">
         ${Object.entries(MGX_TYPES).map(([k, v]) => `<option value="${k}">${v.icon} ${esc(v.label)}</option>`).join("")}
       </select>
     </div>`,
     [
       { txt: "取消", cls: "", fn: () => closeDialog() },
       { txt: "加入", cls: "primary", fn: () => {
-        const nm = $("rm-add-m").value, u = +$("rm-add-u").value, ty = $("rm-add-type").value;
-        const __m = machines.find(x=>x.name===nm);
-        rackAssign(nm, { project: proj, level: "rack", rack_u: u, rack_size: (+$("rm-add-size").value || (__m && __m.rack_size > 0 ? __m.rack_size : 1)), mgx_type: ty })
-          .then(() => { closeDialog(); setView("rack"); })
-          .catch(e => alert("加入失敗：" + e.message));
+        const nm = $("rm-add-m").value, u = Number($("rm-add-u").value);
+        return rackPlace(nm, u, proj).then(() => { closeDialog(); setView("rack"); });
       } },
     ]);
   rackAddRefreshU();
   if (presetU) { const selSel = $("rm-add-u"); if (selSel) selSel.value = String(presetU); }
   // 依目前預設選中的機台帶出「固定 U 數」
   rackAddPickMachine();
+  const target=$("rm-add-u");
+  if(presetU && [...target.options].some(o=>Number(o.value)===presetU&&!o.disabled))target.value=String(presetU);
+  if(typeof refreshAddPreview==='function')refreshAddPreview();
 }
 // 從機櫃「＋」加入既有 L11：選中機台後，自動帶出其固有的 rack_size（固定 U 數，不改動）
 function rackAddPickMachine() {
@@ -979,10 +914,15 @@ function rackAddPickMachine() {
   const m = machines.find(x => x.name === nm);
   const sizeSel = $("rm-add-size"), hintEl = $("rm-add-size-hint");
   if (!sizeSel) return;
-  // U is now user-editable. Default to the machine's own rack_size; every option stays enabled.
-  sizeSel.value = String(m && m.rack_size && m.rack_size > 0 ? m.rack_size : 1);
-  if (hintEl) hintEl.textContent = "";
+  const size=Number(m?.rack_size ?? 1);
+  sizeSel.innerHTML=`<option value="${size}">${size}U</option>`;sizeSel.disabled=true;
+  $('rm-add-type').value=mgxTypeOf(m);$('rm-add-type').disabled=true;
+  if(hintEl)hintEl.textContent='\uff08\u6cbf\u7528 L11 \u898f\u683c\uff0c\u4e0d\u53ef\u5728\u653e\u7f6e\u6642\u4fee\u6539\uff09';
   rackAddRefreshU();
+  if(mgxTypeOf(m)==='cdu'){
+    const target=$('rm-add-u');[...target.options].forEach(o=>o.disabled=Number(o.value)!==size||o.disabled);target.value=String(size);
+    refreshAddPreview();
+  }
 }
 function rackAddDialogAt(u) { closeDialog(); rackAddDialog(u); }
 
@@ -995,8 +935,12 @@ function dialogBackdrop() {
   document.body.appendChild(b);
   return b;
 }
+let dialogRevision = 0;
 function showDialog(title, bodyHtml, actions) {
+  const revision = ++dialogRevision;
   const b = dialogBackdrop();
+  delete $("rm-dialog-foot").dataset.busy;
+  b.removeAttribute("aria-busy");
   $("rm-dialog-title").textContent = title;
   $("rm-dialog-body").innerHTML = bodyHtml;
   const foot = $("rm-dialog-foot");
@@ -1005,7 +949,36 @@ function showDialog(title, bodyHtml, actions) {
     const btn = document.createElement("button");
     btn.textContent = a.txt; btn.className = "btn " + (a.cls || "");
     if (a.id) btn.id = a.id;
-    btn.onclick = () => a.fn();
+    btn.onclick = async () => {
+      if (foot.dataset.busy === "true") return;
+      const fields = [...$("rm-dialog-body").querySelectorAll("input,select,textarea")];
+      if (btn.classList.contains("primary") && fields.some(f => !f.reportValidity())) return;
+      const oldError = $("rm-dialog-error"); if (oldError) oldError.remove();
+      const buttons = [...foot.querySelectorAll("button"), ...b.querySelectorAll(".modal-head button")];
+      const disabled = buttons.map(b => b.disabled);
+      try {
+        const pending = a.fn();
+        if (pending && typeof pending.then === "function" && revision === dialogRevision) {
+          foot.dataset.busy = "true"; b.setAttribute("aria-busy", "true");
+          buttons.forEach(b => b.disabled = true);
+          btn.textContent = "\u8655\u7406\u4e2d\u2026";
+        }
+        if (pending && typeof pending.then === "function") await pending;
+      } catch (error) {
+        if (revision !== dialogRevision) return;
+        const message = document.createElement("p"); message.id = "rm-dialog-error";
+        message.setAttribute("role", "alert"); message.style.color = "var(--red)";
+        message.textContent = error.message; $("rm-dialog-body").appendChild(message);
+      } finally {
+        if (revision === dialogRevision) {
+          delete foot.dataset.busy; b.removeAttribute("aria-busy");
+          buttons.forEach((b,i) => b.disabled = disabled[i]);
+          btn.textContent = a.txt;
+          if (typeof refreshMovePreview === "function") refreshMovePreview();
+          if ($("cdu-mount")) rackCduRefresh();
+        }
+      }
+    };
     foot.appendChild(btn);
   });
   b.style.display = "flex";
@@ -1178,7 +1151,7 @@ function rackBlockRow(m, u, size, pinged) {
   const info = mgxInfo(m);
   const osTitle = up === true ? "OS 在線" : up === false ? "OS 離線" : "OS 未知";
   const led = `<span class="led ${up === true ? "on" : up === false ? "off" : "unk"}" title="${osTitle}"></span>`;
-  // 點機櫃元件本身一律進「單機詳情」；換位/類型請按右側「⇅」按鈕
+  // 點機櫃元件本身一律進「單機詳情」；機櫃位置請按右側「⇅」按鈕
   const click = `openMachine('${esc(m.name)}')`;
   const delBtn = `<button class="btn small btn-del" title="從機櫃移除" onclick="rackUnmount('${esc(m.name)}')">✕</button>`;
   const nm = `${info.icon} ${esc(m.name)}`;
@@ -1197,7 +1170,7 @@ function rackBlockRow(m, u, size, pinged) {
         <span class="rm-name">${nm}</span>
         <span class="rm-ip mono">${esc(m.os_ip || "")}</span>
         <span class="rm-actions" onclick="event.stopPropagation()">
-          <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
+          <button class="btn small" title="機櫃位置" onclick="rackMoveDialog('${esc(m.name)}')">${mgxTypeOf(m)==='cdu'?'CDU \u5b89\u88dd\u8a2d\u5b9a':'⇅'}</button>
           ${delBtn}
         </span>
       </div>
@@ -1268,7 +1241,7 @@ function devicesHtml(members, pinged) {
         <td>${info.icon} ${esc(info.label)}</td>
         <td class="mono">${osCell}</td>
         <td style="white-space:nowrap">
-          <button class="btn small" title="換位/類型" onclick="rackMoveDialog('${esc(m.name)}')">⇅</button>
+          <button class="btn small" title="機櫃位置" onclick="rackMoveDialog('${esc(m.name)}')">${mgxTypeOf(m)==='cdu'?'CDU \u5b89\u88dd\u8a2d\u5b9a':'⇅'}</button>
           ${hasOs ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
           ${hasOs ? `<button class="btn small" onclick="machControlDialog('${esc(m.name)}')" title="開關機 / Reboot / AC cycle">⏻ 開關機</button>` : ""}
           ${rackIsExternal(m) ? "" : `<button class="btn small" title="從機櫃拿掉（System Manager 的 L11 不受影響）" onclick="rackUnmount('${esc(m.name)}')">刪除</button>`}
@@ -1913,8 +1886,8 @@ function machineRowSortable(m, pi, mi, total) {
       <td>${lvlBadge}</td>
       <td class="mono os-ip-cell" title="${m.os_user ? `帳號 @${esc(m.os_user)}` : ``}">${esc(m.os_ip)}</td>
       <td class="mono bmc-ip-cell">${esc(m.bmc_ip || "—")}</td>
-      <td>${statusBadge(m.os_alive)}</td>
-      <td>${m.bmc_ip ? statusBadge(m.bmc_alive) : `<span style="color:var(--text-faint)">—</span>`}</td>
+      <td>${statusBadge(m.os_alive,m.os_ip,m.connectivity?.os)}</td>
+      <td>${m.bmc_ip ? statusBadge(m.bmc_alive,m.bmc_ip,m.connectivity?.bmc) : `<span style="color:var(--text-faint)">—</span>`}</td>
       <td>${powerCell(m)}</td>
       <td>
         <select class="input move-sel" onchange="moveMachineTo('${esc(m.name)}', this.value)">
@@ -1955,8 +1928,8 @@ function machineRowUnassigned(m) {
       <td>${lvlBadge}</td>
       <td class="mono os-ip-cell">${esc(m.os_ip)}</td>
       <td class="mono bmc-ip-cell">${esc(m.bmc_ip || "—")}</td>
-      <td>${statusBadge(m.os_alive)}</td>
-      <td>${m.bmc_ip ? statusBadge(m.bmc_alive) : `<span style="color:var(--text-faint)">—</span>`}</td>
+      <td>${statusBadge(m.os_alive,m.os_ip,m.connectivity?.os)}</td>
+      <td>${m.bmc_ip ? statusBadge(m.bmc_alive,m.bmc_ip,m.connectivity?.bmc) : `<span style="color:var(--text-faint)">—</span>`}</td>
       <td>${powerCell(m)}</td>
       <td>
         <select class="input move-sel" onchange="moveMachineTo('${esc(m.name)}', this.value)">
@@ -2107,23 +2080,11 @@ async function moveMachineTo(name, project) {
 // 把 L10 系統升為 L11（整櫃）：只改層級 + 指派一個可用 U 槽，之後可在 Rack Manager 自由搬移。
 async function rackPromote(name, project) {
   if (!confirm("確定要把「" + name + "」升為 L11（加入 Rack Manager）嗎？")) return;
-  const proj = project || "";
-  // 找該專案機櫃內「已佔用 U」集合，選一個空起始 U（含多 U 元件延伸），否則 U48
-  const racks = machines.filter(x => x.project === proj && x.level === "rack");
-  const used = new Set();
-  racks.forEach(x => {
-    const xu = (typeof x.rack_u === "number" && x.rack_u > 0) ? x.rack_u : RACK_U;
-    const xs = (typeof x.rack_size === "number" && x.rack_size > 0 && x.rack_size <= RACK_U) ? x.rack_size : 1;
-    for (let k = xu; k >= Math.max(xu - xs + 1, 1); k--) used.add(k);
-  });
-  let u = RACK_U;
-  while (u >= 1 && used.has(u)) u--;
-  if (u < 1) u = RACK_U;
   try {
-    await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "rack", mgx_type: "server", rack_u: u, rack_size: 1 }) });
+    await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "rack", rack_u: 0 }) });
     await Promise.all([loadMachines(), loadProjects()]);
     setView("projects");
-    alert("✅ 「" + name + "」已升為 L11（Rack）。\n已放到 " + (proj ? "專案「" + proj + "」" : "未分類") + "的 U" + u + "。\n可在 Rack Manager 選此專案，或「加入機櫃」挑到它。");
+    alert("L11: \u5df2\u4fdd\u7559\u5143\u4ef6\u898f\u683c\uff0c\u8acb\u81f3 Rack Manager \u9078\u64c7 U \u69fd\u3002");
   } catch (e) { alert("❌ 升 L11 失敗：" + (e && e.message || e)); }
 }
 
@@ -2131,7 +2092,7 @@ async function rackPromote(name, project) {
 async function rackDemote(name) {
   if (!confirm("確定要把「" + name + "」降回 L10（退出 Rack Manager）嗎？")) return;
   try {
-    await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "system", rack_size: 1 }) });
+    await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "system", rack_u: 0 }) });
     await Promise.all([loadMachines(), loadProjects()]);
     setView("projects");
   } catch (e) { alert("❌ 降 L10 失敗：" + (e && e.message || e)); }
@@ -2470,6 +2431,7 @@ function openMachine(name) {
   setView("machine");
 }
 function machineBack() {
+  _activeMachine = null;
   setView("projects");
 }
 function machineGo(view) {
@@ -2483,24 +2445,34 @@ async function machineRefresh() {
   delete sensorAiResult[name];
   await machineLoadDetail(name, true);
   // 感測器不強制重抓：TTL 內直接用快取，避免按重新整理後陷入長時間『背景抓取中』
-  if (_activeMachine === name) await machineLoadSensors(name, false);
-  if (_activeMachine === name) setView("machine");
+  if (_activeMachine === name && state.view === "machine") await machineLoadSensors(name, false);
+  if (_activeMachine === name && state.view === "machine") setView("machine");
 }
 const machineSensorsCache = {};
 // 感測器是背景抓取的（OpenBMC sdr list 約 20 秒）。
 // 只更新 #sensor-body 區塊，絕不整頁重繪（避免每次都重畫 telemetry 造成狂跳/卡死）。
 // 無快取時每 3 秒查一次；有舊值（refreshing）時改每 12 秒緩查，減少開銷。
+const machineSensorRequests = {};
 async function machineLoadSensors(name, refresh = false) {
+  const request = (machineSensorRequests[name] || 0) + 1;
+  machineSensorRequests[name] = request;
+  const target = JSON.stringify(operationTarget(name));
+  const current = () => machineSensorRequests[name] === request && _activeMachine === name && state.view === "machine" && target === JSON.stringify(operationTarget(name));
   const poll = async () => {
+    if (!current()) return;
     let d;
     try {
       d = await api(`/api/machine/${encodeURIComponent(name)}/sensors${refresh ? "?refresh=1" : ""}`);
+      if (!current()) return;
+      refresh = false;
       machineSensorsCache[name] = d;
     } catch (e) {
       d = { error: e.message };
+      if (!current()) return;
+      refresh = false;
       machineSensorsCache[name] = d;
     }
-    if (_activeMachine !== name) return;         // 已切走，停止
+    if (_activeMachine !== name || state.view !== "machine") return;         // 已切走，停止
     const st = d && d.sensors;
     // 只更新感測器卡片本體，不動整個頁面（sensor-body 只存在於 bmc_alive 的詳情頁）
     const body = $("sensor-body");
@@ -2606,14 +2578,23 @@ async function sensorAnalyze(name) {
 }
 
 const machineDetailCache = {};
+const machineDetailRequests = {};
 async function machineLoadDetail(name, refresh = false) {
+  const request = (machineDetailRequests[name] || 0) + 1;
+  machineDetailRequests[name] = request;
+  const target = JSON.stringify(operationTarget(name));
+  let result;
   try {
-    const d = await api(`/api/machine/${encodeURIComponent(name)}/detail${refresh ? "?refresh=1" : ""}`);
-    machineDetailCache[name] = d;
-  } catch (e) {
-    machineDetailCache[name] = { error: e.message };
+    result = await api(`/api/machine/${encodeURIComponent(name)}/detail${refresh ? "?refresh=1" : ""}`);
+  } catch (e) { result = { error: e.message }; }
+  if (machineDetailRequests[name] !== request || target !== JSON.stringify(operationTarget(name))) return;
+  machineDetailCache[name] = result;
+  if (_activeMachine === name && state.view === "machine") {
+    setView("machine");
+    if (result?.bmc_loading) setTimeout(() => {
+      if (_activeMachine === name && state.view === "machine" && machineDetailRequests[name] === request) machineLoadDetail(name);
+    }, 3000);
   }
-  if (_activeMachine === name) setView("machine");
 }
 
 /* ---- 單機詳情頁 ---- */
@@ -2760,8 +2741,8 @@ function pageMachine() {
   const base = d.machine || {};
   const lvlBadge = base.level === "rack"
     ? `<span class="badge badge-rack">L11 · Rack</span>` : `<span class="badge badge-system">L10 · Sys</span>`;
-  const osState = base.os_alive ? statusBadge(true) : statusBadge(false);
-  const bmcState = base.bmc_ip ? (base.bmc_alive ? statusBadge(true) : statusBadge(false)) : `<span style="color:var(--text-faint)">無</span>`;
+  const osState = statusBadge(base.os_alive,base.os_ip,base.connectivity?.os);
+  const bmcState = base.bmc_ip ? statusBadge(base.bmc_alive,base.bmc_ip,base.connectivity?.bmc) : `<span style="color:var(--text-faint)">無</span>`;
   // OS 系統資訊（可能為快取歷史值）
   // OS 系統資訊（硬體型號卡片）
   let osInfoHtml = hwHtml(d.os_info || {});
@@ -2967,7 +2948,7 @@ function runDiagnose(name) {
   });
 }
 async function machinePower(name, on) {
-  if (!confirm(`確定要「${on?"開機":"關機"}」${name} 嗎？（透過 BMC ipmitool）`)) return;
+  if (!confirm(`${operationTargetText(name)}\n\n確定要「${on?"開機":"關機"}」${name} 嗎？（透過 BMC ipmitool）`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/power`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on })
@@ -2980,7 +2961,7 @@ async function machinePower(name, on) {
 }
 // 系統詳情頁 Reboot（OS reboot，無 OS 才用 BMC reset）
 async function machineRebootDetail(name) {
-  if (!confirm(`確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
+  if (!confirm(`${operationTargetText(name)}\n\n確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/reboot`, { method: "POST" });
     await machineLoadDetail(name);
@@ -2988,7 +2969,7 @@ async function machineRebootDetail(name) {
   } catch (e) { alert("操作失敗：" + e.message); }
 }
 async function machineAuxDetail(name) {
-  if (!confirm(`確定要對「${name}」執行 AC cycle（完整斷電重上電）嗎？`)) return;
+  if (!confirm(`${operationTargetText(name)}\n\n確定要對「${name}」執行 AC cycle（完整斷電重上電）嗎？`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/aux`, { method: "POST" });
     setTimeout(() => alert(`${name} ${r.ok ? "AC cycle 已送出 ⚡" : "操作失敗：" + (r.info||"")}`), 250);
@@ -3777,14 +3758,7 @@ async function rackUnmount(name) {
   if (item && rackIsExternal(item)) return rackCduDialog(item.project,item.name);
   if (!confirm("「" + name + "」要從機櫃拿掉嗎？\n（System Manager 的系統不會被刪除，只是取消機櫃 U 位置、仍維持 L11）")) return;
   try {
-    await api("/api/machines/" + encodeURIComponent(name), {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rack_u: 0 })
-    });
-    // 即時顯示：本地同步 + 只重繪目前視圖（留在機櫃頁，不跳走、不整頁重整）
-    const m = machines.find(x => x.name === name);
-    if (m) { m.rack_u = 0; }
+    await rackPlace(name, 0, item?.project);
     setView("rack");
   } catch (e) { alert("移除失敗：" + e.message); }
 }
@@ -3794,7 +3768,8 @@ async function refreshStatus() {
   if (btn) { btn.disabled = true; btn.textContent = "⏳ 掃描中…"; }
   try {
     const data = await api("/api/machines?force_scan=1");
-    machines = data.machines || [];
+    if (!Array.isArray(data.machines)) throw new Error("Invalid machine inventory response");
+  machines = data.machines;
     if (data.last_scan) window.__lastScan = data.last_scan;
     setView(state.view);
   }
@@ -4054,7 +4029,7 @@ async function probeChangeOsBmc(name) {
     const d = await api("/api/machines/probe-bmc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ os_ip: ip, os_user: m.os_user || "", os_pass: m.os_pass || "", os_port: parseInt(m.os_port) || 22, expected_hostname: m.name }),
+      body: JSON.stringify({ os_ip: ip, machine_name: m.name }),
     });
     if (d.ok) {
       $("new-bmc-ip-input").value = d.bmc_ip;
@@ -4745,7 +4720,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await Promise.all([loadMachines(), loadProjects()]);
     setView(state.view);
   } catch (e) {
-    $("content").innerHTML = `<div class="empty">後端無法連線（${esc(e.message)}）<br>請確認有啟動 python 後端程式。</div>`;
+    showInventoryLoadError(e);
   }
   gpuAlertPoll();
   setInterval(gpuAlertPoll, 20000);

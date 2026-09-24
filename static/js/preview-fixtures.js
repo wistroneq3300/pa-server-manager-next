@@ -167,7 +167,23 @@
     }
     if(path.startsWith('/api/machines/')){
       const m=machines.find(m=>m.name===path.split('/')[3]);if(!m)return fail('找不到這台系統。',404);
-      if(method==='PATCH'){const candidate={...m,...body};const error=placementError(candidate);if(error)return fail(error.detail,error.status);Object.assign(m,candidate);if(body.level==='system')m.rack_u=0;}
+      if(method==='PATCH'){
+        if(path.endsWith('/cdu-installation')){
+          if(m.level!=='rack'||m.mgx_type!=='cdu'||Object.keys(body).some(k=>!['rack_mount','rack_size','expected_project'].includes(k)))return fail('Invalid CDU installation',400);
+          if(body.expected_project!==m.project)return fail('Project changed',409);
+          if(!['internal','external'].includes(body.rack_mount))return fail('Invalid mount',400);
+          const size=body.rack_mount==='external'?0:body.rack_size;
+          if(body.rack_mount==='internal'&&(!Number.isInteger(size)||size<1||size>48||(m.rack_mount!=='external'&&size!==m.rack_size)))return fail('Invalid CDU height',400);
+          const candidate={...m,rack_mount:body.rack_mount,rack_size:size,rack_u:size};
+          const error=placementError(candidate);if(error)return fail(error.detail,error.status);
+          Object.assign(m,candidate);return response({ok:true,machine:m});
+        }
+        if(path.endsWith('/placement')){
+          if(m.level!=='rack'||!Object.hasOwn(body,'rack_u')||Object.keys(body).some(k=>!['rack_u','expected_project'].includes(k)))return fail('Invalid placement payload',400);
+          if(body.expected_project!==m.project)return fail('Project changed; reload equipment',409);
+        }
+        if(m.level==='rack'&&['mgx_type','rack_size','rack_mount'].some(k=>Object.hasOwn(body,k)&&body[k]!== (m[k]??(k==='rack_mount'?'internal':k==='rack_size'?1:'server'))))return fail('Existing L11 specifications are fixed',400);
+        const candidate={...m,...(path.endsWith('/placement')?{rack_u:body.rack_u}:body)};const error=placementError(candidate);if(error)return fail(error.detail,error.status);Object.assign(m,candidate);if(body.level==='system')m.rack_u=0;}
       if(method==='DELETE'){machines.splice(machines.indexOf(m),1);links=links.filter(l=>l.a!==m.name&&l.b!==m.name);}
       if(body.new_os_ip)m.os_ip=body.new_os_ip;if(body.new_bmc_ip)m.bmc_ip=body.new_bmc_ip;
       return response({ok:true,machine:m,machines:machineList()});

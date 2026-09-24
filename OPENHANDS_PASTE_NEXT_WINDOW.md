@@ -1,3 +1,7 @@
+LATEST 2026-09-24: L11 immutable specification/placement fix and explicit external/internal CDU installation switching completed. 41 backend tests + JS regressions pass. Full-access permission restored; remote inventory commit dcd3f4f was fetched and preserved before the review-fix commit. Read the latest sections of SESSION_HANDOFF_PROJECT_REVIEW_20260924.md for validation limits and four confirmed remaining workflow findings. U7 remains deferred.
+
+Latest Next handoff: SESSION_HANDOFF_PROJECT_REVIEW_20260924.md. Review fixes are LOCAL / UNCOMMITTED; U7 remains deferred. Preserve upstream private inventory; do not deploy or change Terminal ports.
+
 Latest Next handoff: SESSION_HANDOFF_CDU_COOLING_20260924.md. Work only in pa-server-manager-next; Vera 32-tray development stays on hold. Preserve the forthcoming backend upload.
 
 # 下一個視窗：先讀最新交接

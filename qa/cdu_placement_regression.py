@@ -1,3 +1,4 @@
+from test_support import WorkspaceTemporaryDirectory
 """CDU installation contracts against actual backend functions, temporary storage only."""
 import copy
 import json
@@ -68,20 +69,15 @@ class CduPlacement(unittest.TestCase):
         self.s['edit_machine']('above', {'rack_u': 5})
         self.reject_unchanged(lambda: self.s['edit_machine']('above', {'rack_u': 4}), 409)
 
-    def test_conversion_retains_identity_and_rejects_conflict_atomically(self):
-        cdu = self.create()
+    def test_existing_cdu_specs_fixed_and_placement_retains_identity(self):
+        cdu = self.create(rack_mount='internal', rack_u=4, rack_size=4)
         original_id = cdu['id']
-        self.machine('bottom', rack_u=4, rack_size=4)
-        body = {'rack_mount': 'internal', 'rack_u': 4, 'rack_size': 4}
-        self.reject_unchanged(lambda: self.s['edit_machine']('CDU-01', body), 409)
-        del self.s['machines']['bottom']
-        self.s['edit_machine']('CDU-01', body)
-        internal = self.s['machines']['CDU-01']
-        self.assertEqual((internal['id'], internal['bmc_ip']), (original_id, '192.0.2.40'))
-        self.s['edit_machine']('CDU-01', {'rack_mount': 'external'})
-        external = self.s['machines']['CDU-01']
-        self.assertEqual((external['rack_u'], external['rack_size']), (0, 0))
-        self.reject_unchanged(lambda: self.s['edit_machine']('CDU-01', {'rack_mount':'internal'}), 400)
+        for body in [{'rack_mount':'external'}, {'rack_size':5}, {'mgx_type':'server'}]:
+            self.reject_unchanged(lambda: self.s['edit_machine']('CDU-01', body), 400)
+        for u in [0, 4]:
+            self.s['place_machine']('CDU-01', {'rack_u':u,'expected_project':'rack'})
+            m = self.s['machines']['CDU-01']
+            self.assertEqual((m['id'],m['bmc_ip'],m['rack_size']), (original_id,'192.0.2.40',4))
 
     def test_project_transfer_and_kind_change_cannot_create_second_cdu(self):
         self.create()
@@ -89,12 +85,33 @@ class CduPlacement(unittest.TestCase):
         self.create('CDU-02', project='other')
         self.reject_unchanged(lambda: self.s['edit_machine']('CDU-02', {'project':'rack'}), 409)
         self.machine('switch', mgx_type='switch', rack_u=0)
-        self.reject_unchanged(lambda: self.s['edit_machine']('switch', {'mgx_type':'cdu'}), 409)
+        self.reject_unchanged(lambda: self.s['edit_machine']('switch', {'mgx_type':'cdu'}), 400)
 
     def test_conversion_disk_failure_rolls_back_mount_and_u(self):
         self.create(rack_mount='internal', rack_u=4, rack_size=4)
         with patch.object(os, 'replace', side_effect=OSError('simulated save failure')):
-            self.reject_unchanged(lambda: self.s['edit_machine']('CDU-01', {'rack_mount':'external'}), 503)
+            self.reject_unchanged(lambda: self.s['edit_machine']('CDU-01', {'rack_u':0}), 503)
+
+    def test_explicit_installation_conversion_preserves_identity_and_conflicts(self):
+        cdu = self.create()
+        body = dict(rack_mount='internal',rack_size=4,expected_project='rack')
+        self.machine('bottom',rack_u=4,rack_size=4)
+        self.reject_unchanged(lambda:self.s['set_cdu_installation']('CDU-01',body),409)
+        del self.s['machines']['bottom']
+        self.s['set_cdu_installation']('CDU-01',body)
+        result=self.s['machines']['CDU-01']
+        self.assertEqual((result['rack_u'],result['rack_size']), (4,4))
+        self.assertEqual((result['id'],result['bmc_ip']), (cdu['id'],cdu['bmc_ip']))
+        self.reject_unchanged(lambda:self.s['set_cdu_installation']('CDU-01',{**body,'rack_size':5}),400)
+        self.s['set_cdu_installation']('CDU-01',dict(rack_mount='external',expected_project='rack'))
+        self.assertEqual(self.s['machines']['CDU-01']['rack_size'],0)
+
+    def test_installation_rejects_stale_project_and_rolls_back_disk_failure(self):
+        self.create()
+        body = dict(rack_mount='internal',rack_size=4,expected_project='rack')
+        self.reject_unchanged(lambda:self.s['set_cdu_installation']('CDU-01',{**body,'expected_project':'other'}),409)
+        with patch.object(os,'replace',side_effect=OSError('save failed')):
+            self.reject_unchanged(lambda:self.s['set_cdu_installation']('CDU-01',body),503)
 
     def test_concurrent_external_creations_only_one_commits(self):
         def create(name):
@@ -121,6 +138,9 @@ class CduPlacement(unittest.TestCase):
         self.machine('pending', rack_u=0, mgx_type='switch')
         self.machine('blank', rack_u=2, mgx_type='blanking')
         core = self.s['telemetry_core']
+        membership = {'kind_of': core.kind_of}
+        base.extract('telemetry_core.py', ['is_rack_member'], membership)
+        core.is_rack_member = membership['is_rack_member']
         core.init_db = lambda: None
         core.get_rack_series = lambda *a: {}
         core.RACK_METRIC_DEF = {'cdu': {'flow_lpm': {'label':'Flow','unit':'L/min'}}}
