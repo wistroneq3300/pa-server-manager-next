@@ -43,6 +43,13 @@ const root=path.resolve(__dirname,'..'),py='C:/Users/kobei/.cache/codex-runtimes
   assert.equal(await page.locator('.nt-link').count(),5);
   await act('rack');await page.locator('#nt-name').fill('Rack Beta');await apply();assert.equal(await page.locator('.nt-device').count(),0);
   await act('device');await page.locator('#nt-name').fill('<img src=x onerror=alert(1)>');await page.locator('#nt-kind').selectOption('other');await apply();assert.equal(await page.locator('.nt-device img').count(),0);
+  for(const [count,paired] of [[1,false],[2,true],[8,false]]){
+   await act('device');await page.locator('#nt-name').fill('Custom-'+count);await page.locator('#nt-nodes').fill(String(count));await page.locator('#nt-paired').selectOption(paired?'yes':'no');await page.locator('#nt-dpu-label').fill('Custom DPU');await apply();
+   const card=page.locator('.nt-device').filter({has:page.locator('.nt-card-head strong',{hasText:'Custom-'+count})});await card.locator('[data-action="focus"]').click();assert.equal(await page.locator('.nt-node').count(),count);assert.equal(await page.locator('.nt-port').count(),paired?2:1);
+   assert.match(await page.locator('.nt-node').first().innerText(),paired?/Custom DPU #1/:/No DPU/);
+  }
+  await act('device');await page.locator('#nt-name').fill('Vera-modified');await page.locator('#nt-template').selectOption('vera');await page.locator('#nt-nodes').fill('6');await apply();
+  const modified=page.locator('.nt-device').filter({hasText:'Vera-modified'});assert.match(await modified.innerText(),/6 nodes/);
   await act('save');await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 2'));
   await page.locator('#nt-rack').selectOption({label:'Rack Alpha'});assert.equal(await page.locator('.nt-link').count(),5);
   // A second writer advances the revision. The UI must retain its draft on 409.

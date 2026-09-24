@@ -119,6 +119,20 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   and verified against git ls-remote. This status update records that delivery. No deployment,
   production inventory mutation or live device action performed.
 
+## Topology variable-node follow-up (2026-09-24)
+
+- User clarified that node count varies by project/server. New-device and inventory-import
+  forms now default to custom 1-node configuration and accept 1-64 nodes per server.
+- Optional per-node DPU creation with a custom model label. No DPU is the custom default;
+  only a Host management port is generated. Vera is an editable preset (4 nodes / BF4),
+  never a project-wide requirement. Existing devices retain their saved configuration.
+- The same Rack can mix configurations; import heterogeneous groups separately, then use
+  each device's Add/Edit/Delete Node and Port controls for independent changes.
+- Topology browser regression passed with mixed 1/2/8-node devices, optional/custom DPUs,
+  a Vera preset changed to 6 nodes, and the original 32-tray / 128-node wiring scenario.
+  Existing persistence, conflict, failure, project isolation and responsive checks passed.
+- Delivery: follow-up included in the user-authorized main publication; no deployment.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):

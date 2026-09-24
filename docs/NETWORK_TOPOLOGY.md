@@ -9,10 +9,14 @@ to physical U placement or inventory membership.
 
 1. Add and name a Rack.
 2. Choose **Add inventory** (從專案加入設備), select the existing equipment, and
-   choose the server template. Alternatively add a custom device.
-3. The **4 Node + 4 BF4 / 2 RJ45** template gives each server four editable
-   Node/DPU pairs. RJ45 #1 maps to all four Host nodes; RJ45 #2 maps to all four
-   DPU nodes. Other hardware can start empty and use any number of custom nodes
+   choose the server template and node count. Alternatively add a custom device.
+   Custom is the default: 1-64 nodes per server, with optional one-DPU-per-node
+   creation and a configurable DPU model label. Import different groups separately
+   when their node counts differ; individual devices can then be edited independently.
+3. The **Vera preset (editable)** starts at four nodes with BF4 pairing enabled;
+   the count and DPU choice remain editable before applying. It gives each server editable
+   Node/DPU pairs. RJ45 #1 maps to its Host nodes; RJ45 #2 maps to its
+   DPU nodes when DPU creation is enabled. Without DPUs, only RJ45 #1 is created. Other hardware can start empty and use any number of custom nodes
    and ports within the documented limits.
 4. Expand a device to add, edit or delete nodes and ports. Node entries contain
    a paired DPU label plus Host OS/BMC and DPU OS/BMC IP annotations. Shared BMC
