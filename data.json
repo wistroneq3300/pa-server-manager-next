@@ -1,0 +1,139 @@
+{
+  "machines": {
+    "Sheng-Cisco": {
+      "id": 1,
+      "name": "Sheng-Cisco",
+      "os_ip": "10.35.229.167",
+      "os_user": "root",
+      "os_pass": "password",
+      "bmc_ip": "10.35.229.220",
+      "bmc_user": "admin",
+      "bmc_pass": "P@SSW0RD",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "ShengClient",
+      "created": "2026-08-21T23:26:54",
+      "order": 0,
+      "level": "system"
+    },
+    "EQ3300-AIAgent": {
+      "id": 4,
+      "name": "EQ3300-AIAgent",
+      "os_ip": "10.35.229.64",
+      "os_user": "root",
+      "os_pass": "password",
+      "bmc_ip": "10.35.228.145",
+      "bmc_user": "root",
+      "bmc_pass": "0penBmc",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "Naboo",
+      "level": "rack",
+      "order": 0,
+      "created": "2026-08-22T10:10:32",
+      "rack_u": 0,
+      "rack_size": 1
+    },
+    "boba-ami": {
+      "id": 41,
+      "name": "boba-ami",
+      "os_ip": "10.35.229.199",
+      "os_user": "root",
+      "os_pass": "password",
+      "bmc_ip": "10.35.229.61",
+      "bmc_user": "root",
+      "bmc_pass": "0penBmc",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "Boba_fett",
+      "level": "system",
+      "order": 47,
+      "created": "2026-08-24T09:57:55"
+    },
+    "Boba-BMC": {
+      "id": 45,
+      "name": "Boba-BMC",
+      "os_ip": "10.35.228.148",
+      "os_user": "root",
+      "os_pass": "password",
+      "bmc_ip": "10.35.229.164",
+      "bmc_user": "root",
+      "bmc_pass": "0penBmc",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "Drogan Curv",
+      "level": "system",
+      "order": 48,
+      "created": "2026-08-24T18:00:20"
+    },
+    "Wickie-B300-SUT2": {
+      "id": 46,
+      "name": "Wickie-B300-SUT2",
+      "os_ip": "10.35.229.251",
+      "os_user": "root",
+      "os_pass": "password",
+      "bmc_ip": "10.35.229.234",
+      "bmc_user": "sysadmin",
+      "bmc_pass": "superuser",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "Wickie",
+      "level": "system",
+      "order": 49,
+      "created": "2026-08-24T23:28:26",
+      "use_c17": true
+    },
+    "CDU-1": {
+      "id": 48,
+      "name": "CDU-1",
+      "os_ip": "",
+      "os_user": "",
+      "os_pass": "",
+      "bmc_ip": "",
+      "bmc_user": "",
+      "bmc_pass": "",
+      "os_port": 22,
+      "bmc_port": 623,
+      "project": "Naboo",
+      "level": "rack",
+      "mgx_type": "cdu",
+      "rack_u": 0,
+      "rack_side": "front",
+      "rack_size": 1,
+      "passive": true,
+      "order": 50,
+      "created": "2026-08-25T00:41:08"
+    }
+  },
+  "projects": {
+    "EQ3300": {
+      "name": "EQ3300",
+      "desc": "AI Agent B200",
+      "order": 0,
+      "level": "system"
+    },
+    "ShengClient": {
+      "name": "ShengClient",
+      "desc": "Cisco-cluster01",
+      "order": 1,
+      "level": "rack"
+    },
+    "Boba_fett": {
+      "name": "Boba_fett",
+      "desc": "Boba",
+      "order": 3
+    },
+    "Drogan Curv": {
+      "name": "Drogan Curv",
+      "desc": "",
+      "order": 2
+    },
+    "Wickie": {
+      "name": "Wickie",
+      "desc": "Wickie agent",
+      "order": 4
+    }
+  },
+  "links": [],
+  "seq": 49
+}
