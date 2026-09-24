@@ -8,8 +8,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   device-mounted Ping LED refinements (latest section below).
 - Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
 - Functional commit `d40dea953e30507cd03d701330b9a82c17aacf30` was pushed to
-  `main` and verified against `git ls-remote` on 2026-09-24. This documentation
-  follow-up records that completed delivery.
+  `main` and verified against `git ls-remote` on 2026-09-24. Follow-up LED geometry
+  fix `ca559d27923e752947ac06786f1c0ca95241da04` is also published and remotely
+  verified; this documentation follow-up records the completed delivery.
 - No deployment or live hardware test was performed. The tracked Naboo production-data
   topology changed from 65 to 69 confirmed links; inventory and credentials are unchanged.
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
@@ -25,8 +26,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Rack topology/IP/LED refinement (2026-09-24; current)
 
-- The user authorized implementation and publication. Functional commit
-  `d40dea953e30507cd03d701330b9a82c17aacf30` is published and remotely verified.
+- The user authorized implementation and publication. Functional commits
+  `d40dea953e30507cd03d701330b9a82c17aacf30` and
+  `ca559d27923e752947ac06786f1c0ca95241da04` are published and remotely verified.
   No deployment or live hardware Ping was performed.
 - `網路拓樸` is now the single Rack wiring workspace. The old separate empty `機櫃拓樸`
   Rack UI was removed so saved wiring and IP checks no longer appear split between two views.
@@ -53,9 +55,13 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   the Rack rail, including internal/external CDU. Green blinks when all checked targets are
   reachable, red blinks on any failed target, gray means unchecked/no target, and passive
   blanking panels have no LED. Reduced-motion keeps the color steady.
+- Follow-up geometry puts both Switch Ping LEDs on raised upper-right service pods, clear
+  of the QSFP matrices and cable endpoints. All three installed Power Shelves use larger
+  raised right-side pods between the last fan cartridge and chassis edge, so red, green and
+  low-brightness gray states remain visible. Blank Panel rendering and data are unchanged.
 - Validation passed: 81 isolated Python regressions; topology browser and targeted IP
-  summary QA; rack-network browser QA with 69 routes, failure-panel placement and more
-  than 800 visibly changing LED pixels; operations/equipment/core-scene checks; JavaScript/Python
+  summary QA; rack-network browser QA with 69 routes, geometric overlap guards and 1,310
+  visibly changing LED pixels; operations/equipment/core-scene checks; JavaScript/Python
   syntax and whitespace validation. Success, partial-failure and Rack-layout screenshots
   were visually reviewed. No external browser requests or live hardware probes occurred.
 
