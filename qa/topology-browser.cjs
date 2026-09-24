@@ -7,6 +7,9 @@ const root=path.resolve(__dirname,'..'),py='C:/Users/kobei/.cache/codex-runtimes
   const port=await new Promise((res,rej)=>{server.stdout.once('data',d=>res(Number(d.toString().trim())));server.once('error',rej);});
   browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
   const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+  await page.addInitScript(() => {
+    if (globalThis.Crypto?.prototype) Object.defineProperty(Crypto.prototype,'randomUUID',{value:undefined,configurable:true});
+  });
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(`http://127.0.0.1:${port}/#/rack/proj_k`);await page.waitForSelector('#ew-rack-add');
   const act=(name)=>page.locator(`.nt-overlay [data-action="${name}"]`).first().click();

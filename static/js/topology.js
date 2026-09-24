@@ -2,7 +2,19 @@
 (() => {
   'use strict';
   const h = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const id = () => crypto.randomUUID();
+  const id = () => {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    const bytes = new Uint8Array(16);
+    if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(bytes);
+    else {
+      const seed = Date.now() ^ Math.floor(Math.random() * 0x7fffffff);
+      for (let i=0;i<bytes.length;i++) bytes[i] = (seed >>> (i % 4) * 8) ^ Math.floor(Math.random() * 256);
+    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(value => value.toString(16).padStart(2,'0'));
+    return `${hex.slice(0,4).join('')}-${hex.slice(4,6).join('')}-${hex.slice(6,8).join('')}-${hex.slice(8,10).join('')}-${hex.slice(10).join('')}`;
+  };
   const roles = {host:'Host management',dpu:'DPU management',data:'Data network',uplink:'Switch interconnect',other:'Other'};
   let state = null, root;
   const rack = () => state.doc.racks.find(r => r.id === state.rack);

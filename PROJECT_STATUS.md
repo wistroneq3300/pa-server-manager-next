@@ -133,6 +133,16 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   Existing persistence, conflict, failure, project isolation and responsive checks passed.
 - Delivery: follow-up included in the user-authorized main publication; no deployment.
 
+## Topology browser compatibility follow-up (2026-09-24)
+
+- A deployed browser reported `crypto.randomUUID is not a function` while applying the
+  first Rack draft. Topology IDs now use native randomUUID when available and fall back to
+  Web Crypto random bytes (with a final legacy local fallback) on older/non-secure contexts.
+- The topology browser regression now explicitly disables randomUUID before loading and the
+  complete Rack/template/wiring/save workflow passes with zero page errors.
+- Cache version updated. Fix is validated locally and remains uncommitted/unpushed pending
+  current user direction. No deployment, inventory change or device operation occurred.
+
 ## Power Shelf appearance alignment (2026-09-24)
 
 - User requested the single-device Power Shelf drawing match the Rack 3D design.
