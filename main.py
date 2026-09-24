@@ -1752,31 +1752,105 @@ def ping_ip(ip: str = ""):
     return {"ok": True, "ip": ip, "alive": ping_check(ip, 2)}
 
 
+def _rack_ping_ip(value, label):
+    """Only literal addresses can become subprocess arguments."""
+    value = str(value or "").strip()
+    if not value:
+        return ""
+    try:
+        return str(ipaddress.ip_address(value))
+    except ValueError as exc:
+        raise HTTPException(422, f"{label}: \u0049\u0050 \u683c\u5f0f\u7121\u6548") from exc
+
+
+def _rack_ping_plan(machine, topology):
+    """Use host OS reachability for servers, management IP for other equipment."""
+    topology = topology if isinstance(topology, dict) else {}
+    name = machine["name"]
+    kind = equipment_policy.classify(machine, name)["kind"]
+    os_ip = _rack_ping_ip(machine.get("os_ip"), name)
+    bmc_ip = _rack_ping_ip(machine.get("bmc_ip"), name)
+    targets = []
+    source = "none"
+    if kind == "server":
+        for rack in topology.get("racks") or []:
+            if not isinstance(rack, dict):
+                continue
+            for device in rack.get("devices") or []:
+                if not isinstance(device, dict) or device.get("inventory") != name:
+                    continue
+                for node in device.get("nodes") or []:
+                    if not isinstance(node, dict):
+                        continue
+                    ip = _rack_ping_ip(node.get("host_os"), f"{name}/{node.get('name', '')}")
+                    if ip:
+                        targets.append({"ip": ip, "field": "host_os", "rack_id": rack.get("id", ""),
+                                        "device_id": device.get("id", ""), "node_id": node.get("id", ""),
+                                        "node_name": node.get("name", "")})
+        if targets:
+            source = "topology_host_os"
+        elif os_ip:
+            targets = [{"ip": os_ip, "field": "os_ip"}]
+            source = "legacy_os"
+    elif os_ip or bmc_ip:
+        targets = [{"ip": os_ip or bmc_ip, "field": "os_ip" if os_ip else "bmc_ip"}]
+        source = "management"
+    return {"name": name, "level": machine.get("level"), "kind": kind,
+            "os_ip": machine.get("os_ip"), "bmc_ip": machine.get("bmc_ip"),
+            "os_address": os_ip, "bmc_address": bmc_ip,
+            "rack_ping_source": source, "ping_targets": targets}
+
+
 @app.get("/api/rack/ping")
 def rack_ping(project: str = "", name: str = ""):
-    """Ping 一個整櫃（或專案內所有 rack）：OS + BMC 各一燈。
-    指定 name 就只 ping 那台；指定 project 就 ping 該專案所有 machine。"""
-    if name:
-        if name not in machines:
-            raise HTTPException(404, f"機台不存在: {name}")
-        targets = [machines[name]]
-    elif project:
-        targets = [m for m in machines.values() if m.get("project") == project]
+    """Snapshot placed equipment and probe bounded, deduplicated address batches.
+
+    Results are transient reachability observations, never a physical power reading.
+    A server's BMC responding cannot hide a failed host OS probe.
+    """
+    with _DATA_LOCK:
+        if name and name not in machines:
+            raise HTTPException(404, f"\u6a5f\u53f0\u4e0d\u5b58\u5728: {name}")
+        selected = [machine for key, machine in machines.items()
+                    if (not name or key == name) and (not project or machine.get("project") == project)]
+        selected = [machine for machine in selected if machine.get("level") == "rack"
+                    and equipment_policy.classify(machine)["kind"] != "blanking"
+                    and ((isinstance(machine.get("rack_u"), int) and machine["rack_u"] > 0)
+                         or (machine.get("rack_mount") == "external"
+                             and equipment_policy.classify(machine)["kind"] == "cdu"))]
+        snapshots = copy.deepcopy(selected)
+        topologies = {project_name: copy.deepcopy(projects.get(project_name, {}).get("topology", {}))
+                      for project_name in {machine.get("project") for machine in selected}}
+    plans = [_rack_ping_plan(machine, topologies.get(machine.get("project"), {})) for machine in snapshots]
+    unique_ips = sorted({ip for plan in plans for ip in
+                         [plan["os_address"], plan["bmc_address"]] +
+                         [target["ip"] for target in plan["ping_targets"]] if ip})
+    if len(unique_ips) > 2048 or sum(len(plan["ping_targets"]) for plan in plans) > 4096:
+        raise HTTPException(422, "\u55ae\u6b21\u6700\u591a\u6aa2\u67e5 2048 \u500b\u4e0d\u540c IP \u6216 4096 \u500b\u7bc0\u9ede IP \u6b04\u4f4d")
+
+    started = time.monotonic()
+    def probe(ip):
+        return ping_check(ip, 1) or ping_check(ip, 1)
+
+    if unique_ips:
+        with ThreadPoolExecutor(max_workers=min(64, len(unique_ips))) as pool:
+            states = dict(zip(unique_ips, pool.map(probe, unique_ips)))
     else:
-        targets = list(machines.values())
+        states = {}
     results = []
-    def ping_one(m):
-        return {
-            "name": m["name"],
-            "level": m.get("level", "system"),
-            "os_ip": m.get("os_ip"),
-            "bmc_ip": m.get("bmc_ip"),
-            "os_alive": ping_check(m.get("os_ip"), 2) if m.get("os_ip") else None,
-            "bmc_alive": ping_check(m.get("bmc_ip"), 2) if m.get("bmc_ip") else None,
-        }
-    with ThreadPoolExecutor(max_workers=16) as ex:
-        results = list(ex.map(ping_one, targets))
-    return {"ok": True, "nodes": results}
+    for plan in plans:
+        os_address, bmc_address = plan.pop("os_address"), plan.pop("bmc_address")
+        targets = [{**target, "alive": bool(states[target["ip"]])} for target in plan["ping_targets"]]
+        alive = sum(target["alive"] for target in targets)
+        count = len(targets)
+        status = "unknown" if not count else "up" if alive == count else "partial" if alive else "down"
+        results.append({**plan, "os_alive": states.get(os_address), "bmc_alive": states.get(bmc_address),
+                        "rack_ping_state": status, "ping_targets": targets,
+                        "ping_counts": {"configured": count, "alive": alive, "down": count - alive}})
+    return {"ok": True, "nodes": results,
+            "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "duration_ms": round((time.monotonic() - started) * 1000),
+            "unique_ips": len(unique_ips)}
 
 
 # ---- 機櫃拓樸 / 連線圖 ----

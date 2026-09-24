@@ -102,6 +102,48 @@
 
   const defs={server:{cpu_used:{label:'CPU',unit:'%',color:'#007b9e'},mem_used_pct:{label:'Memory',unit:'%',color:'#889f30'},gpu_power:{label:'GPU power',unit:'W',color:'#4893ac'}},switch:{port_rx:{label:'Port RX',unit:'MB/s'},port_tx:{label:'Port TX',unit:'MB/s'},temp:{label:'Temperature',unit:'°C'}},powershelf:{power_w:{label:'Power',unit:'W'},voltage:{label:'Voltage',unit:'V'},current_a:{label:'Current',unit:'A'}},pdu:{power_w:{label:'Power',unit:'W'},current_a:{label:'Current',unit:'A'}},cdu:{flow_lpm:{label:'Flow',unit:'L/min'},inlet_temp:{label:'Inlet',unit:'°C'},outlet_temp:{label:'Outlet',unit:'°C'},pressure:{label:'Pressure',unit:'bar'}}};
   const topologyDocs = new Map();
+  if(scenario==='rack-network'){
+    projects.push({name:'Naboo',desc:'Synthetic 32 tray network fixture',level:'rack',order:6});
+    const devices=[],cables=[],nodesFor=(index)=>Array.from({length:4},(_,i)=>({
+      id:'n'+i,name:'Node '+(i+1),bf4:'BF4 #'+(i+1),
+      host_os:index===4?'':'10.250.'+index+'.'+(i+1),host_bmc:'',dpu_os:'',dpu_bmc:''
+    }));
+    const add=(name,type,u,size,index)=>{
+      const unknown=name==='naboo-04'||name==='power-shelf-3';
+      machines.push({name,project:'Naboo',level:'rack',mgx_type:type,rack_u:u,rack_size:size,rack_mount:type==='cdu'?'external':'internal',
+        order:index,os_ip:unknown||type==='blanking'?'':'192.0.2.'+(index+1),bmc_ip:type==='server'?'198.51.100.'+(index+1):'',
+        os_alive:true,bmc_alive:type==='server',power:type==='blanking'?null:'ON',passive:type==='blanking'});
+    };
+    for(let i=1;i<=2;i++){
+      const name='Switch-2201-'+i;add(name,'switch',48-i,1,40+i);
+      devices.push({id:'sw'+i,name,inventory:name,kind:'switch',nodes:[],ports:Array.from({length:48},(_,j)=>({id:'p'+(j+1),name:String(j+1),role:j===47?'uplink':'other',nodes:[]}))});
+    }
+    for(let i=1;i<=32;i++){
+      const name='naboo-'+String(i).padStart(2,'0'),nodes=nodesFor(i);add(name,'server',i+8,1,i);
+      devices.push({id:'s'+i,name,inventory:name,kind:'server',nodes,ports:['host','dpu'].map((role,j)=>({id:role,name:'RJ45 #'+(j+1),role,nodes:nodes.map(n=>n.id)}))});
+      ['host','dpu'].forEach((network,j)=>cables.push({id:network+i,network,state:'confirmed',note:'',a:{device:'s'+i,port:network},b:{device:'sw'+(j+1),port:'p'+i}}));
+    }
+    cables.push({id:'uplink',network:'uplink',state:'confirmed',note:'',a:{device:'sw1',port:'p48'},b:{device:'sw2',port:'p48'}});
+    [6,7,44].forEach((u,i)=>add('power-shelf-'+(i+1),'powershelf',u,1,50+i));
+    add('CDU-1-main','cdu',0,0,55);add('BLANK-NABOO','blanking',48,1,56);
+    topologyDocs.set('Naboo',{revision:1,racks:[{id:'naboo',name:'Naboo Rack',devices,links:cables}]});
+  }
+  function rackPingFixture(project){
+    const topology=topologyDocs.get(project),devices=(topology?.racks||[]).flatMap(r=>r.devices);
+    const nodes=machines.filter(m=>m.project===project&&m.level==='rack'&&(m.rack_u>0||m.rack_mount==='external')&&m.mgx_type!=='blanking').map(m=>{
+      const d=devices.find(d=>d.inventory===m.name),hostNodes=(d?.nodes||[]).filter(n=>n.host_os);
+      const targets=m.mgx_type==='server'&&hostNodes.length
+        ? hostNodes.map(n=>({ip:n.host_os,field:'host_os',node_id:n.id,alive:!(m.name==='naboo-03'||m.name==='naboo-02'&&n.id==='n3')}))
+        : (m.os_ip||m.mgx_type!=='server'&&m.bmc_ip)
+          ? [{ip:m.os_ip||m.bmc_ip,field:m.os_ip?'os_ip':'bmc_ip',alive:!['Switch-2201-2','power-shelf-2'].includes(m.name)&&(m.os_ip?m.os_alive===true:m.bmc_alive===true)}] : [];
+      const alive=targets.filter(t=>t.alive).length,configured=targets.length;
+      return {name:m.name,level:m.level,os_ip:m.os_ip,bmc_ip:m.bmc_ip,os_alive:m.os_ip?m.os_alive:null,bmc_alive:m.bmc_ip?m.bmc_alive:null,
+        rack_ping_state:configured?(alive===configured?'up':alive?'partial':'down'):'unknown',
+        rack_ping_source:hostNodes.length?'topology_host_os':m.mgx_type==='server'?'legacy_os':'management',
+        ping_counts:{configured,alive,down:configured-alive},ping_targets:targets};
+    });
+    return {ok:true,nodes,checked_at:new Date().toISOString()};
+  }
   window.fetch=async (input,options={})=>{
     const url=new URL(typeof input==='string'?input:input.url,location.href),path=decodeURIComponent(url.pathname),method=(options.method||'GET').toUpperCase();
     if(!path.startsWith('/api/'))return nativeFetch(input,options);
@@ -139,7 +181,7 @@
     }
     if(path==='/api/links'){if(method==='DELETE')links=links.filter(l=>l.a!==body.a||l.b!==body.b);else if(method!=='GET')return fail('拓樸建立功能尚未開放。',501);return response({links});}
     if(path==='/api/ai/gpu-alerts')return response({alerts:[],count:0});
-    if(path==='/api/rack/ping')return response({nodes:machines.filter(m=>m.project===url.searchParams.get('project'))});
+    if(path==='/api/rack/ping')return response(rackPingFixture(url.searchParams.get('project')));
     if(path==='/api/ping-ip')return response({alive:true,ok:true});
     if(path.includes('/testlibrary')){
       library=library||await nativeFetch('/fixtures/tests.json').then(r=>r.json());

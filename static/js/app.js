@@ -445,14 +445,18 @@ function viewProject(pname) {
   setView("projects");
 }
 /* ============ Rack Manager (L11 整櫃監控/控制) ============ */
-const rackView = { mode: "list", project: "", pinged: null };
+const rackView = { mode: "list", project: "", pinged: null, pingProject: "", pingCheckedAt: "" };
+let rackPingRequest = 0;
 let racksProjectDesc = "";
 function rackPowerState(name) {
   return rackSim[name] || (rackSim[name] = { on: true, led: "green" });
 }
 function rackSetProject(v) {
+  rackPingRequest++;
   rackView.project = v;
   rackView.pinged = null;
+  rackView.pingProject = "";
+  rackView.pingCheckedAt = "";
   setView("rack");
 }
 function rackSetMode(mode) {
@@ -460,17 +464,24 @@ function rackSetMode(mode) {
   setView("rack");
 }
 async function rackPing(project) {
+  const request = ++rackPingRequest;
   const btn = $("rack-ping-btn");
   if (btn) { btn.textContent = "⏳ Ping 中…"; btn.disabled = true; }
   try {
     const data = await api(`/api/rack/ping?project=${encodeURIComponent(project)}`);
+    if (request !== rackPingRequest || rackView.project !== project) return;
     rackView.pinged = data.nodes;
+    rackView.pingProject = project;
+    rackView.pingCheckedAt = data.checked_at || new Date().toISOString();
   } catch (e) {
+    if (request !== rackPingRequest || rackView.project !== project) return;
     rackView.pinged = [];
+    rackView.pingProject = "";
+    rackView.pingCheckedAt = "";
     notifyUser("Ping 失敗：" + e.message);
   }
   if (btn) { btn.textContent = "📡 Ping Rack"; btn.disabled = false; }
-  setView("rack");
+  if (state.view === "rack") setView("rack");
 }
 // 整櫃開/關機：彈出「廣播式多選」讓使用者勾選要同時控制哪些機台
 // 通用「整櫃批量操作」多選對話框。kind: "on"|"off"|"reboot"|"aux"
@@ -1014,7 +1025,7 @@ function pageRack() {
     return `<option value="${esc(pn)}" ${pn === proj ? "selected" : ""}>${esc(pn)}（${nOn} 台已上櫃${nP ? ` / ${nP} 台未放置` : ""}）</option>`;
   }).join("");
   const members = racksAll.filter(m => m.project === proj);
-  const pinged = rackView.pinged || [];
+  const pinged = rackView.pingProject === proj ? rackView.pinged || [] : [];
   const pobj = projects.find(p => p.name === proj);
   racksProjectDesc = pobj ? (pobj.desc || "") : "";
   const anyRack = racksAll.length > 0;
@@ -1056,7 +1067,7 @@ function pageRack() {
     </div>` : ""}
     <div class="rack-status-legend">
       ${Object.values(MGX_TYPES).filter((v, i, a) => a.findIndex(x => x.cls === v.cls) === i).map(v => `<span class="mgx-legend"><span class="mgx-dot ${v.cls}"></span>${esc(v.label)}</span>`).join("")}
-      &nbsp;·&nbsp; ${rackStatusCounts(members, pinged)}
+      &nbsp;·&nbsp; <span id="rack-ping-summary">${rackStatusCounts(members, pinged)}</span>
     </div>
     ${anyRack && members.length ? rackLayoutHtml(members, pinged) : (anyRack ? emptyRackCard() : "")}
     `;
@@ -1687,14 +1698,14 @@ async function rackClearTopo() {
 
 function rackStatusCounts(members, pinged) {
   let up = 0, down = 0, none = 0;
-  members.forEach(m => {
+  members.filter(m=>mgxTypeOf(m)!=='blanking').forEach(m => {
     const n = pinged.find(x => x.name === m.name);
-    const upOs = n ? n.os_alive : null;
-    if (upOs === true) up++;
-    else if (upOs === false) down++;
+    const status = n?.rack_ping_state;
+    if (status === 'up') up++;
+    else if (status === 'down' || status === 'partial') down++;
     else none++;
   });
-  return `狀態：<span class="ping-lamp on">🟢</span> Up ${up} &nbsp;<span class="ping-lamp off">🔴</span> Down ${down} &nbsp;<span class="ping-lamp none">⨪</span> 未 Ping ${none}`;
+  return `Ping：<span class="ping-lamp on">🟢</span> \u53ef\u9054 ${up} &nbsp;<span class="ping-lamp off">🔴</span> \u6709 IP \u7121\u56de\u61c9 ${down} &nbsp;<span class="ping-lamp none">⨪</span> \u672a\u6aa2\u67e5\uff0f\u672a\u8a2d IP ${none}`;
 }
 // 模擬拓樸：自動把 server→sw1/sw2（eth/ib），cdu→sw1（coolant），powershelf→sw2（power）接起來。
 // 依元件類型挑前兩個 switch、第一個 cdu、第一個 powershelf、前面幾台 server/storage。

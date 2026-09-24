@@ -82,6 +82,70 @@
   };
 
   let scene = null, canvas = null;
+  let topologyAbort = null, topologyGeneration = 0;
+  let networkVisible = true;
+  const pingLabels = {up:'\u53ef\u9054',down:'\u7121\u56de\u61c9',partial:'\u90e8\u5206\u7bc0\u9ede\u7121\u56de\u61c9',unknown:'\u5c1a\u672a\u6aa2\u67e5\uff0f\u672a\u8a2d\u5b9a IP'};
+  function pingRecord(item) {
+    if (rackView.pingProject !== rackView.project) return null;
+    const result = rackView.pinged?.find(record=>record.name===item.name);
+    if (!result || (result.os_ip||'') !== (item.os_ip||'') || (result.bmc_ip||'') !== (item.bmc_ip||'')) return null;
+    return result;
+  }
+  function sceneComponents() {
+    return PAWorkspaceReliability.validatePlacements(rackMembers()).valid.map(item=>({
+      ...item, mgx_type:PAHardwareVisuals.typeOf(item),
+      rack_ping_state:pingRecord(item)?.rack_ping_state || 'unknown'
+    }));
+  }
+  function networkSummary(errorMessage='') {
+    const label=document.getElementById('ew-network-note');
+    if(!label)return;
+    if(errorMessage){label.textContent=errorMessage;return;}
+    const network=scene?.getState?.().networkCabling;
+    if(!network)return;
+    const count=network.routes?.length||0,skipped=network.skipped?.length||0;
+    label.textContent=(count
+      ? '\u5df2\u5132\u5b58\u62d3\u6a38\uff1a'+count+'\u689d\u5be6\u9ad4\u7dda \u00b7 \u5de6\uff1a\u4e3b\u6a5f\u7ba1\u7406 \u00b7 \u53f3\uff1aDPU \u7ba1\u7406'
+      : '\u5c1a\u7121\u53ef\u986f\u793a\u7684\u5df2\u5132\u5b58\u914d\u7dda\uff0c\u8acb\u5728\u7db2\u8def\u62d3\u6a38\u914d\u5c0d\u5df2\u4e0a\u6ac3\u8a2d\u5099\u3002')
+      +(skipped?' \u00b7 '+skipped+'\u689d\u56e0\u672a\u5c0d\u61c9\u5df2\u5b89\u88dd\u8a2d\u5099\u800c\u7565\u904e':'');
+  }
+  function networkControls() {
+    const camera=document.querySelector('.ew-rack-camera');
+    if(!camera||document.getElementById('ew-network-toggle'))return;
+    camera.insertAdjacentHTML('beforeend','<span class="ew-camera-divider"></span><button type="button" class="btn small" id="ew-network-toggle" aria-pressed="'+networkVisible+'" onclick="equipmentRackNetworkToggle()">'+(networkVisible?'\u96b1\u85cf\u914d\u7dda':'\u986f\u793a\u914d\u7dda')+'</button>');
+    camera.insertAdjacentHTML('afterend','<div class="ew-network-status"><p id="ew-network-note" role="status">\u6b63\u5728\u8b80\u53d6\u5df2\u5132\u5b58\u62d3\u6a38\u2026</p><p class="ew-led-legend"><span><i class="ew-led-up"></i>\u7da0\uff1aPing \u53ef\u9054</span><span><i class="ew-led-down"></i>\u7d05\uff1a\u6709 IP \u7121\u56de\u61c9</span><span><i class="ew-led-unknown"></i>\u7070\uff1a\u672a\u6aa2\u67e5\uff0f\u672a\u8a2d IP</span><span>\u71c8\u865f\u8868\u793a Ping \u7d50\u679c</span></p></div>');
+  }
+  window.equipmentRackNetworkToggle = () => {
+    networkVisible=!networkVisible;scene?.setNetworkVisible?.(networkVisible);
+    const button=document.getElementById('ew-network-toggle');
+    if(button){button.setAttribute('aria-pressed',String(networkVisible));button.textContent=networkVisible?'\u96b1\u85cf\u914d\u7dda':'\u986f\u793a\u914d\u7dda';}
+  };
+  async function loadRackTopology(project, target) {
+    topologyAbort?.abort();
+    const generation=++topologyGeneration,controller=new AbortController();
+    topologyAbort=controller;
+    try {
+      const document=await api('/api/projects/'+encodeURIComponent(project)+'/topology',{signal:controller.signal});
+      if(generation!==topologyGeneration||canvas!==target||rackView.project!==project||!target.isConnected)return;
+      scene?.setTopology?.(document);networkSummary();
+    } catch(error) {
+      if(error.name==='AbortError'||generation!==topologyGeneration||canvas!==target)return;
+      networkSummary('\u914d\u7dda\u8cc7\u6599\u8b80\u53d6\u5931\u6557\uff0c\u8acb\u91cd\u65b0\u8f09\u5165\u6a5f\u6ac3\u3002');
+    }
+  }
+  window.addEventListener('pa-topology-saved',event=>{
+    if(event.detail?.project!==rackView.project)return;
+    topologyGeneration++;topologyAbort?.abort();
+    rackPingRequest++;rackView.pinged=null;rackView.pingProject='';rackView.pingCheckedAt='';
+    const pingButton=document.getElementById('rack-ping-btn');
+    if(pingButton){pingButton.disabled=false;pingButton.textContent='\ud83d\udce1 Ping Rack';}
+    const summary=document.getElementById('rack-ping-summary');
+    if(summary)summary.innerHTML=rackStatusCounts(rackMembers(),[]);
+    if(!canvas?.isConnected)return;
+    scene?.setComponents?.(sceneComponents());
+    scene?.setTopology?.(event.detail.document);networkSummary();
+    inspector(selectedByProject.get(rackView.project)||'');
+  });
   let mode = '3d';
   let expanded = false;
   let flowEnabled = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -134,7 +198,12 @@
     target.querySelector('.ew-inspector-actions .btn:not(.primary)').onclick=()=>equipmentRackPlacement(m.name);
     if(!scene?.supported)target.querySelector('.ew-focus').disabled=true;
     target.querySelector('dl').insertAdjacentHTML('beforeend',`<div><dt>\u9023\u7dda\uff0f\u96fb\u6e90\u72c0\u614b</dt><dd>OS ${m.os_ip?status(m.os_alive):'\u672a\u8a2d\u5b9a'}<br>BMC ${m.bmc_ip?status(m.bmc_alive):'\u672a\u8a2d\u5b9a'}<br>\u96fb\u6e90 ${esc(powerLabel(m.power_state ?? m.power))}</dd></div>`);
-    if(type==='cdu')target.querySelector('dl').innerHTML=`<div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}</dd></div><div><dt>\u7ba1\u7406 IP</dt><dd>${esc(m.os_ip||'\u672a\u8a2d\u5b9a')}</dd></div><div><dt>\u63a1\u96c6\u72c0\u614b</dt><dd>\u5c1a\u672a\u6574\u5408 CDU \u63a1\u96c6\u5668</dd></div>`;
+    if(type==='cdu')target.querySelector('dl').innerHTML=`<div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}</dd></div><div><dt>\u7ba1\u7406 IP</dt><dd>${esc(m.os_ip||m.bmc_ip||'\u672a\u8a2d\u5b9a')}</dd></div><div><dt>\u63a1\u96c6\u72c0\u614b</dt><dd>\u5c1a\u672a\u6574\u5408 CDU \u63a1\u96c6\u5668</dd></div>`;
+    if(type!=='blanking'){
+      const ping=pingRecord(m),counts=ping?.ping_counts;
+      const detail=counts?`${counts.alive} / ${counts.configured} \u500b\u5df2\u8a2d\u5b9a IP \u53ef\u9054`:'';
+      target.querySelector('dl').insertAdjacentHTML('beforeend',`<div class="ew-ping-detail"><dt>3D Ping \u71c8\u865f</dt><dd>${esc(pingLabels[ping?.rack_ping_state]||pingLabels.unknown)}<small>${esc(detail)}</small>${ping&&rackView.pingCheckedAt?'<small>'+esc(new Date(rackView.pingCheckedAt).toLocaleString())+'</small>':''}</dd></div>`);
+    }
 
   }
   window.equipmentRackSelect = name => {
@@ -178,7 +247,7 @@
     choices.filter(p=>!existing.has(p.name)).forEach(p=>select?.insertAdjacentHTML('beforeend',`<option value="${esc(p.name)}">${esc(p.name)} (0)</option>`));
     return fragment.innerHTML;
   };
-  function dispose() {scene?.destroy(); scene=null; canvas=null;}
+  function dispose() {topologyGeneration++;topologyAbort?.abort();topologyAbort=null;scene?.destroy(); scene=null; canvas=null;}
   function mount() {
     const next = document.getElementById('ew-rack-canvas');
     if (next === canvas) return;
@@ -187,8 +256,11 @@
     const fallback=()=>{if(!next.parentElement?.querySelector('.ew-gl-fallback'))next.insertAdjacentHTML('afterend','<div class="ew-gl-fallback" role="status">\u76ee\u524d\u7121\u6cd5\u986f\u793a 3D\uff0c\u4ecd\u53ef\u4f7f\u7528\u5168\u90e8\u7ba1\u7406\u529f\u80fd\uff1a<button class="btn" onclick="equipmentRackMode(\'plane\')">48U \u914d\u7f6e</button>.</div>');};
     next.addEventListener('pa-rack-fallback',fallback);
     next.addEventListener('pa-rack-ready',()=>next.parentElement?.querySelector('.ew-gl-fallback')?.remove());
-    scene = PARackScene.mount(canvas,{components:valid.map(m=>({...m,mgx_type:PAHardwareVisuals.typeOf(m)})),theme:document.documentElement.dataset.theme,onSelect:window.equipmentRackSelect});
+    scene = PARackScene.mount(canvas,{components:sceneComponents(),theme:document.documentElement.dataset.theme,onSelect:window.equipmentRackSelect});
     scene.setFlowEnabled?.(flowEnabled);
+    scene.setNetworkVisible?.(networkVisible);
+    networkControls();
+    loadRackTopology(rackView.project,canvas);
     if (!scene.supported) fallback();
     const remembered=selectedByProject.get(rackView.project);
     equipmentRackSelect(rackMembers().some(m=>m.name===remembered)?remembered:valid.find(m=>PAHardwareVisuals.typeOf(m)==='server')?.name||valid[0]?.name||'');

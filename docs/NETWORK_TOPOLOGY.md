@@ -79,6 +79,47 @@ backup for reference; this version does not import arbitrary JSON files. Save
 failure leaves the draft intact, while the backend rolls back memory and disk.
 Project rename preserves the topology document and project metadata.
 
+## Saved wiring in Rack 3D
+
+After saving the network topology, close the editor and view the Rack in 3D. The saved
+connections update immediately. Host management runs along the left cable duct; DPU
+management and the switch interconnect run along the right. Branches meet the equipment
+and switch sides as groups, without attempting exact physical port socket placement.
+Use the wiring visibility button beside the camera controls to hide or show these cables.
+
+Only saved cables whose endpoints match installed inventory equipment are drawn. Custom
+topology devices, missing inventory references and unplaced/passive endpoints are skipped;
+the status note reports skipped records. No automatic cables are generated for a CDU or
+Power Shelf until their connections are configured and saved. Four logical nodes sharing
+one management RJ45 still produce one physical cable: Naboo has 64 tray management cables
+and one switch interconnect, not one cable for each node.
+
+## Rack Ping and the 3D status lights
+
+Click **Ping Rack** in Rack Manager after recording the fixed IPs. Each powered device has
+one status light on its front right. Blanking panels have no light.
+
+- Green blinking: every configured target for that device answered Ping.
+- Red blinking: at least one configured target did not answer, including partial failure.
+- Gray: not checked yet, or no usable target IP is configured.
+
+For servers, this check uses every configured Host OS IP on matching saved topology nodes.
+If none is configured, it uses the inventory OS IP. A four-node tray therefore checks four
+OS addresses once those addresses are entered; node count is not hard-coded. Unconfigured
+nodes cannot be tested: inspect the selected device's configured/reachable count to see
+how many addresses were actually checked. Server BMC/DPU reachability does not override
+the Host OS result. Use the topology editor's fixed-IP check for its broader node fields.
+
+Switches, CDUs, Power Shelves and other powered non-server devices use the inventory
+management OS IP, or the BMC IP when OS IP is absent. Rack Ping omits blank panels, L10
+and unplaced equipment. It uses at most 64 concurrent probes and supports 2048 unique
+addresses / 4096 mapped node fields with one retry for failures.
+
+The inspector displays the result and check time. Results are temporary and refresh only
+when Ping Rack is run; saving topology or switching projects clears them. The lamps show
+ICMP reachability, not actual power readings or proof of the documented cable path.
+Reduced-motion mode keeps their colors steady instead of blinking.
+
 ## Storage and validation
 
 `GET/PUT /api/projects/{name}/topology` stores the validated document in that
@@ -95,6 +136,8 @@ JSON backend; multi-worker deployment still requires shared transactional storag
 
 - `python -m unittest discover -s qa -p '*regression.py'`
 - `node qa/topology-browser.cjs`
+- `node qa/rack-network-led.cjs`
+- `node qa/core-scene.cjs` and `node qa/cdu-visuals.cjs`
 - Existing operations/equipment regression and fixture-browser checks.
 
 All tests use temporary storage or synthetic browser fixtures. The preview

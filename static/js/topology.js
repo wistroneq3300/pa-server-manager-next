@@ -26,7 +26,7 @@
   const select = (key, label, entries, value='') => `<label>${h(label)}<select id="nt-${key}">${options(entries,value)}</select></label>`;
   const button = (action,label,key='',cls='') => `<button type="button" class="btn ${cls}" data-action="${action}" data-key="${h(key)}">${h(label)}</button>`;
   function error(e) { const box=root.querySelector('#nt-message');box.textContent=e.message || String(e);box.className='nt-message nt-error'; }
-  function changed() { state.dirty=true;state.editor=null;render(); }
+  function changed() { state.dirty=true;state.editor=null;state.ping=null;state.pingFilter='all';render(); }
   function occupied(d,p,exclude='') { return rack().links.some(l=>l.id!==exclude&&[l.a,l.b].some(e=>e.device===d&&e.port===p)); }
   function endpoint(e) { const d=device(e.device);return `${d?.name || '?'} / ${d?.ports.find(p=>p.id===e.port)?.name || '?'}`; }
   async function confirmDraft(message) {
@@ -160,7 +160,7 @@
     if(name==='save'){
       if(state.editor)throw Error('儲存前請先套用或取消目前的編輯表單。');
       state.busy=true;root.querySelector('[data-action="save"]').disabled=true;
-      try{state.doc=await api('/api/projects/'+encodeURIComponent(state.project)+'/topology',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(state.doc)});state.dirty=false;render();}finally{state.busy=false;const b=root?.querySelector('[data-action="save"]');if(b)b.disabled=false;}return;
+      try{state.doc=await api('/api/projects/'+encodeURIComponent(state.project)+'/topology',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(state.doc)});state.dirty=false;window.dispatchEvent(new CustomEvent('pa-topology-saved',{detail:{project:state.project,document:state.doc}}));render();}finally{state.busy=false;const b=root?.querySelector('[data-action="save"]');if(b)b.disabled=false;}return;
     }
     if(name==='reload'){if((state.dirty||state.editor)&&!await confirmDraft('要放棄目前草稿並載入最新儲存的拓樸嗎？'))return;state.busy=true;try{state.doc=await api('/api/projects/'+encodeURIComponent(state.project)+'/topology');state.rack=state.doc.racks[0]?.id||'';state.dirty=false;state.editor=null;state.focus='';state.ping=null;render();}finally{state.busy=false;}return;}
     if(name==='export'){const url=URL.createObjectURL(new Blob([JSON.stringify(state.doc,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='topology.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}

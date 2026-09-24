@@ -4,6 +4,11 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Repository and delivery
 
+- Latest completed feature: saved topology in Rack 3D and Rack Ping LEDs (section below).
+- Starting main for this work was `d6b77f88bec65ddcb7d974682f58a5d5454c8fe4`.
+- Current implementation and fixture validation are complete locally; user explicitly
+  authorized commit/push to main. Publication is recorded after remote verification.
+- No deployment, production-data change or live hardware test was performed for this work.
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
   Prefer the current verified checkout if this project moves or runs on another host.
@@ -14,6 +19,38 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - User authorized the current workspace UX / rack-height implementation and push.
 - No deployment or production service restart was performed. Pushed does not mean live.
 - Instruction/skill consolidation was published as `4e29682`.
+
+## Saved network cables and Rack Ping LEDs (2026-09-24)
+
+- User authorized the previously deferred 3D cable routing and Ping LEDs, then push to main.
+- Rack 3D reads the current project's saved topology and matches inventory-backed devices
+  to installed equipment. Host management uses the left cable duct; DPU management and
+  switch interconnect use the right. Short branches meet equipment/switch side groups;
+  precise physical port sockets are intentionally deferred. Show/hide wiring is available.
+- Naboo's 32 servers retain four logical Host/BF4 nodes per tray and two shared RJ45 cables:
+  32 Host + 32 DPU + one switch interconnect = 65 physical cables. No CDU/power-shelf cables
+  are invented; those appear when the user configures and saves their actual connections.
+- Every powered equipment type has one status LED on the front right, including the
+  external CDU. Blanking panels have no LED. Reachable is blinking green; any failed
+  configured target, including partial node failure, is blinking red; unchecked/no IP is gray.
+- Rack Ping uses all configured topology Host OS node IPs for servers, falling back to the
+  inventory OS IP only when no topology Host OS IP is configured. Other equipment uses
+  its management OS IP, or BMC IP when OS IP is absent. A responsive server BMC cannot
+  mask a failed OS. These indicators show ICMP reachability, not measured power state.
+- Probes de-duplicate IPs, retry failures once, and use at most 64 workers, 2048 unique IPs
+  and 4096 mapped node fields. Blank panels, L10 and unplaced devices are not probed.
+  Results include source, timestamp and per-node counts without changing saved inventory.
+- Saving topology immediately refreshes 3D routing and clears old Ping results. Project
+  changes and newer saves invalidate delayed topology/Ping responses. Reduced-motion,
+  offscreen/rear view, disposal and WebGL recovery preserve animation lifecycle behavior.
+- Validation: 75 isolated Python regressions passed, including 515 unique IPs and null
+  legacy topology. Operations/equipment regressions, topology-browser, core-scene 11/11,
+  and CDU visuals passed. New rack-network-led browser QA passed nine groups, including
+  real pixel blinking, active-Ping/save races, light/dark, desktop/390/320px and context loss.
+  No browser errors or external network calls. Screenshots were visually reviewed.
+- Evidence: `qa/artifacts/rack-network-led/`; guide: `docs/NETWORK_TOPOLOGY.md`.
+- Still deferred: exact switch port socket geometry, user-defined CDU/power-shelf cabling,
+  live hardware verification and deployment. No production data changed in this work.
 
 ## Earlier KVM solo presentation (2026-09-24; superseded by lifecycle work below)
 

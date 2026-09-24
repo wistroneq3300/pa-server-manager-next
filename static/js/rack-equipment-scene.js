@@ -110,10 +110,23 @@
     return z;
   }
   function led(m,item,x,y,z){
-    // Unknown is gray, not fictitious healthy green. Device state never animates.
-    const power=String(item.power_state??item.power??'').toLowerCase(),alive=item.os_alive===true||item.bmc_alive===true;
-    const color=power==='off'?C.amber:(alive||power==='on')?C.green:C.unknown;
-    m.box(x,y,z,.022,.020,.009,color,.05,alive||power==='on'?.9:0);
+    // Original tiny module/service lamp housings stay neutral. Only the shared
+    // right-hand rack Ping indicator below communicates reachability.
+    m.box(x,y,z,.022,.020,.009,C.unknown,.15,0);
+  }
+  function pingIndicator(item){
+    if(item.mgx_type==='blanking')return null;
+    const state=['up','down','partial'].includes(item.rack_ping_state)?item.rack_ping_state:'unknown';
+    const local=item.external?[2.89,6.22,3.34]:[1.995,item.height/2-.066,FRONT+.245];
+    return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
+  }
+  function addPingIndicator(mesh,item){
+    const indicator=pingIndicator(item);if(!indicator)return;
+    const [x,y,z]=indicator.local,color=indicator.color==='green'?[.11,.98,.27]:indicator.color==='red'?[1,.055,.035]:C.unknown;
+    mesh.disc(x,y,z-.012,.049,C.black,.25,16);mesh.ring(x,y,z-.006,.037,.008,C.edge,16);
+    // Material -5 is reserved for measured Ping status; decorative CDU rails
+    // and coolant animation keep their existing, separate material channels.
+    mesh.disc(x,y,z,.031,color,indicator.state==='unknown'?.15:-5,16);
   }
   function vent(m,x,y,z,w,h,rows=2,cols=10){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)m.box(x-w/2+w*(c+.5)/cols,y-h/2+h*(r+.5)/rows,z,w/cols*.58,h/rows*.28,.013,C.black,.1);}
   function qsfp(m,x,y,z,w=.18,h=.079,front=1,frameColor=C.edge){m.box(x,y,z,w,h,.030,frameColor);m.box(x,y,z+front*.02,w-.025,h-.018,.020,C.black,.05);m.box(x,y-h*.41,z+front*.037,w*.67,.009,.008,frameColor===C.edge?C.steel:frameColor);}
@@ -380,6 +393,81 @@
       distance+=length;
     }
   }
+  // Saved physical links are the only source of network cables. Four nodes
+  // sharing one RJ45 still produce one cable, irrespective of endpoint count.
+  function planNetworkCabling(items,document){
+    const installed=new Map(items.map(item=>[item.name,item])),routes=[],skipped=[],seen=new Set(),lanes={left:0,right:0};
+    const racks=Array.isArray(document?.racks)?document.racks:[];
+    for(const rack of racks){
+      const devices=new Map((Array.isArray(rack.devices)?rack.devices:[]).map(device=>[device.id,device]));
+      for(const link of Array.isArray(rack.links)?rack.links:[]){
+        const a=devices.get(link.a?.device),b=devices.get(link.b?.device),ai=installed.get(a?.inventory),bi=installed.get(b?.inventory),id=String(link.id||'');
+        const skip=reason=>skipped.push({id,rackId:rack.id,reason});
+        if(!a||!b){skip('missing-device');continue;}
+        if(!a.inventory||!b.inventory){skip('no-inventory-reference');continue;}
+        if(!ai||!bi){skip('not-installed');continue;}
+        if(ai.mgx_type==='blanking'||bi.mgx_type==='blanking'){skip('passive-component');continue;}
+        if(ai.name===bi.name){skip('same-component');continue;}
+        if(!a.ports?.some(port=>port.id===link.a.port)||!b.ports?.some(port=>port.id===link.b.port)){skip('missing-port');continue;}
+        const endpoints=[a.inventory+'\u0000'+link.a.port,b.inventory+'\u0000'+link.b.port].sort().join('\u0001');
+        if(seen.has(endpoints)){skip('duplicate-link');continue;}seen.add(endpoints);
+        // Host and DPU bundles use independent left/right channels. Equipment
+        // outside the rack joins its nearest channel instead of crossing faces.
+        const side=ai.external||bi.external||link.network!=='host'?'right':'left',sign=side==='left'?-1:1,index=lanes[side]++;
+        const laneX=sign*(2.39+(index%16)*.014),laneZ=3.39+Math.floor(index%64/16)*.027;
+        const endpoint=(device,item,reference)=>{
+          const y=item.external?item.y+3.15:item.y+Math.max(0,item.height/2-.14),x=item.external?(item.x||0)-2.88:sign*1.80;
+          return {deviceId:device.id,inventory:item.name,portId:reference.port,point:[x,y,item.external?3.38:3.295]};
+        };
+        const from=endpoint(a,ai,link.a),to=endpoint(b,bi,link.b),path=[from.point,[sign*2.30,from.point[1],laneZ],[laneX,from.point[1],laneZ],[laneX,to.point[1],laneZ],[sign*2.30,to.point[1],laneZ],to.point];
+        // External branches approach directly through the gap on the rack's
+        // right side; they never cross the CDU door or its decorative rails.
+        if(ai.external)path[1]=[laneX,from.point[1],laneZ];
+        if(bi.external)path[path.length-2]=[laneX,to.point[1],laneZ];
+        routes.push({id,rackId:rack.id,network:link.network,state:link.state,from,to,side,path});
+      }
+    }
+    return {count:routes.length,routeCount:routes.length,routes,skipped,ducts:routes.length?[-1,1].map(sign=>({side:sign<0?'left':'right',x:sign*2.50,minY:-7.10,maxY:7.15})):[]};
+  }
+  function inspectNetworkCabling(records,document){return planNetworkCabling(inspectPlacement(records).valid,document);}
+  function roundedCablePath(anchors){
+    const clean=anchors.filter((point,i)=>!i||Math.hypot(...point.map((value,axis)=>value-anchors[i-1][axis]))>.0001),out=[clean[0]];
+    for(let i=1;i<clean.length-1;i++){
+      const previous=clean[i-1],corner=clean[i],next=clean[i+1],before=previous.map((v,k)=>v-corner[k]),after=next.map((v,k)=>v-corner[k]),a=Math.hypot(...before),b=Math.hypot(...after),radius=Math.min(.055,a*.35,b*.35);
+      const start=corner.map((v,k)=>v+before[k]/a*radius),end=corner.map((v,k)=>v+after[k]/b*radius);out.push(start);
+      for(let step=1;step<=4;step++){const t=step/4;out.push(corner.map((v,k)=>(1-t)*(1-t)*start[k]+2*(1-t)*t*v+t*t*end[k]));}
+    }
+    out.push(clean[clean.length-1]);return out;
+  }
+  function createNetworkCabling(items,document){
+    const mesh=meshBuilder(),layout=planNetworkCabling(items,document);
+    if(!layout.count)return {mesh,layout};
+    for(const duct of layout.ducts){
+      const sign=duct.side==='left'?-1:1;
+      // Open, slotted cable ducts leave the organized bundles visible. Their
+      // mounts sit outside the chassis and do not obscure the service faces.
+      mesh.bevel(duct.x,.025,3.22,.43,14.25,.075,C.dark,.022,.60);
+      mesh.box(sign*2.735,.025,3.35,.034,14.25,.28,C.steel,.75);
+      for(let slot=0;slot<47;slot++){
+        const y=-6.95+slot*U;
+        mesh.box(sign*2.275,y,3.35,.028,.036,.28,C.steel,.75);
+        mesh.box(sign*2.65,y,3.51,.18,.036,.030,C.dark,.35);
+        mesh.box(sign*2.34,y,3.51,.095,.036,.030,C.dark,.35);
+      }
+      for(let y=-6.6;y<=6.7;y+=1.8){mesh.box(duct.x,y,3.475,.39,.045,.030,C.black,.35);}
+    }
+    const colors={host:[.025,.58,.70],dpu:[.37,.30,.79],uplink:[.73,.58,.22],data:[.24,.56,.37],other:[.47,.53,.57]};
+    for(const route of layout.routes){
+      const color=colors[route.network]||colors.other,finish=route.state==='planned'?color.map(value=>value*.48):color;
+      // Each route keeps its own physical endpoint record. Port placement is
+      // intentionally grouped at switch edges, rather than invented port CAD.
+      pipeMesh(mesh,roundedCablePath(route.path),.014,finish);
+      for(const endpoint of [route.from,route.to]){
+        const [x,y,z]=endpoint.point;mesh.bevel(x,y,z,.105,.066,.10,C.dark,.009,.4);mesh.box(x,y,z+.054,.072,.043,.012,finish,.20);
+      }
+    }
+    return {mesh,layout};
+  }
   function createCooling(items){
     const solid=meshBuilder(),water=meshBuilder(),shell=meshBuilder(),B=solid.box,T=solid.tube,V=solid.bevel;
     const cdu=items.find(i=>i.mgx_type==='cdu'),mode=cdu?(cdu.external?'external':'internal'):'unconnected';
@@ -423,7 +511,7 @@
   const VERTEX=`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aMaterial;uniform mat4 uViewProjection;uniform mat4 uModel;uniform mat4 uPart;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;void main(){mat4 m=uModel*uPart;vec4 p=m*vec4(aPosition,1.0);vPosition=p.xyz;vLocal=aPosition;vNormal=mat3(m)*aNormal;vColor=aColor;vMaterial=aMaterial;gl_Position=uViewProjection*p;}`;
   const FRAGMENT=`
     precision highp float;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;
-    uniform vec3 uEye;uniform float uLight;uniform float uSelected;uniform float uAlpha;uniform float uTime;uniform float uLedTime;
+    uniform vec3 uEye;uniform float uLight;uniform float uSelected;uniform float uAlpha;uniform float uTime;uniform float uLedTime;uniform float uPingTime;
     void main(){
       float alpha=uAlpha;
       vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.58,.88,.72)),fill=normalize(vec3(.74,.40,-.35));
@@ -436,7 +524,12 @@
       c+=vec3(.83,.89,.92)*softbox*smoothstep(.10,.30,r.y)*metal*.15;c+=vec3(.35,.60,.69)*(back*.30+rim*.055)*metal;
       c+=vColor*uLight*.075;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.015,.017,.019)*uSelected+vec3(.16,.25,.27)*rim*uSelected*.23;
       if(vMaterial.x<-.5){float grain=fract(sin(dot(floor(vLocal*380.0),vec3(127.1,311.7,74.7)))*43758.5453);c*=.965+grain*.070;}
-      if(vMaterial.x<-2.5){
+      if(vMaterial.x<-4.5){
+        // Green/red mean Rack Ping reachability, never measured power state.
+        // A zero clock (reduced motion or hidden view) leaves a steady lamp.
+        float pulse=.32+.68*pow(.5+.5*cos(uPingTime*6.2831853),2.0);
+        c=vColor*(.58+pulse*.92);
+      }else if(vMaterial.x<-2.5){
         // Decorative light travels up the physical rail, with a long soft tail
         // and a compact bright head. It is unrelated to the coolant shader.
         float phase=fract((vLocal.y+7.1)*.215-uLedTime*.45+vMaterial.y);
@@ -452,7 +545,7 @@
       gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),alpha);
     }`;
   function mount(canvas,options={}){
-    const noop={supported:false,setComponents(){},setTheme(){},select(){},focusSelection(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
+    const noop={supported:false,setComponents(){},setTopology(){},setNetworkVisible(){},setTheme(){},select(){},focusSelection(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
     if(!canvas||typeof canvas.getContext!=='function')return noop;
     let gl,program,frameMesh,components=[],placement=inspectPlacement(options.components),frame=0,disposed=false,lost=false,ready=false;
     let yaw=-.25,pitch=.025,view='perspective',zoom=1,selected='',focus='',targetY=0,drag=null,light=options.theme==='light'||options.theme===true?1:0,inverseMvp=null,maxSize=4096;
@@ -461,22 +554,25 @@
     try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,premultipliedAlpha:false,powerPreference:'low-power'});}catch(error){fail(error.message);return noop;}if(!gl){fail();return noop;}
     function buffer(mesh){const b=gl.createBuffer(),data=new Float32Array(mesh.data);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);return {buffer:b,count:data.length/11};}
     function compile(type,source){const shader=gl.createShader(type);shaders.push(shader);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error('Rack shader compilation failed');return shader;}
-    let cooling=null,coolingBuffers=[],flowEnabled=options.flowEnabled!==false,visible=true;const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-    function rebuild(){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));cooling=createCooling(placement.valid);coolingBuffers=[buffer(cooling.solid),buffer(cooling.water),buffer(cooling.shell)];components.forEach(p=>gl.deleteBuffer(p.buffer));components=placement.valid.map(item=>{const part=item.external?createExternalCdu():createEquipment(item);return {...buffer(part.mesh),item,min:part.min,max:part.max};});}
+    let cooling=null,coolingBuffers=[],network=null,networkBuffer=null,topology=options.topology||null,networkVisible=options.networkVisible!==false,flowEnabled=options.flowEnabled!==false,visible=true;const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    function rebuildNetwork(){if(networkBuffer)gl.deleteBuffer(networkBuffer.buffer);network=createNetworkCabling(placement.valid,topology);networkBuffer=network.layout.count?buffer(network.mesh):null;}
+    function rebuild(){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));cooling=createCooling(placement.valid);coolingBuffers=[buffer(cooling.solid),buffer(cooling.water),buffer(cooling.shell)];components.forEach(p=>gl.deleteBuffer(p.buffer));components=placement.valid.map(item=>{const part=item.external?createExternalCdu():createEquipment(item);addPingIndicator(part.mesh,item);return {...buffer(part.mesh),item,min:part.min,max:part.max};});rebuildNetwork();}
     function setup(){
       maxSize=Math.min(4096,Number(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE))||4096);program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,VERTEX));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,FRAGMENT));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Rack shader linking failed');shaders.forEach(s=>gl.deleteShader(s));shaders.length=0;
-      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected','uAlpha','uTime','uLedTime'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
-      frameMesh=buffer(createFrame());components=[];coolingBuffers=[];rebuild();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);ready=false;
+      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected','uAlpha','uTime','uLedTime','uPingTime'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
+      frameMesh=buffer(createFrame());components=[];coolingBuffers=[];networkBuffer=null;rebuild();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);ready=false;
     }
-    function release(){if(!lost){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));components.forEach(p=>gl.deleteBuffer(p.buffer));if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];coolingBuffers=[];frameMesh=null;program=null;shaders.length=0;}
+    function release(){if(!lost){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));components.forEach(p=>gl.deleteBuffer(p.buffer));if(networkBuffer)gl.deleteBuffer(networkBuffer.buffer);if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];coolingBuffers=[];networkBuffer=null;frameMesh=null;program=null;shaders.length=0;}
     try{setup();}catch(error){release();fail(error.message);return noop;}
-    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0));}
+    function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,(frameMesh?.count||0)+(networkBuffer?.count||0)));canvas.dataset.rackNetworkRoutes=String(network?.layout.count||0);canvas.dataset.rackNetworkVisible=String(networkVisible);}
     function requestDraw(){if(!disposed&&!lost&&program&&!frame)frame=requestAnimationFrame(draw);}
     function motionAllowed(){return !reduced.matches&&visible&&!document.hidden&&!disposed&&!lost;}
     function flowAnimated(){return flowEnabled&&cooling?.connected&&motionAllowed()&&!focus;}
     // The solid cabinet hides its front rails from the rear; avoid redrawing
     // an invisible effect when only the static rear assembly is in view.
     function decorativeAnimated(){return motionAllowed()&&Math.cos(yaw)>0&&components.some(p=>p.item.external&&(!focus||p.item.name===focus));}
+    function indicatorAnimated(item){return motionAllowed()&&Math.cos(yaw)>0&&(!focus||item.name===focus)&&item.mgx_type!=='blanking'&&['up','down','partial'].includes(item.rack_ping_state);}
+    function pingAnimated(){return components.some(part=>indicatorAnimated(part.item));}
     function draw(now=0){
       frame=0;if(disposed||lost||!program)return;const rect=canvas.getBoundingClientRect();if(rect.width<1||rect.height<1)return;const dpr=Math.min(window.devicePixelRatio||1,1.65,maxSize/Math.max(rect.width,rect.height)),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
       const centerX=focus?(placement.valid.find(p=>p.name===focus)?.x||0):(cooling.mode==='external'?3.50:0);
@@ -484,20 +580,22 @@
       // Fit the projected orbit envelope at every angle. Device inspection uses
       // the selected part's own bounds; selection near U48 is not clipped away.
       const focused=focus?components.find(p=>p.item.name===focus):null;
-      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[cooling.bounds.min[0]-centerX,cooling.bounds.min[1],cooling.bounds.min[2]],max:[cooling.bounds.max[0]-centerX,cooling.bounds.max[1],cooling.bounds.max[2]]};
+      const showNetwork=networkVisible&&networkBuffer;
+      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[Math.min(cooling.bounds.min[0],showNetwork?-2.78:Infinity)-centerX,cooling.bounds.min[1],cooling.bounds.min[2]],max:[Math.max(cooling.bounds.max[0],showNetwork?2.78:-Infinity)-centerX,cooling.bounds.max[1],Math.max(cooling.bounds.max[2],showNetwork?3.56:-Infinity)]};
       let maxX=0,maxY=0,required=0;const tan=Math.tan(.55/2),marginX=focused?.83:.92,marginY=focused?.78:.94;
       for(const x of [bounds.min[0],bounds.max[0]])for(const y of [bounds.min[1],bounds.max[1]])for(const z of [bounds.min[2],bounds.max[2]]){const p=transform(rotationMatrix,[x,y,z,1]);maxX=Math.max(maxX,Math.abs(p[0]));maxY=Math.max(maxY,Math.abs(p[1]));required=Math.max(required,p[2]+Math.abs(p[0])/(tan*aspect*marginX),p[2]+Math.abs(p[1])/(tan*marginY));}
       const vertical=Math.max(maxY/marginY,maxX/(aspect*marginX),focused?1.10:0)/zoom,horizontal=vertical*aspect,isPlan=view==='front'||view==='rear';
       if(!isPlan)eye[2]=Math.max(5.1,required/zoom);const vp=multiply(isPlan?ortho(horizontal,vertical):perspective(.55,aspect),lookAt(eye));inverseMvp=inverse(multiply(vp,model));
       canvas.dataset.rackCameraDistance=eye[2].toFixed(3);
-      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uLedTime,decorativeAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
+      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uLedTime,decorativeAnimated()?now/1000:0);gl.uniform1f(uniform.uPingTime,pingAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
       function part(mesh,matrix,isSelected){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);let offset=0;[['aPosition',3],['aNormal',3],['aColor',3],['aMaterial',2]].forEach(([name,size])=>{gl.enableVertexAttribArray(attrib[name]);gl.vertexAttribPointer(attrib[name],size,gl.FLOAT,false,44,offset);offset+=size*4;});gl.uniformMatrix4fv(uniform.uPart,false,matrix);gl.uniform1f(uniform.uSelected,isSelected?1:0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
       gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
       part(frameMesh,identity(),false);for(const p of components)part(p,translation(p.item.x||0,p.item.y,p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0),p.item.name===selected);
+      if(showNetwork)part(networkBuffer,identity(),false);
       part(coolingBuffers[0],identity(),false);
       gl.uniform1f(uniform.uAlpha,.88);part(coolingBuffers[1],identity(),false);
       gl.depthMask(false);gl.uniform1f(uniform.uAlpha,.20);part(coolingBuffers[2],identity(),false);gl.depthMask(true);gl.disable(gl.BLEND);
-      canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());canvas.dataset.decorativeAnimated=String(decorativeAnimated());if(flowAnimated()||decorativeAnimated())requestDraw();
+      canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());canvas.dataset.decorativeAnimated=String(decorativeAnimated());canvas.dataset.pingAnimated=String(pingAnimated());if(flowAnimated()||decorativeAnimated()||pingAnimated())requestDraw();
       if(!ready){const error=gl.getError();if(error!==gl.NO_ERROR){fail('Rack WebGL render error '+error);return;}ready=true;canvas.dataset.rackState='ready';delete canvas.dataset.rackError;canvas.dispatchEvent(new CustomEvent('pa-rack-ready',{bubbles:true}));}
     }
     function orbit(y,p){yaw=((y+Math.PI)%TAU+TAU)%TAU-Math.PI;pitch=clamp(p,-1.15,1.15);view='custom';sync();requestDraw();}
@@ -524,12 +622,14 @@
     const visibilityObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{visible=entries[0]?.isIntersecting!==false;requestDraw();}):null;visibilityObserver?.observe(canvas);
     const api={supported:true,
       setFlowEnabled(value){flowEnabled=!!value;requestDraw();},
-      setComponents(items){if(disposed)return;placement=inspectPlacement(items);if(!placement.valid.some(p=>p.name===selected))selected='';if(focus){const item=placement.valid.find(p=>p.name===focus);focus=item?.name||'';targetY=item?.y||0;}if(!lost)rebuild();sync();requestDraw();},
+      setNetworkVisible(value){if(disposed)return;networkVisible=!!value;sync();requestDraw();},
+      setTopology(document){if(disposed)return;topology=document||null;if(!lost)rebuildNetwork();else network={layout:planNetworkCabling(placement.valid,topology)};sync();requestDraw();},
+      setComponents(items){if(disposed)return;placement=inspectPlacement(items);if(!placement.valid.some(p=>p.name===selected))selected='';if(focus){const item=placement.valid.find(p=>p.name===focus);focus=item?.name||'';targetY=item?.y||0;}if(!lost)rebuild();else network={layout:planNetworkCabling(placement.valid,topology)};sync();requestDraw();},
       setTheme(value){const next=value==='light'||value===true?1:0;if(light!==next){light=next;requestDraw();}},select,focusSelection,setView,resetOrbit,
       zoomBy(factor){const f=Number(factor);if(!Number.isFinite(f)||f<=0)return;zoom=clamp(zoom*f,.75,2.10);sync();requestDraw();},
       resize:requestDraw,
-      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size,external:!!p.external})),cooling:{mode:cooling.mode,flowEnabled,animated:flowAnimated()},decorativeLighting:{present:components.some(p=>p.item.external),animated:decorativeAnimated(),style:'tc1288-blue-flow'},geometryBuffers:components.length+coolingBuffers.length+(frameMesh?1:0),vertices:components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
-      destroy(){if(disposed)return;disposed=true;visibilityObserver?.disconnect();document.removeEventListener('visibilitychange',onVisibility);reduced.removeEventListener('change',onVisibility);if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';canvas.dataset.flowAnimated='false';canvas.dataset.decorativeAnimated='false';delete canvas.paRackScene;}
+      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size,external:!!p.external})),cooling:{mode:cooling.mode,flowEnabled,animated:flowAnimated()},decorativeLighting:{present:components.some(p=>p.item.external),animated:decorativeAnimated(),style:'tc1288-blue-flow'},networkCabling:{...JSON.parse(JSON.stringify(network.layout)),visible:networkVisible},pingIndicators:placement.valid.map(item=>{const indicator=pingIndicator(item);return indicator?{...indicator,animated:indicatorAnimated(item)}:null;}).filter(Boolean),geometryBuffers:components.length+coolingBuffers.length+(frameMesh?1:0)+(networkBuffer?1:0),vertices:components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,(frameMesh?.count||0)+(networkBuffer?.count||0)),model:'gb300-inspired'};},
+      destroy(){if(disposed)return;disposed=true;visibilityObserver?.disconnect();document.removeEventListener('visibilitychange',onVisibility);reduced.removeEventListener('change',onVisibility);if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';canvas.dataset.flowAnimated='false';canvas.dataset.decorativeAnimated='false';canvas.dataset.pingAnimated='false';delete canvas.paRackScene;}
     };canvas.paRackScene=api;sync();requestDraw();return api;
   }
   // CPU-only geometry sharing for the homepage editorial scene. This factory
@@ -555,5 +655,5 @@
       frame:Object.freeze({data:new Float32Array(editorialFrame.data)}),equipment:Object.freeze(equipment),placements:Object.freeze(placements),occupiedU:inspected.occupiedU,
       bounds:Object.freeze({min:Object.freeze([-2.30,-7.85,-4.62]),max:Object.freeze([2.30,7.83,3.39])})});
   }
-  window.PARackScene=Object.freeze({mount,inspectPlacement,buildEditorialParts});
+  window.PARackScene=Object.freeze({mount,inspectPlacement,inspectNetworkCabling,buildEditorialParts});
 })();
