@@ -387,7 +387,7 @@
   // 多 OS 管理：移除某 slot（OS 1 主 OS 不可移除）。確認後即時刪除，不需重新整理即可看到結果
   window.pdOsDelete = async function(name, slot) {
     if (slot === 1) { window.pdOsToast('OS 1 為機框主 OS，不可移除', 'err'); return; }
-    if (!confirm(`確定移除 OS ${slot}？此操作無法復原。`)) return;
+    if (!await confirmUser(`確定移除 OS ${slot}？此操作無法復原。`)) return;
     try {
       const res = await fetch(`/api/machines/${encodeURIComponent(name)}/os/${slot}`, { method: 'DELETE' });
       const data = await res.json();

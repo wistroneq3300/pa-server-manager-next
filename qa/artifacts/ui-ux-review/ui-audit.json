@@ -1,0 +1,115 @@
+{
+  "pages": [
+    {
+      "route": "dashboard",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "smallText": 9,
+      "unnamedButtons": []
+    },
+    {
+      "route": "projects/fleet_l",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "smallText": 53,
+      "unnamedButtons": []
+    },
+    {
+      "route": "rack/proj_k",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "smallText": 7,
+      "unnamedButtons": []
+    },
+    {
+      "route": "machine/host_a",
+      "width": 1440,
+      "scrollWidth": 1440,
+      "viewport": 1440,
+      "smallText": 17,
+      "unnamedButtons": []
+    },
+    {
+      "route": "dashboard",
+      "width": 390,
+      "scrollWidth": 544,
+      "viewport": 390,
+      "smallText": 8,
+      "unnamedButtons": []
+    },
+    {
+      "route": "projects/fleet_l",
+      "width": 390,
+      "scrollWidth": 533,
+      "viewport": 390,
+      "smallText": 52,
+      "unnamedButtons": []
+    },
+    {
+      "route": "rack/proj_k",
+      "width": 390,
+      "scrollWidth": 390,
+      "viewport": 390,
+      "smallText": 2,
+      "unnamedButtons": []
+    },
+    {
+      "route": "machine/host_a",
+      "width": 390,
+      "scrollWidth": 497,
+      "viewport": 390,
+      "smallText": 18,
+      "unnamedButtons": []
+    },
+    {
+      "route": "dashboard",
+      "width": 320,
+      "scrollWidth": 544,
+      "viewport": 320,
+      "smallText": 8,
+      "unnamedButtons": []
+    },
+    {
+      "route": "projects/fleet_l",
+      "width": 320,
+      "scrollWidth": 533,
+      "viewport": 320,
+      "smallText": 52,
+      "unnamedButtons": []
+    },
+    {
+      "route": "rack/proj_k",
+      "width": 320,
+      "scrollWidth": 320,
+      "viewport": 320,
+      "smallText": 2,
+      "unnamedButtons": []
+    },
+    {
+      "route": "machine/host_a",
+      "width": 320,
+      "scrollWidth": 497,
+      "viewport": 320,
+      "smallText": 13,
+      "unnamedButtons": []
+    }
+  ],
+  "errors": [],
+  "themeAfterReload": {
+    "theme": "light",
+    "saved": "light"
+  },
+  "dialog": {
+    "role": null,
+    "modal": null,
+    "active": "<button class=\"btn btn\">關閉</button>"
+  },
+  "escapeClosesDialog": false,
+  "navigation": {
+    "detail": "http://127.0.0.1:18769/#/machine/host_a",
+    "back": "http://127.0.0.1:18769/#/machine/host_a"
+  }
+}

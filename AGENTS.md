@@ -35,7 +35,8 @@ not block independent local reading or safe work; report what could not be verif
   Management IP is an address record; saving it does not reconfigure a device's network.
 - SSH defaults to 22. Web BMC Terminal maps the IPMI value 623 to SSH 22; explicitly configured
   SSH ports remain supported. These are distinct from the bridge's HTTP/WebSocket listener.
-- L11 type/height are fixed after creation. Placement edits use stored specifications.
+- Ordinary L11 edits and placement preserve type/height. Explicit height correction and
+  L10 promotion use the rack-specification endpoint with stale-state and collision checks.
   CDU installation conversion uses its dedicated endpoint and validates bottom-slot occupancy.
 
 ## Editing and checks

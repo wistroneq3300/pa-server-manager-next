@@ -16,7 +16,9 @@ work. Use the current checkout rather than hard-coding a prior agent's machine p
 - Telemetry: `telemetry_core.py`; collector placeholders are not live device integrations.
 - Type/capability/IP/SSH: `equipment_policy.py`, `static/js/equipment-rules.js`,
   `static/js/equipment-connections.js`, `static/js/app.js`, `static/js/operations-ux.js`.
-- L11/CDU placement: dedicated placement and cdu-installation endpoints in `main.py`.
+- L11/CDU placement: dedicated placement, rack-specification and cdu-installation endpoints
+  in main.py. Explicit promotion/height correction uses rack-specification; ordinary
+  placement preserves stored specifications.
 - Terminal transport: `terminal_bridge/server.js`; do not confuse SSH ports with listener ports.
 - KVM: `kvm_bridge.py`, `spx_kvm_broker/`, `static/js/kvm_broadcast.js`; read relevant docs
   only when that workflow is requested. Old live-device successes are not current evidence.

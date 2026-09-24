@@ -1,0 +1,14 @@
+{
+  "passed": true,
+  "results": [
+    "L10 to L11: explicit project and 4U; unplaced; IP preserved; pending correction to 8U",
+    "Placed height correction: overlap disabled, valid shrink saved, stale snapshot rejected",
+    "Back/Forward restore project search and status filter",
+    "Ordinary dialog Escape and power confirmation cancellation",
+    "Task selections survive search; explicit target/case review before generation",
+    "Telemetry units, sample timestamps, common/all views",
+    "5 routes x 4 widths x 2 themes without horizontal document overflow",
+    "3D story collapse/restore"
+  ],
+  "errors": []
+}

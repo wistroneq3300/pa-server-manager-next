@@ -168,6 +168,20 @@
     if(path.startsWith('/api/machines/')){
       const m=machines.find(m=>m.name===path.split('/')[3]);if(!m)return fail('找不到這台系統。',404);
       if(method==='PATCH'){
+        if(path.endsWith('/rack-specification')){
+          const fields=['rack_size','project','expected_level','expected_project','expected_size','expected_u'];
+          if(Object.keys(body).length!==fields.length||fields.some(k=>!Object.hasOwn(body,k)))return fail('Provide height, project and snapshot',422);
+          if(body.expected_level!==(m.level||'system')||body.expected_project!==(m.project||'')||body.expected_size!==(m.rack_size??1)||body.expected_u!==(m.rack_u??0))return fail('Equipment changed; reload',409);
+          if((m.level!=='rack'&&(!equipmentIsServer(m)||m.passive))||m.rack_mount==='external')return fail('Unsupported specification correction',400);
+          if(typeof body.project!=='string'||(!body.project&&m.level!=='rack')||(body.project&&!projects.some(p=>p.name===body.project&&p.level!=='system')))return fail('Select an L11 project',400);
+          if(m.level!=='rack'&&!projectAllowsLevel(body.project,'rack'))return fail('Select an empty or L11 project',400);
+          if(m.level==='rack'&&body.project!==(m.project||''))return fail('Keep current project',400);
+          if(!Number.isInteger(body.rack_size)||body.rack_size<1||body.rack_size>48)return fail('Height must be 1..48U',400);
+          const candidate={...m,level:'rack',project:body.project,rack_size:body.rack_size,rack_u:m.level==='rack'?(m.rack_u||0):0};
+          if(m.mgx_type==='cdu'&&candidate.rack_u)candidate.rack_u=body.rack_size;
+          const error=placementError(candidate);if(error)return fail(error.detail,error.status);
+          Object.assign(m,candidate);return response({ok:true,machine:{...m}});
+        }
         if(path.endsWith('/management-ip')){
           if(!['os','bmc'].includes(body.target))return fail('Choose a connection',422);
           if(equipmentIsServer(m)||mgxTypeOf(m)==='blanking')return fail('Not a managed component',400);

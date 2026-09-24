@@ -1,3 +1,10 @@
+function notifyUser(message) {
+  if (typeof window.uxNotify === "function") window.uxNotify(String(message), /\u5931\u6557|\u932f\u8aa4|failed|error/i.test(String(message)));
+  else window.alert(message);
+}
+async function confirmUser(message) {
+  return typeof window.uxConfirm === "function" ? window.uxConfirm(message) : window.confirm(message);
+}
 "use strict";
 /* Wistron PA Server Manager - frontend */
 const NAV_ITEMS = [
@@ -460,7 +467,7 @@ async function rackPing(project) {
     rackView.pinged = data.nodes;
   } catch (e) {
     rackView.pinged = [];
-    alert("Ping 失敗：" + e.message);
+    notifyUser("Ping 失敗：" + e.message);
   }
   if (btn) { btn.textContent = "📡 Ping Rack"; btn.disabled = false; }
   setView("rack");
@@ -476,7 +483,7 @@ function rackBulkDialog(kind) {
   // 整櫃操作需要能控制（具 OS 或 BMC IP）：過濾掉空檔板(blanking)與「沒有 IP」的元件。
   racks = racks.filter(m => (m.os_ip || m.bmc_ip) && mgxTypeOf(m) !== "blanking");
   if (kind === "on" || kind === "off") racks = racks.filter(m=>equipmentCanPower(m,kind==="on"));
-  if (!racks.length) return alert("此專案沒有可控制（具 OS/BMC IP）的整櫃機台");
+  if (!racks.length) return notifyUser("此專案沒有可控制（具 OS/BMC IP）的整櫃機台");
   const mode = kind === "on" ? "開機" : kind === "off" ? "關機" : kind === "reboot" ? "Reboot" : "AUX / AC cycle";
   const icon = kind === "on" || kind === "off" ? "⏻" : kind === "reboot" ? "⟳" : "⚡";
   const rows = racks.map(m => {
@@ -502,7 +509,7 @@ function rackBulkDialog(kind) {
       { txt: `確認 ${mode}`, cls: kind === "off" ? "btn-danger" : kind === "reboot" ? "btn-warn" : "primary", fn: () => {
         const sel = [...document.querySelectorAll(".rcp-chk:checked")].map(x => x.value);
         closeDialog();
-        if (!sel.length) { alert("請至少勾選一台機台。"); return; }
+        if (!sel.length) { notifyUser("請至少勾選一台機台。"); return; }
         rackBulkRun(kind, sel);
       } },
     ]);
@@ -521,7 +528,7 @@ async function rackBulkRun(kind, names) {
   // reboot / aux 尚未接上真實指令，目前只做多選 UI 占位，不送出控制動作
   if (kind === "reboot" || kind === "aux") {
     const namesStr = names.map(n => "\u00b7 " + n).join("\n");
-    alert(`「${label}」尚未實作接上系統指令。\n\n已選取 ${names.length} 台：\n${namesStr}\n\n之後會批次送出 ${label} 指令。`);
+    notifyUser(`「${label}」尚未實作接上系統指令。\n\n已選取 ${names.length} 台：\n${namesStr}\n\n之後會批次送出 ${label} 指令。`);
     return;
   }
   return runPowerBatch(kind, names);
@@ -541,20 +548,20 @@ async function rackPowerAllNames(names, on) {
     }
   }
   setView("rack");
-  setTimeout(() => alert(okMsg + "\n\n" + done.join("\n")), 200);
+  setTimeout(() => notifyUser(okMsg + "\n\n" + done.join("\n")), 200);
 }
 async function singlePower(name, on) {
-  if (!confirm(`確定要「${on ? "開機" : "關機"}」${name} 嗎？`)) return;
+  if (!await confirmUser(`確定要「${on ? "開機" : "關機"}」${name} 嗎？`)) return;
   await rackDoPower(name, on ? "poweron" : "poweroff");
 }
 async function auxCycle(name) {
-  if (!confirm(`確定要對「${name}」執行 AUX / AC cycle（${name} 完整斷電重上電）嗎？`)) return;
+  if (!await confirmUser(`確定要對「${name}」執行 AUX / AC cycle（${name} 完整斷電重上電）嗎？`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/aux`, { method: "POST" });
     setView("rack");
-    setTimeout(() => alert(`${name} ${r.ok ? "AUX/AC cycle 已送出 ⚡" : "操作失敗：" + (r.info||"")}`), 200);
+    setTimeout(() => notifyUser(`${name} ${r.ok ? "AUX/AC cycle 已送出 ⚡" : "操作失敗：" + (r.info||"")}`), 200);
   } catch (e) {
-    alert("操作失敗：" + e.message);
+    notifyUser("操作失敗：" + e.message);
   }
 }
 async function rackDoPower(name, action) {
@@ -565,10 +572,10 @@ async function rackDoPower(name, action) {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on })
     });
     setView("rack");
-    setTimeout(() => alert(`${name} ${r.ok ? (on ? "已開機 🟢" : "已關機 ⚪") : "操作失敗：" + (r.info||"")}
+    setTimeout(() => notifyUser(`${name} ${r.ok ? (on ? "已開機 🟢" : "已關機 ⚪") : "操作失敗：" + (r.info||"")}
 目前狀態：${r.power_status}`), 200);
   } catch (e) {
-    alert("操作失敗：" + e.message);
+    notifyUser("操作失敗：" + e.message);
   }
 }
 // 元件控制對話框：開機／關機／reboot／AUX cycle ＋ -C 17 選擇
@@ -597,12 +604,12 @@ function machControlDialog(name) {
 }
 // Reboot：SSH 進 OS 下 reboot（無 OS 才用 BMC power reset）
 async function machineReboot(name) {
-  if (!confirm(`確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
+  if (!await confirmUser(`確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/reboot`, { method: "POST" });
     setView("rack");
-    setTimeout(() => alert(`${name} ${r.ok ? "已送出 reboot ⟳" : "操作失敗：" + (r.info||"")}`), 200);
-  } catch (e) { alert("操作失敗：" + e.message); }
+    setTimeout(() => notifyUser(`${name} ${r.ok ? "已送出 reboot ⟳" : "操作失敗：" + (r.info||"")}`), 200);
+  } catch (e) { notifyUser("操作失敗：" + e.message); }
 }
 function rackPingNode(m) {
   const n = (rackView.pinged || []).find(x => x.name === m.name);
@@ -764,11 +771,11 @@ function rackMoveJump() {
   const el = $("rm-move-jump");
   if (!el) return;
   const v = parseInt(el.value, 10);
-  if (!v || v < 1 || v > RACK_U) return alert(`請輸入 1–${RACK_U}`);
+  if (!v || v < 1 || v > RACK_U) return notifyUser(`請輸入 1–${RACK_U}`);
   const sel = $("rm-move-u");
   if (!sel) return;
   const opt = [...sel.options].find(o => +o.value === v && !o.disabled);
-  if (!opt) { alert(`U${v} 已被其他元件占用`); return; }
+  if (!opt) { notifyUser(`U${v} 已被其他元件占用`); return; }
   sel.value = String(v);
   sel.dispatchEvent(new Event("change", {bubbles:true}));
   el.value = "";
@@ -827,8 +834,8 @@ function rackCheckPingAdd(ip, okCb) {
   const btnT = document.querySelector("#rm-dialog-foot .btn-primary, #rm-dialog-foot .primary");
   if (btnT) { btnT.disabled = true; btnT.textContent = "⏳ 確認中…"; }
   fetch(`/api/ping-ip?ip=${encodeURIComponent(ip)}`).then(r=>r.json())
-    .then(d => { const alive = !!d.alive; if (btnT){btnT.disabled=false;btnT.textContent="建立並加入";} if (!alive) { hideLoading(); alert("⚠️ 無法 ping 到此管理 IP（" + ip + "），請確認主機在線後再新增。"); return; } okCb(); })
-    .catch(e => { if (btnT){btnT.disabled=false;btnT.textContent="建立並加入";} hideLoading(); alert("Ping 檢查失敗：" + e.message); });
+    .then(d => { const alive = !!d.alive; if (btnT){btnT.disabled=false;btnT.textContent="建立並加入";} if (!alive) { hideLoading(); notifyUser("⚠️ 無法 ping 到此管理 IP（" + ip + "），請確認主機在線後再新增。"); return; } okCb(); })
+    .catch(e => { if (btnT){btnT.disabled=false;btnT.textContent="建立並加入";} hideLoading(); notifyUser("Ping 檢查失敗：" + e.message); });
 }
 // 已佔用 U 集合（含多 U 延伸槽）全域保留給 rackAddRefreshU 用
 let _rackAddOccupied = new Set();
@@ -872,7 +879,7 @@ function rackAddDialog(presetU) {
   const candidates = machines.filter(x => x.project === proj && x.level === "rack" && !inRack.has(x.name));
   if (!candidates.length) {
     const otherProjects = machines.filter(x => x.level === "rack" && x.project !== proj);
-    alert(otherProjects.length
+    notifyUser(otherProjects.length
       ? `這個機櫃專案「${proj}」沒有其他可加入的 L11 機台。\n其他專案的 L11 不能跨專案加進來（${esc([...new Set(otherProjects.map(m=>m.project))].join("、"))}）。請在 System Manager 把該系統設為本專案的 L11。`
       : "此機櫃目前沒有其他可加入的 L11 機台（所有同專案 L11 都已在此機櫃；L10 請先在 System Manager 升為本專案的 L11）。");
     return;
@@ -1191,7 +1198,7 @@ function rackAddPassiveAt(u) {
 // 依「L11 分頁只能加 L11 專案」：只列出 L11 專案（純 L10 專案被擋掉；空/混合/未標 level 放行）
 function addRackComponentDialog() {
   const rackProjects = projectsForLevel("rack").map(p => p.name);
-  if (!rackProjects.length) return alert("請先選擇專案。");
+  if (!rackProjects.length) return notifyUser("請先選擇專案。");
   const opts = rackProjects.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join("");
   showDialog("新增至機櫃 — 選擇專案", `
     <div class="rm-modal-body">
@@ -1200,8 +1207,8 @@ function addRackComponentDialog() {
     </div>`,
     [
       { txt: "取消", cls: "", fn: () => closeDialog() },
-      { txt: "L11 " + "系統", cls: "primary", fn: () => { const proj = $("rcp-proj").value; if (!proj) return alert("請先選擇專案。"); closeDialog(); rackView.project = proj; rackAddDialog(); } },
-      { txt: "SW / PDU / CDU " + "元件", cls: "", fn: () => { const proj = $("rcp-proj").value; if (!proj) return alert("請先選擇專案。"); closeDialog(); rackAddPassiveWithU(undefined, proj); } },
+      { txt: "L11 " + "系統", cls: "primary", fn: () => { const proj = $("rcp-proj").value; if (!proj) return notifyUser("請先選擇專案。"); closeDialog(); rackView.project = proj; rackAddDialog(); } },
+      { txt: "SW / PDU / CDU " + "元件", cls: "", fn: () => { const proj = $("rcp-proj").value; if (!proj) return notifyUser("請先選擇專案。"); closeDialog(); rackAddPassiveWithU(undefined, proj); } },
     ]);
 }
 
@@ -1434,7 +1441,7 @@ async function loadRackTelemetry() {
       if (!h) return;
       const labels = (h.ts || []).map(telT);
       rackTelSet(`racktel-${kind}-${metric}`, labels, [{ key: metric, data: h.values }],
-        { [metric]: { label: `${h.label}（${h.agg === "sum" ? "總和" : "平均"}）`, color: h.color || "#2563eb" } });
+        { [metric]: { label: `${h.label}（${h.agg === "sum" ? "總和" : "平均"}）`, color: h.color || "#2563eb" } }, h);
     });
     // bars：每台所有指標值
     if (machines.length) rackTelAppendBars(barsBox, machines, defs);
@@ -1461,9 +1468,11 @@ function rackTelChart(id) {
   rackTelCharts[id] = ch;
   return ch;
 }
-function rackTelSet(id, labels, series, defs) {
+function rackTelSet(id, labels, series, defs, meta = {}) {
   const ch = rackTelChart(id);
   if (!ch) return;
+  ch.$paUnit = meta.unit || "";
+  ch.$paLatest = (meta.ts || []).reduce((max,ts)=>Number.isFinite(ts)?Math.max(max,ts):max,0);
   ch.data.labels = labels;
   ch.data.datasets = series.map(s => {
     const d = defs[s.key] || { color: TEL_PALETTE[0], label: s.key };
@@ -1661,8 +1670,8 @@ async function rackClearTopo() {
   const proj = rackView.project;
   const names = new Set(machines.filter(m => m.project === proj).map(m => m.name));
   const rel = linksCache.filter(lk => names.has(lk.a) && names.has(lk.b));
-  if (!rel.length) { alert("此機櫃目前沒有連線可刪除。"); return; }
-  if (!confirm(`確定刪除整個「${proj}」機櫃拓樸圖嗎？\n此動作會移除本機櫃內全部 ${rel.length} 條連線。`)) return;
+  if (!rel.length) { notifyUser("此機櫃目前沒有連線可刪除。"); return; }
+  if (!await confirmUser(`確定刪除整個「${proj}」機櫃拓樸圖嗎？\n此動作會移除本機櫃內全部 ${rel.length} 條連線。`)) return;
   let done = 0;
   for (const lk of rel) {
     try {
@@ -1672,7 +1681,7 @@ async function rackClearTopo() {
   }
   await loadLinks();
   setView("rack");
-  alert(`已刪除 ${done} 條連線，機櫃拓樸圖已清空。`);
+  notifyUser(`已刪除 ${done} 條連線，機櫃拓樸圖已清空。`);
 }
 
 function rackStatusCounts(members, pinged) {
@@ -1696,8 +1705,8 @@ async function rackDemoTopo() {
   const cdu = members.find(m => mgxTypeOf(m) === "cdu");
   const ps = members.find(m => mgxTypeOf(m) === "powershelf" || mgxTypeOf(m) === "pdu");
   const servers = members.filter(m => mgxTypeOf(m) === "server" || mgxTypeOf(m) === "storage" || mgxTypeOf(m) === "network");
-  if (!sw.length) { alert("此機櫃沒有 switch，無法建立模擬拓樸。請先加入 switch。"); return; }
-  if (!confirm(`要自動建立模擬拓樸嗎？\n• ${servers.length} 台 server → ${sw.map(s=>s.name).join(" / ")}（Ethernet）\n${cdu ? `• ${cdu.name} → ${sw[0].name}（液冷 coolant）\n` : ""}${ps ? `• ${ps.name} → ${sw[sw.length>1?1:0].name}（電源 power）\n` : ""}這會新增連線資料。`)) return;
+  if (!sw.length) { notifyUser("此機櫃沒有 switch，無法建立模擬拓樸。請先加入 switch。"); return; }
+  if (!await confirmUser(`要自動建立模擬拓樸嗎？\n• ${servers.length} 台 server → ${sw.map(s=>s.name).join(" / ")}（Ethernet）\n${cdu ? `• ${cdu.name} → ${sw[0].name}（液冷 coolant）\n` : ""}${ps ? `• ${ps.name} → ${sw[sw.length>1?1:0].name}（電源 power）\n` : ""}這會新增連線資料。`)) return;
   const created = [];
   const add = async (a, b, type, a_port, b_port) => {
     try { await api("/api/links", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ a, b, type, a_port: a_port||"", b_port: b_port||"" }) }); created.push(`${a}↔${b}`); } catch(e) {}
@@ -1713,7 +1722,7 @@ async function rackDemoTopo() {
   if (ps) add(ps.name, sw[sw.length > 1 ? 1 : 0].name, "power", "PS1", "PWR-A");
   await loadLinks();
   setView("rack");
-  setTimeout(() => alert(`已建立模擬拓樸 ${created.length ? "（" + created.length + " 條）" : "（重複則已跳過）"}，請看右側連線圖。`), 200);
+  setTimeout(() => notifyUser(`已建立模擬拓樸 ${created.length ? "（" + created.length + " 條）" : "（重複則已跳過）"}，請看右側連線圖。`), 200);
 }
 function topoTodo() {
   showDialog("拓樸功能", `<div class="empty">此功能待開發。</div>`, [ { txt: "知道了", cls: "primary", fn: () => closeDialog() } ]);
@@ -1723,7 +1732,7 @@ function linkAddDialog() {
   const proj = rackView.project;
   const members = machines.filter(x => x.project === proj && x.level === "rack");
   const opts = members.map(m => `<option value="${esc(m.name)}">${esc(m.name)} (${esc(mgxInfo(m).label)})</option>`).join("");
-  if (!members.length) { alert("此專案沒有機櫃元件可連線"); return; }
+  if (!members.length) { notifyUser("此專案沒有機櫃元件可連線"); return; }
   showDialog("🗺 新增拓樸", `
     <div class="rm-modal-body">
       <p style="margin-bottom:12px;font-size:12px;color:var(--text-faint)">把兩個機櫃元件連起來（node ↔ switch / PDU / CDU）。可填兩端「埠號/網卡」（例如 eth0 / 1/1），讓拓展樸畫出是哪條 NIC 接到哪個口；留空也行。</p>
@@ -1750,21 +1759,21 @@ function linkAddDialog() {
         const a = $("lk-a").value, b = $("lk-b").value, t = $("lk-type").value;
         const ap = $("lk-a-port") ? $("lk-a-port").value.trim() : "";
         const bp = $("lk-b-port") ? $("lk-b-port").value.trim() : "";
-        if (a === b) return alert("A 與 B 不能相同");
+        if (a === b) return notifyUser("A 與 B 不能相同");
         api("/api/links", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ a, b, type: t, a_port: ap, b_port: bp }) })
           .then(d => { linksCache = d.links || linksCache; closeDialog(); setView("rack"); })
-          .catch(e => alert("新增失敗：" + e.message));
+          .catch(e => notifyUser("新增失敗：" + e.message));
       } },
     ]);
 }
 async function deleteLink(a, b) {
-  if (!confirm(`刪除此連線（${a} — ${b}）？`)) return;
+  if (!await confirmUser(`刪除此連線（${a} — ${b}）？`)) return;
   try {
     const d = await api("/api/links", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a, b }) });
     linksCache = d.links || linksCache;
     setView("rack");
-  } catch (e) { alert("刪除失敗：" + e.message); }
+  } catch (e) { notifyUser("刪除失敗：" + e.message); }
 }
 
 
@@ -2010,7 +2019,7 @@ function reorderMachineRow(srcName, proj, targetName, after) {
   // 批次單一請求寫整個順序（避免逐台 PATCH），後端只存檔一次 → 快速
   return api("/api/machines/reorder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ names: list }) })
     .then(async () => { await Promise.all([loadMachines(), loadProjects()]); setView("projects"); })
-    .catch(e => alert("調整排序失敗：" + e.message));
+    .catch(e => notifyUser("調整排序失敗：" + e.message));
 }
 document.addEventListener("dragstart", (e) => {
   const tr = e.target.closest("tr");
@@ -2071,7 +2080,7 @@ async function moveMachineTo(name, project) {
     if (m) {
       const lv = isRackItem(m) ? "rack" : "system";
       if (!projectAllowsLevel(project, lv)) {
-        alert(`⚠️ 「${name}」是 ${lv === "rack" ? "L11" : "L10"} 系統，不能移到「${project}」專案。\n（L10 只能掛 L10 專案、L11 只能掛 L11 專案）`);
+        notifyUser(`⚠️ 「${name}」是 ${lv === "rack" ? "L11" : "L10"} 系統，不能移到「${project}」專案。\n（L10 只能掛 L10 專案、L11 只能掛 L11 專案）`);
         return;
       }
     }
@@ -2085,24 +2094,24 @@ async function moveMachineTo(name, project) {
 
 // 把 L10 系統升為 L11（整櫃）：只改層級 + 指派一個可用 U 槽，之後可在 Rack Manager 自由搬移。
 async function rackPromote(name, project) {
-  if (!confirm("確定要把「" + name + "」升為 L11（加入 Rack Manager）嗎？")) return;
+  if (!await confirmUser("確定要把「" + name + "」升為 L11（加入 Rack Manager）嗎？")) return;
   try {
     await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "rack", rack_u: 0 }) });
     await Promise.all([loadMachines(), loadProjects()]);
     setView("projects");
-    alert("L11: \u5df2\u4fdd\u7559\u5143\u4ef6\u898f\u683c\uff0c\u8acb\u81f3 Rack Manager \u9078\u64c7 U \u69fd\u3002");
-  } catch (e) { alert("❌ 升 L11 失敗：" + (e && e.message || e)); }
+    notifyUser("L11: \u5df2\u4fdd\u7559\u5143\u4ef6\u898f\u683c\uff0c\u8acb\u81f3 Rack Manager \u9078\u64c7 U \u69fd\u3002");
+  } catch (e) { notifyUser("❌ 升 L11 失敗：" + (e && e.message || e)); }
 }
 
 // 把 L11 降回 L10（單機）：清除機櫃位置欄位
 async function rackDemote(name) {
-  if (!equipmentIsServer(machines.find(m=>m.name===name))) return alert("Only servers can be converted to L10");
-  if (!confirm("確定要把「" + name + "」降回 L10（退出 Rack Manager）嗎？")) return;
+  if (!equipmentIsServer(machines.find(m=>m.name===name))) return notifyUser("Only servers can be converted to L10");
+  if (!await confirmUser("確定要把「" + name + "」降回 L10（退出 Rack Manager）嗎？")) return;
   try {
     await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "system", rack_u: 0 }) });
     await Promise.all([loadMachines(), loadProjects()]);
     setView("projects");
-  } catch (e) { alert("❌ 降 L10 失敗：" + (e && e.message || e)); }
+  } catch (e) { notifyUser("❌ 降 L10 失敗：" + (e && e.message || e)); }
 }
 
 // 機器詳情頁去抖：多個非同步載入（感測器 poll / detail / refresh）完成時各自要求重繪，
@@ -2160,7 +2169,7 @@ function currentRoute() {
 }
 function syncHash() {
   const h = "#/" + currentRoute();
-  if (location.hash !== h) history.replaceState(null, "", h);
+  if (location.hash !== h) history.pushState({}, "", h);
 }
 function parseHash() {
   const h = (location.hash || "").replace(/^#\/?/, "");
@@ -2190,6 +2199,7 @@ function parseHash() {
     }
   } else if (view === "projects") {
     state.view = "projects";
+    _activeProject = null;
     if (parts[1]) {
       _activeProject = decodeURIComponent(parts[1]);
       _flashActiveProject = true;
@@ -2294,6 +2304,7 @@ function telChart(id, unit) {
                 y: { beginAtZero: true, grid: { color: "rgba(0,0,0,.05)" } } }
     }
   });
+  ch.$paUnit = unit || "";
   telCharts[id] = ch;
   return ch;
 }
@@ -2429,6 +2440,7 @@ async function loadTelemetry() {
   gch = telChart("tel-gpupow", "W");
   const gpDefs = {}; gser.forEach((s,i) => gpDefs[`g${s.gpu}`] = { label: gName(s), color: TEL_PALETTE[i%TEL_PALETTE.length] });
   telSet(gch, gLabels, gser.map(s => ({ key: `g${s.gpu}`, data: s.power })), gpDefs);
+  window.uxTelemetryState?.(d);
 }
 /* ---------- 單機詳情頁 ---------- */
 let _activeMachine = null;
@@ -2955,32 +2967,32 @@ function runDiagnose(name) {
   });
 }
 async function machinePower(name, on) {
-  if (!confirm(`${operationTargetText(name)}\n\n確定要「${on?"開機":"關機"}」${name} 嗎？（透過 BMC ipmitool）`)) return;
+  if (!await confirmUser(`${operationTargetText(name)}\n\n確定要「${on?"開機":"關機"}」${name} 嗎？（透過 BMC ipmitool）`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/power`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on })
     });
     await machineLoadDetail(name);
-    setTimeout(() => alert(`${name} ${r.ok?(on?"已開機":"已關機"):"操作失敗："+(r.info||"")}\nBMC 目前狀態：${r.power_status}`), 250);
+    setTimeout(() => notifyUser(`${name} ${r.ok?(on?"已開機":"已關機"):"操作失敗："+(r.info||"")}\nBMC 目前狀態：${r.power_status}`), 250);
   } catch (e) {
-    alert("操作失敗：" + e.message);
+    notifyUser("操作失敗：" + e.message);
   }
 }
 // 系統詳情頁 Reboot（OS reboot，無 OS 才用 BMC reset）
 async function machineRebootDetail(name) {
-  if (!confirm(`${operationTargetText(name)}\n\n確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
+  if (!await confirmUser(`${operationTargetText(name)}\n\n確定要「Reboot」${name} 嗎？（OS reboot）`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/reboot`, { method: "POST" });
     await machineLoadDetail(name);
-    setTimeout(() => alert(`${name} ${r.ok ? "已送出 reboot ⟳" : "操作失敗：" + (r.info||"")}`), 250);
-  } catch (e) { alert("操作失敗：" + e.message); }
+    setTimeout(() => notifyUser(`${name} ${r.ok ? "已送出 reboot ⟳" : "操作失敗：" + (r.info||"")}`), 250);
+  } catch (e) { notifyUser("操作失敗：" + e.message); }
 }
 async function machineAuxDetail(name) {
-  if (!confirm(`${operationTargetText(name)}\n\n確定要對「${name}」執行 AC cycle（完整斷電重上電）嗎？`)) return;
+  if (!await confirmUser(`${operationTargetText(name)}\n\n確定要對「${name}」執行 AC cycle（完整斷電重上電）嗎？`)) return;
   try {
     const r = await api(`/api/machine/${encodeURIComponent(name)}/aux`, { method: "POST" });
-    setTimeout(() => alert(`${name} ${r.ok ? "AC cycle 已送出 ⚡" : "操作失敗：" + (r.info||"")}`), 250);
-  } catch (e) { alert("操作失敗：" + e.message); }
+    setTimeout(() => notifyUser(`${name} ${r.ok ? "AC cycle 已送出 ⚡" : "操作失敗：" + (r.info||"")}`), 250);
+  } catch (e) { notifyUser("操作失敗：" + e.message); }
 }
 
 /* =================== Assign Task (test library) ===================
@@ -3075,7 +3087,7 @@ async function assignTaskOpenSheet(sheetName) {
       s = await api("/api/testlibrary?sheet=" + encodeURIComponent(sheetName));
       assignSheetCache[sheetName] = s;
     } catch (e) {
-      alert("\u8f09\u5165\u5931\u6557\uff1a" + e.message); return;
+      notifyUser("\u8f09\u5165\u5931\u6557\uff1a" + e.message); return;
     }
   }
   const m = (_assignTask.meta || []).find(x => x.sheet === sheetName) ||
@@ -3215,7 +3227,7 @@ function assignTaskReRender() {
 
 async function assignTaskCopy() {
   const sel = _assignTask.sel;
-  if (!sel.size) { alert("\u8acb\u5148\u52fe\u9078\u81f3\u5c11\u4e00\u9805\u6e2c\u9805\uff01"); return; }
+  if (!sel.size) { notifyUser("\u8acb\u5148\u52fe\u9078\u81f3\u5c11\u4e00\u9805\u6e2c\u9805\uff01"); return; }
   const mm = _assignTask.sheet || {};
   const m = assignTaskMach();
   const ip = (m && m.os_ip) || "<OS_IP>";
@@ -3225,7 +3237,7 @@ async function assignTaskCopy() {
   const items = _assignTask.items;
   const dupSet = dupCodeSet();
   const chosen = items.filter(r => sel.has(r.code));
-  if (!chosen.length) { alert("\u6e2c\u9805\u6e05\u55ae\u5df2\u5207\u63db\uff0c\u8acb\u91cd\u65b0\u52fe\u9078"); return; }
+  if (!chosen.length) { notifyUser("\u6e2c\u9805\u6e05\u55ae\u5df2\u5207\u63db\uff0c\u8acb\u91cd\u65b0\u52fe\u9078"); return; }
 
   // \u6e05\u7406\u539f\u59cb\u8cc4\u6599\u91cc\u591a\u990a\u7684\u7a7a\u884c\uff082 \u500b\u4ee5\u4e0a\u9023\u7e8c blank line \u5168\u7e2e\u6210 1 \u500b\uff09\uff0c\u7559\u4e0b\u6b63\u5e38\u6bb5\u843d\u9593\u8ddd
   const collapseBlank = (s) => String(s || "").replace(/\n{3,}/g, "\n\n");
@@ -3290,7 +3302,9 @@ async function assignTaskCopy() {
   const summary = chosen.length + "\u500b\u6e2c\u9805" + " \u00b7 " + (mm.label || sname);
 
   // 複製到剪貼簿（成功與否都開浮動視窗；失敗時視窗內仍可「複製全部」手動重試）
-  try { await assignTaskClip(text); } catch (e) { /* noop */ }
+  const copied = await assignTaskClip(text);
+  closeDialog();
+  window.uxNotify?.(copied ? "\u6307\u4ee4\u5df2\u7522\u751f\u4e26\u8907\u88fd\uff1b\u5c1a\u672a\u57f7\u884c\u6e2c\u8a66" : "\u6307\u4ee4\u5df2\u7522\u751f\uff1b\u526a\u8cbc\u7c3f\u7121\u6cd5\u5beb\u5165\uff0c\u8acb\u5728\u7d50\u679c\u8996\u7a97\u624b\u52d5\u8907\u88fd", !copied);
 
   // 開仿 User Guide 的浮動小視窗，讓使用者在下方滾動看完整 TEST CASE
   AssignResultWin.render("\u2705 \u6307\u6d3e\u53ef\u57f7\u884c\u6307\u4ee4 \u00b7 " + summary, text);
@@ -3699,15 +3713,15 @@ async function probeBmc() {
       if (dot) { dot.className = "dot-sm fail"; }
       if (msg) { msg.className = "err"; msg.textContent = "⚠︎ BMC IP 掃描失敗"; }
       if (d.ipmitool_ok === false) {
-        alert("⚠️ 無法自動抓取 BMC IP：\nOS 內未偵測到 ipmitool。\n\n請先在該主機安裝 ipmitool（例如 apt-get install ipmitool），之後再重新抓取。");
+        notifyUser("⚠️ 無法自動抓取 BMC IP：\nOS 內未偵測到 ipmitool。\n\n請先在該主機安裝 ipmitool（例如 apt-get install ipmitool），之後再重新抓取。");
       } else {
-        alert("⚠️ 抓取 BMC IP 失敗：\n" + (d.error || "未知錯誤"));
+        notifyUser("⚠️ 抓取 BMC IP 失敗：\n" + (d.error || "未知錯誤"));
       }
     }
   } catch (e) {
     if (dot) { dot.className = "dot-sm fail"; }
     if (msg) { msg.className = "err"; msg.textContent = "⚠︎ BMC IP 掃描失敗：" + e.message; }
-    alert("⚠️ 抓取 BMC IP 失敗：\n" + e.message);
+    notifyUser("⚠️ 抓取 BMC IP 失敗：\n" + e.message);
   } finally {
     btn.disabled = false; btn.textContent = "🔍 依 OS 抓取 BMC IP（需 ipmitool）";
   }
@@ -3742,32 +3756,31 @@ async function saveMachine() {
     const name = data.machine.name;
     await Promise.all([loadMachines(), loadProjects()]);
     closeAdd(); setView(state.view);
-    alert("✅ 系統已新增：hostname = " + name + "\n層級 = " + (body.level === "rack" ? "L11 Rack" : "L10 System"));
+    notifyUser("✅ 系統已新增：hostname = " + name + "\n層級 = " + (body.level === "rack" ? "L11 Rack" : "L10 System"));
   } catch (e) {
     showErr("新增失敗：\n" + e.message);
     btn.disabled = false; btn.textContent = "儲存並測試連線";
   }
 }
 /* ---------- 刪除 ---------- */
-function deleteMachine(name) {
-  if (!confirm("確定要刪除系統 " + name + " 嗎？")) return;
-  fetch("/api/machines/" + encodeURIComponent(name), { method: "DELETE" })
-    .then(() => {
-      // 立即顯示：先本地移除，不整頁重整，只重繪目前視圖讓該格馬上消失
-      machines = machines.filter(x => x.name !== name);
-      setView(state.view);
-    })
-    .catch(e => alert("刪除失敗：" + e.message));
+async function deleteMachine(name) {
+  if (!await confirmUser("\u78ba\u5b9a\u8981\u522a\u9664\u7cfb\u7d71 " + name + " \u55ce\uff1f")) return;
+  try {
+    await api("/api/machines/" + encodeURIComponent(name), {method:"DELETE"});
+    machines = machines.filter(x => x.name !== name);
+    setView(state.view);
+    notifyUser(name + " \u5df2\u522a\u9664");
+  } catch (error) { notifyUser("\u522a\u9664\u5931\u6557\uff1a" + error.message); }
 }
 /* ---------- 機櫃移除（只拿下機櫃，保留 System Manager，即時顯示） ---------- */
 async function rackUnmount(name) {
   const item=machines.find(m=>m.name===name);
   if (item && rackIsExternal(item)) return rackCduDialog(item.project,item.name);
-  if (!confirm("「" + name + "」要從機櫃拿掉嗎？\n（System Manager 的系統不會被刪除，只是取消機櫃 U 位置、仍維持 L11）")) return;
+  if (!await confirmUser("「" + name + "」要從機櫃拿掉嗎？\n（System Manager 的系統不會被刪除，只是取消機櫃 U 位置、仍維持 L11）")) return;
   try {
     await rackPlace(name, 0, item?.project);
     setView("rack");
-  } catch (e) { alert("移除失敗：" + e.message); }
+  } catch (e) { notifyUser("移除失敗：" + e.message); }
 }
 /* ---------- 重新掃描（同步強制 ping 所有 OS + BMC + 健康度，返回最新真實值）---------- */
 async function refreshStatus() {
@@ -3780,7 +3793,7 @@ async function refreshStatus() {
     if (data.last_scan) window.__lastScan = data.last_scan;
     setView(state.view);
   }
-  catch (e) { alert("重新掃描失敗：" + e.message); }
+  catch (e) { notifyUser("重新掃描失敗：" + e.message); }
   finally { if (btn) { btn.disabled = false; btn.textContent = "⟳ 重新掃描"; } }
 }
 /* ---------- 專案管理 ---------- */
@@ -3847,7 +3860,7 @@ async function addProject() {
   }
 }
 async function deleteProject(name) {
-  if (!confirm("確定要刪除專案「" + name + "」嗎？")) return;
+  if (!await confirmUser("確定要刪除專案「" + name + "」嗎？")) return;
   const err = $("project-err");
   try {
     await api("/api/projects/" + encodeURIComponent(name), { method: "DELETE" });
@@ -3938,7 +3951,7 @@ function openTermDialog(name) {
         // 至少要有一組有效 creds
         const osOK = hasOs || (osCreds.host && osCreds.user && osCreds.pass);
         const bmcOK = hasBmc || (bmcCreds.host && bmcCreds.user && bmcCreds.pass);
-        if (!osOK && !bmcOK) { alert("請至少填一組 OS 或 BMC 的 host／帳號／密碼"); return; }
+        if (!osOK && !bmcOK) { notifyUser("請至少填一組 OS 或 BMC 的 host／帳號／密碼"); return; }
         closeDialog();
         openTermAt(name, hasOs ? { host: m.os_ip, user: m.os_user, pass: m.os_pass, port: m.os_port || 22 } : (osOK ? osCreds : null),
                   hasBmc ? { host: m.bmc_ip, user: m.bmc_user, pass: m.bmc_pass, port: (m.bmc_port && m.bmc_port !== 623) ? m.bmc_port : 22 } : (bmcOK ? bmcCreds : null));
@@ -4213,7 +4226,7 @@ function rackBroadcastDialog(project) {
       { txt: "開啟廣播", cls: "primary", fn: () => {
         const sel = [...document.querySelectorAll(".bc-chk:checked")].map(x => x.value);
         closeDialog();
-        if (!sel.length) { alert("請至少勾選一個節點。"); return; }
+        if (!sel.length) { notifyUser("請至少勾選一個節點。"); return; }
         openBroadcast(sel);
       } },
     ]);
@@ -4273,7 +4286,7 @@ function systemBroadcastDialog() {
       { txt: "開啟廣播", cls: "primary", fn: () => {
         const sel = [...document.querySelectorAll(".bc-chk:checked")].map(x => x.value);
         closeDialog();
-        if (!sel.length) { alert("請至少勾選一台主機。"); return; }
+        if (!sel.length) { notifyUser("請至少勾選一台主機。"); return; }
         openBroadcast(sel);
       } },
     ]);

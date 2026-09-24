@@ -30,11 +30,11 @@ function showPowerBatch() {
   if (!job) return;
   showDialog(`\u6279\u6b21${job.kind === 'on' ? '\u958b\u6a5f' : '\u95dc\u6a5f'}`, '<div id="power-batch-progress" role="status" aria-live="polite"></div>', [
     {txt:'\u53d6\u6d88\u5c1a\u672a\u9001\u51fa', id:'batch-cancel', fn:()=>{job.cancel=true; renderPowerBatch();}},
-    {txt:'\u91cd\u8a66\u5931\u6557\u9805\u76ee', id:'batch-retry', fn:()=>{
+    {txt:'\u91cd\u8a66\u5931\u6557\u9805\u76ee', id:'batch-retry', fn:async()=>{
       const failed=job.rows.filter(r=>r.state==='failed');
-      if (!failed.length || !confirm(failed.map(r=>operationTargetText(r.name)).join('\n\n'))) return;
+      if (!failed.length || !await confirmUser(failed.map(r=>operationTargetText(r.name)).join('\n\n'))) return;
       job.rows.forEach(r=>{if(r.state==='failed'){r.state='waiting';r.target=operationTarget(r.name);}});
-      job.cancel=false; job.running=true; void executePowerBatch(job);
+      job.cancel=false; job.running=true; showPowerBatch(); void executePowerBatch(job);
     }},
     {txt:'\u95dc\u9589', id:'batch-close', fn:closeDialog}
   ]);

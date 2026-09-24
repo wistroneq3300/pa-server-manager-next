@@ -172,10 +172,13 @@ check('03 Sampled text and small 3D controls meet 4.5:1 on their opaque material
   });
 });
 
-check('04 Light stylesheet is loaded once and after every legacy visual layer', () => {
+check('04 Light palette precedes token-based shared workspace layers', () => {
   const styles = [...html.matchAll(/<link\b[^>]*href="([^"]+\.css(?:\?[^"]*)?)"[^>]*>/g)].map(match => match[1].split('?')[0]);
   assert.equal(styles.filter(item => item === '/static/css/wistron-light.css').length, 1);
-  assert.equal(styles.at(-1), '/static/css/wistron-light.css');
+  assert.equal(styles.at(-1), '/static/css/workspace-ux.css');
+  for(const layer of ['workspace-reliability','equipment-workspace','engineering-ux','operations-ux','workspace-ux']) {
+    assert.ok(styles.indexOf('/static/css/'+layer+'.css') > styles.indexOf('/static/css/wistron-light.css'));
+  }
   assert.ok(styles.indexOf('/static/css/workspace-cinematic.css') < styles.indexOf('/static/css/wistron-light.css'));
   assert.match(app, /root\.dataset\.theme\s*=\s*t/);
   assert.match(app, /localStorage\.setItem\("pa_theme",\s*t\)/);
