@@ -1218,6 +1218,9 @@ let devicesView = "plane";   // "plane" | "cards" | "list" | "telemetry"
 function devicesSetView(v) { devicesView = v; setView("rack"); }
 
 // 機櫃檢視分頁（取代往下捲：切換卡片/清單/平面圖/telemetry）
+function rackNetworkingTopology() {
+  showDialog("Networking Topology", '<div class="rm-modal-body"><p>\u7db2\u8def\u62d3\u64b2\u529f\u80fd\u898f\u5283\u4e2d\u3002</p><p>\u5f85\u78ba\u8a8d\u986f\u793a\u7bc4\u570d\u3001\u9023\u7dda\u8cc7\u6599\u4f86\u6e90\u8207\u4e92\u52d5\u65b9\u5f0f\u5f8c\u5efa\u7f6e\u3002</p></div>', [{txt:"\u95dc\u9589",cls:"",fn:()=>closeDialog()}]);
+}
 function rackSubviewTabs() {
   const defs = [
     ["plane", "🗄 平面圖"],
@@ -1226,7 +1229,7 @@ function rackSubviewTabs() {
   ];
   return `<div class="rack-subtabs" role="tablist">` + defs.map(([k, lbl]) =>
     `<button class="btn small ${devicesView === k ? "active" : ""}" onclick="devicesSetView('${k}')">${lbl}</button>`
-  ).join("") + `</div>`;
+  ).join("") + `<button class="btn small" onclick="rackNetworkingTopology()" aria-haspopup="dialog">Networking Topology</button></div>`;
 }
 
 function devicesHtml(members, pinged) {

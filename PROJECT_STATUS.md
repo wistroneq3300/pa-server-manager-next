@@ -56,6 +56,20 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Delivery: functional commit 30508c7 pushed to main; remote hash verified.
   This status entry is a documentation follow-up. No deployment or live device operation.
 
+## Rack view navigation follow-up (2026-09-24)
+
+- List and Telemetry now sit directly beside 48U configuration; removed auto left margin.
+- Added Networking Topology entry to shared Rack view controls with a planning dialog.
+- Topology scope, data sources and interactions remain pending user discussion.
+- L10 and L11 server details now share the same right-side system-operation deck. L10 shows
+  an in-place L11 promotion/height action; L11 shows height correction in the same group.
+- Detail rendering takes current level/project/rack fields from the live inventory list, so a
+  completed promotion cannot remain visually mixed with a stale L10 detail snapshot.
+- Verified fixture layout at 1440/390/320px without page overflow, adjacent desktop buttons,
+  planning dialog and Escape. L10/L11 operation-deck browser checks, workspace UX matrix,
+  equipment browser, operations/equipment regressions and clean desktop acceptance 23/23 passed.
+- User authorized commit/push for this follow-up. No backend, live device action or deployment.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):

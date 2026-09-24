@@ -127,9 +127,6 @@
   const detail=RENDERERS.machine;
   RENDERERS.machine=function(){
     const root=document.createElement('div');root.innerHTML=detail();const m=machines.find(x=>x.name===_activeMachine);if(!m)return root.innerHTML;
-    if(m.level==='rack'&&m.rack_mount!=='external'){
-      root.querySelector('.pd-operations')?.insertAdjacentHTML('beforeend','<button class="btn ux-spec-button" onclick="uxRackSpecification('+q(m.name)+')">\u4fee\u6b63\u8a2d\u5099\u9ad8\u5ea6 \u00b7 '+(m.rack_size||1)+'U</button>');
-    }
     const overview=root.querySelector('#pd-panel-overview'),connection=overview?.querySelector('.pd-connect-panel'),showcase=overview?.querySelector('.pd-showcase');
     if(connection&&showcase&&equipmentIsServer(m)){showcase.before(connection);showcase.classList.add('ux-compact-showcase');}
     const main=root.querySelector('.pd-system-title');

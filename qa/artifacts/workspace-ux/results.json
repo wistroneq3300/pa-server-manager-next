@@ -1,6 +1,7 @@
 {
   "passed": true,
   "results": [
+    "L10 detail uses the shared operation deck and exposes L11 promotion in place",
     "L10 to L11: explicit project and 4U; unplaced; IP preserved; pending correction to 8U",
     "Placed height correction: overlap disabled, valid shrink saved, stale snapshot rejected",
     "Back/Forward restore project search and status filter",

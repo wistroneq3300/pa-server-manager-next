@@ -10,6 +10,12 @@ fs.mkdirSync(out,{recursive:true});
  async function go(route){if(page.url().startsWith(BASE))await page.evaluate(()=>sessionStorage.clear());const response=await page.goto(BASE+'/#/'+route);if(!response)await page.reload();await page.waitForFunction(()=>!!window.uxRackSpecification&&document.querySelector('#content')?.textContent.length>60);await page.waitForTimeout(250);}
  const call=(url,body)=>page.evaluate(async({url,body})=>{const r=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});return {status:r.status,data:await r.json()};},{url,body});
  try{
+  await go('machine/host_a');
+  const l10Spec=page.getByRole('button',{name:/\u5347\u7d1a\u81f3 L11/});
+  assert.equal(await l10Spec.count(),1);assert.ok(await l10Spec.evaluate(el=>el.closest('.pd-operation-group')!==null));
+  await l10Spec.click();await page.waitForSelector('#ux-spec-size');await page.keyboard.press('Escape');
+  results.push('L10 detail uses the shared operation deck and exposes L11 promotion in place');
+
   await go('projects/fleet_l');
   await page.evaluate(()=>rackPromote('host_a'));
   await page.locator('#ux-spec-size').selectOption('4');
@@ -18,6 +24,10 @@ fs.mkdirSync(out,{recursive:true});
   await page.waitForFunction(()=>machines.find(m=>m.name==='host_a')?.level==='rack');
   const promoted=await page.evaluate(()=>{const m=machines.find(m=>m.name==='host_a');return {size:m.rack_size,u:m.rack_u,project:m.project,ip:m.os_ip};});
   assert.deepEqual(promoted,{size:4,u:0,project:'proj_k',ip:'192.0.2.21'});
+  await page.evaluate(()=>openMachine('host_a'));await page.waitForSelector('.pd-level-pill');
+  assert.equal(await page.locator('.pd-level-pill').innerText(),'L11');
+  const l11Spec=page.getByRole('button',{name:/\u4fee\u6b63\u8a2d\u5099\u9ad8\u5ea6/});
+  assert.equal(await l11Spec.count(),1);assert.ok(await l11Spec.evaluate(el=>el.closest('.pd-operation-group')!==null));
   await page.evaluate(()=>uxRackSpecification('host_a'));await page.locator('#ux-spec-size').selectOption('8');
   await page.locator('#rm-dialog-foot .primary').click();await page.waitForFunction(()=>machines.find(m=>m.name==='host_a').rack_size===8);
   results.push('L10 to L11: explicit project and 4U; unplaced; IP preserved; pending correction to 8U');
