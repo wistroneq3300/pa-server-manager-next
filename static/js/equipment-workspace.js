@@ -105,7 +105,7 @@
     if(!network)return;
     const count=network.routes?.length||0,skipped=network.skipped?.length||0;
     label.textContent=(count
-      ? '\u5df2\u5132\u5b58\u62d3\u6a38\uff1a'+count+'\u689d\u5be6\u9ad4\u7dda \u00b7 \u5de6\uff1a\u4e3b\u6a5f\u7ba1\u7406 \u00b7 \u53f3\uff1aDPU \u7ba1\u7406'
+      ? '\u5df2\u5132\u5b58\u62d3\u6a38\uff1a'+count+'\u689d\u5be6\u9ad4\u7dda \u00b7 \u5de6\uff1a\u4e3b\u6a5f\uff0f\u96fb\u529b\uff0f\u51b7\u537b \u00b7 \u53f3\uff1aDPU\uff0f\u4ea4\u63db\u5668\u4e92\u806f'
       : '\u5c1a\u7121\u53ef\u986f\u793a\u7684\u5df2\u5132\u5b58\u914d\u7dda\uff0c\u8acb\u5728\u7db2\u8def\u62d3\u6a38\u914d\u5c0d\u5df2\u4e0a\u6ac3\u8a2d\u5099\u3002')
       +(skipped?' \u00b7 '+skipped+'\u689d\u56e0\u672a\u5c0d\u61c9\u5df2\u5b89\u88dd\u8a2d\u5099\u800c\u7565\u904e':'');
   }
@@ -141,6 +141,8 @@
     if(pingButton){pingButton.disabled=false;pingButton.textContent='\ud83d\udce1 Ping Rack';}
     const summary=document.getElementById('rack-ping-summary');
     if(summary)summary.innerHTML=rackStatusCounts(rackMembers(),[]);
+    const failures=document.getElementById('rack-ping-failures');
+    if(failures)failures.innerHTML='';
     if(!canvas?.isConnected)return;
     scene?.setComponents?.(sceneComponents());
     scene?.setTopology?.(event.detail.document);networkSummary();
@@ -231,7 +233,7 @@
         <div class="ew-rack-camera"><button class="btn small" onclick="equipmentRackCamera('perspective')">\u900f\u8996</button><button class="btn small" onclick="equipmentRackCamera('front')">\u6b63\u9762</button><button class="btn small" onclick="equipmentRackCamera('rear')">\u80cc\u9762</button><span class="ew-camera-divider"></span><button class="btn small" onclick="equipmentRackZoom(1.12)" aria-label="\u653e\u5927">+</button><button class="btn small" onclick="equipmentRackZoom(0.893)" aria-label="\u7e2e\u5c0f">−</button><button class="btn small" onclick="equipmentRackCamera('reset')">\u91cd\u8a2d\u8996\u89d2</button><span class="ew-camera-divider"></span><button class="btn small" id="ew-flow-toggle" ${hasCdu?'':'disabled'} aria-pressed="${hasCdu&&flowEnabled}" onclick="equipmentRackFlowToggle()">${!hasCdu?'\u672a\u9023\u63a5 CDU':flowEnabled?'\u66ab\u505c\u6c34\u6d41':'\u986f\u793a\u6c34\u6d41'}</button></div><p class="ew-flow-note">${hasCdu?`<span class="ew-flow-blue">\u85cd\uff1aCDU \u2192 Rack</span><span class="ew-flow-red">\u7d05\uff1aRack \u2192 CDU</span><span>\u6d41\u5411\u793a\u610f\uff0c\u975e\u5373\u6642\u6d41\u91cf</span>`:'<span>\u5c1a\u672a\u5b89\u88dd CDU\uff0c\u7ba1\u8def\u63a5\u982d\u4fdd\u7559\u5c01\u84cb\u3002</span>'}</p><p class="ew-orbit-hint">\u62d6\u66f3\u65cb\u8f49\uff0f\u9ede\u64ca\u9078\u53d6 \u00b7 Home\uff1a\u56de\u5230\u5168\u6ac3 \u00b7 Esc\uff1a\u96e2\u958b\u653e\u5927\u6aa2\u8996</p>
       </div>
       <aside class="ew-rack-aside"><label for="ew-rack-component">\u5143\u4ef6\uff0f\u5df2\u5132\u5b58\u4f4d\u7f6e</label><select id="ew-rack-component" onchange="equipmentRackSelect(this.value)"><option value="">\u9078\u64c7\u5143\u4ef6</option>${[...members].sort((a,b)=>Number(b.rack_u)-Number(a.rack_u)).map(m=>`<option value="${esc(m.name)}">${rackIsExternal(m)?'\u5916\u7f6e':Number(m.rack_u)>0?`U${Number(m.rack_u)}`:'\u5c1a\u672a\u653e\u7f6e'} / ${esc(m.name)} \u00b7 ${esc(PAHardwareVisuals.label(PAHardwareVisuals.typeOf(m)))}</option>`).join('')}</select><div id="ew-rack-inspector"></div></aside>
-    </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>\u914d\u7f6e\u9700\u8981\u78ba\u8a8d</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">\u6aa2\u67e5\u914d\u7f6e</button></div>`:''}<div class="ew-rack-support">${rackTopoHtml(members)}${rackView.project?rackCopilotHtml():''}</div>`;
+    </section>${warnings.length?`<div class="ew-placement-warning" role="status"><strong>\u914d\u7f6e\u9700\u8981\u78ba\u8a8d</strong><p>${warnings.map(esc).join('<br>')}</p><button class="btn" onclick="equipmentRackMode('plane')">\u6aa2\u67e5\u914d\u7f6e</button></div>`:''}${rackView.project?`<div class="ew-rack-support ew-rack-support-single">${rackCopilotHtml()}</div>`:''}`;
   };
   const baseRack = RENDERERS.rack;
   RENDERERS.rack = function() {

@@ -1029,11 +1029,6 @@ function pageRack() {
   const pobj = projects.find(p => p.name === proj);
   racksProjectDesc = pobj ? (pobj.desc || "") : "";
   const anyRack = racksAll.length > 0;
-  if (!rackView._linksLoaded) {
-    rackView._linksLoaded = true;
-    loadLinks().then(() => { if (state.view === "rack") setView("rack"); });
-  }
-
   // 只列「有 L11（Rack）機台」的專案（含「已上櫃」與「暫存未放置」的專案）
   const toolbar = `
     <span class="spacer"></span>
@@ -1069,10 +1064,11 @@ function pageRack() {
       ${Object.values(MGX_TYPES).filter((v, i, a) => a.findIndex(x => x.cls === v.cls) === i).map(v => `<span class="mgx-legend"><span class="mgx-dot ${v.cls}"></span>${esc(v.label)}</span>`).join("")}
       &nbsp;·&nbsp; <span id="rack-ping-summary">${rackStatusCounts(members, pinged)}</span>
     </div>
+    <div id="rack-ping-failures">${rackPingFailureSummary(pinged)}</div>
     ${anyRack && members.length ? rackLayoutHtml(members, pinged) : (anyRack ? emptyRackCard() : "")}
     `;
 }
-// 機櫃頁面排版：只有「平面圖」檢視在右欄顯示拓樸連線圖；卡片/清單為全寬、不顯示拓樸。
+// 機櫃頁面排版：舊版 links 圖已由可儲存、可檢查 IP 的網路拓樸取代。
 function rackLayoutHtml(members, pinged) {
   if (devicesView === "plane") {
     const left = `<div class="rack-main-pad"><div class="rack-main-head">
@@ -1081,7 +1077,6 @@ function rackLayoutHtml(members, pinged) {
     return `<div class="rack-layout plane">
       <div class="rack-left">${left}</div>
       <div class="rack-right">
-        ${rackTopoHtml(members)}
         ${rackView.project ? rackCopilotHtml() : ""}
       </div>
     </div>`;
@@ -1706,6 +1701,28 @@ function rackStatusCounts(members, pinged) {
     else none++;
   });
   return `Ping：<span class="ping-lamp on">🟢</span> \u53ef\u9054 ${up} &nbsp;<span class="ping-lamp off">🔴</span> \u6709 IP \u7121\u56de\u61c9 ${down} &nbsp;<span class="ping-lamp none">⨪</span> \u672a\u6aa2\u67e5\uff0f\u672a\u8a2d IP ${none}`;
+}
+function rackPingFailureSummary(pinged) {
+  if (rackView.pingProject !== rackView.project || !rackView.pingCheckedAt) return "";
+  const failures = [];
+  const configured = (pinged || []).reduce((total, device) => total + Number(device.ping_counts?.configured || 0), 0);
+  (pinged || []).forEach(device => {
+    (device.ping_targets || []).filter(target => target.alive === false).forEach(target => {
+      failures.push({
+        device: device.name,
+        node: target.node_name || "",
+        ip: target.ip || "",
+      });
+    });
+  });
+  if (!configured) {
+    return `<div class="rack-ping-result" role="status"><strong>\u6c92\u6709\u53ef\u6aa2\u67e5\u7684 IP</strong><span>${esc(new Date(rackView.pingCheckedAt).toLocaleString())}</span></div>`;
+  }
+  if (!failures.length) {
+    return `<div class="rack-ping-result is-ok" role="status"><strong>\u2713 \u5df2\u8a2d\u5b9a\u7684 ${configured} \u500b IP \u5168\u90e8\u53ef\u9054</strong><span>${esc(new Date(rackView.pingCheckedAt).toLocaleString())}</span></div>`;
+  }
+  const devices = new Set(failures.map(item => item.device)).size;
+  return `<details class="rack-ping-result is-failed" open><summary>\u26a0 ${devices} \u53f0\u8a2d\u5099\uff0f${failures.length} \u500b IP \u6c92\u6709\u56de\u61c9</summary><div class="rack-ping-failure-list">${failures.map(item => `<span><b>${esc(item.device)}</b>${item.node ? ` \u00b7 ${esc(item.node)}` : ""} \u00b7 <code>${esc(item.ip)}</code></span>`).join("")}</div></details>`;
 }
 // 模擬拓樸：自動把 server→sw1/sw2（eth/ib），cdu→sw1（coolant），powershelf→sw2（power）接起來。
 // 依元件類型挑前兩個 switch、第一個 cdu、第一個 powershelf、前面幾台 server/storage。

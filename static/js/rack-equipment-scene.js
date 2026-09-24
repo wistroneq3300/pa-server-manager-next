@@ -117,7 +117,25 @@
   function pingIndicator(item){
     if(item.mgx_type==='blanking')return null;
     const state=['up','down','partial'].includes(item.rack_ping_state)?item.rack_ping_state:'unknown';
-    const local=item.external?[2.89,6.22,3.34]:[1.995,item.height/2-.066,FRONT+.245];
+    // Keep the shared Ping lamp on the equipment skin. The prior fixed x=1.995
+    // landed on the rack ear/rail for every rackmount device, which made the
+    // lamps look attached to the cabinet instead of the systems. Type-specific
+    // coordinates keep a consistent right-hand convention without forming an
+    // artificial straight line down the rack.
+    const h=Math.max(.12,Number(item.height)||U-.026),inside=(y,margin=.062)=>clamp(y,-h/2+margin,h/2-margin);
+    const face={
+      server:[1.68,inside(h/2-.078)],
+      switch:[1.56,inside(-h*.20)],
+      nvlink:[1.61,inside(h/2-.080)],
+      powershelf:[1.72,inside(h/2-.096)],
+      pdu:[1.48,inside(-h*.18)],
+      cdu:[1.55,inside(h/2-.102,.070)],
+      storage:[1.69,inside(-h/2+.082)],
+      network:[1.60,inside(h*.18)]
+    }[item.mgx_type]||[1.65,inside(0)];
+    // The external CDU lamp sits on the upper-right door skin, clear of its
+    // blue decorative rails, screen and emergency stop.
+    const local=item.external?[2.10,4.05,3.265]:[face[0],face[1],FRONT+.205];
     return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
   }
   function addPingIndicator(mesh,item){
@@ -411,19 +429,28 @@
         if(!a.ports?.some(port=>port.id===link.a.port)||!b.ports?.some(port=>port.id===link.b.port)){skip('missing-port');continue;}
         const endpoints=[a.inventory+'\u0000'+link.a.port,b.inventory+'\u0000'+link.b.port].sort().join('\u0001');
         if(seen.has(endpoints)){skip('duplicate-link');continue;}seen.add(endpoints);
-        // Host and DPU bundles use independent left/right channels. Equipment
-        // outside the rack joins its nearest channel instead of crossing faces.
-        const side=ai.external||bi.external||link.network!=='host'?'right':'left',sign=side==='left'?-1:1,index=lanes[side]++;
+        // Management roles follow the switch-side cable plan: Host, Power
+        // Shelf and CDU management use the left channel; DPU management and
+        // the switch uplink use the right. Unknown roles stay on the right.
+        const side=['host','power','cooling'].includes(link.network)?'left':'right',sign=side==='left'?-1:1,index=lanes[side]++;
         const laneX=sign*(2.39+(index%16)*.014),laneZ=3.39+Math.floor(index%64/16)*.027;
         const endpoint=(device,item,reference)=>{
           const y=item.external?item.y+3.15:item.y+Math.max(0,item.height/2-.14),x=item.external?(item.x||0)-2.88:sign*1.80;
           return {deviceId:device.id,inventory:item.name,portId:reference.port,point:[x,y,item.external?3.38:3.295]};
         };
-        const from=endpoint(a,ai,link.a),to=endpoint(b,bi,link.b),path=[from.point,[sign*2.30,from.point[1],laneZ],[laneX,from.point[1],laneZ],[laneX,to.point[1],laneZ],[sign*2.30,to.point[1],laneZ],to.point];
+        const from=endpoint(a,ai,link.a),to=endpoint(b,bi,link.b);let path=[from.point,[sign*2.30,from.point[1],laneZ],[laneX,from.point[1],laneZ],[laneX,to.point[1],laneZ],[sign*2.30,to.point[1],laneZ],to.point];
         // External branches approach directly through the gap on the rack's
-        // right side; they never cross the CDU door or its decorative rails.
-        if(ai.external)path[1]=[laneX,from.point[1],laneZ];
-        if(bi.external)path[path.length-2]=[laneX,to.point[1],laneZ];
+        // right side. A left-channel external CDU reaches that duct over the
+        // rack crown, so its cable never cuts across installed equipment.
+        if(side==='left'&&(ai.external||bi.external)){
+          const bridgeY=7.29;
+          path=ai.external
+            ?[from.point,[from.point[0],bridgeY,laneZ],[laneX,bridgeY,laneZ],[laneX,to.point[1],laneZ],[sign*2.30,to.point[1],laneZ],to.point]
+            :[from.point,[sign*2.30,from.point[1],laneZ],[laneX,from.point[1],laneZ],[laneX,bridgeY,laneZ],[to.point[0],bridgeY,laneZ],to.point];
+        }else{
+          if(ai.external)path[1]=[laneX,from.point[1],laneZ];
+          if(bi.external)path[path.length-2]=[laneX,to.point[1],laneZ];
+        }
         routes.push({id,rackId:rack.id,network:link.network,state:link.state,from,to,side,path});
       }
     }
@@ -456,7 +483,7 @@
       }
       for(let y=-6.6;y<=6.7;y+=1.8){mesh.box(duct.x,y,3.475,.39,.045,.030,C.black,.35);}
     }
-    const colors={host:[.025,.58,.70],dpu:[.37,.30,.79],uplink:[.73,.58,.22],data:[.24,.56,.37],other:[.47,.53,.57]};
+    const colors={host:[.025,.58,.70],dpu:[.37,.30,.79],power:[.96,.39,.045],cooling:[.02,.66,.52],uplink:[.73,.58,.22],data:[.24,.56,.37],other:[.47,.53,.57]};
     for(const route of layout.routes){
       const color=colors[route.network]||colors.other,finish=route.state==='planned'?color.map(value=>value*.48):color;
       // Each route keeps its own physical endpoint record. Port placement is
@@ -527,8 +554,8 @@
       if(vMaterial.x<-4.5){
         // Green/red mean Rack Ping reachability, never measured power state.
         // A zero clock (reduced motion or hidden view) leaves a steady lamp.
-        float pulse=.32+.68*pow(.5+.5*cos(uPingTime*6.2831853),2.0);
-        c=vColor*(.58+pulse*.92);
+        float pulse=pow(.5+.5*cos(uPingTime*6.2831853),2.0);
+        c=vColor*(.20+pulse*1.48);
       }else if(vMaterial.x<-2.5){
         // Decorative light travels up the physical rail, with a long soft tail
         // and a compact bright head. It is unrelated to the coolant shader.

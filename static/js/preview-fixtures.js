@@ -116,7 +116,7 @@
     };
     for(let i=1;i<=2;i++){
       const name='Switch-2201-'+i;add(name,'switch',48-i,1,40+i);
-      devices.push({id:'sw'+i,name,inventory:name,kind:'switch',nodes:[],ports:Array.from({length:48},(_,j)=>({id:'p'+(j+1),name:String(j+1),role:j===47?'uplink':'other',nodes:[]}))});
+      devices.push({id:'sw'+i,name,inventory:name,kind:'switch',nodes:[],ports:Array.from({length:48},(_,j)=>({id:'p'+(j+1),name:String(j+1),role:j===47?'uplink':i===1&&j>=32&&j<=34?'power':i===1&&j===35?'cooling':'other',nodes:[]}))});
     }
     for(let i=1;i<=32;i++){
       const name='naboo-'+String(i).padStart(2,'0'),nodes=nodesFor(i);add(name,'server',i+8,1,i);
@@ -124,8 +124,15 @@
       ['host','dpu'].forEach((network,j)=>cables.push({id:network+i,network,state:'confirmed',note:'',a:{device:'s'+i,port:network},b:{device:'sw'+(j+1),port:'p'+i}}));
     }
     cables.push({id:'uplink',network:'uplink',state:'confirmed',note:'',a:{device:'sw1',port:'p48'},b:{device:'sw2',port:'p48'}});
-    [6,7,44].forEach((u,i)=>add('power-shelf-'+(i+1),'powershelf',u,1,50+i));
-    add('CDU-1-main','cdu',0,0,55);add('BLANK-NABOO','blanking',48,1,56);
+    [6,7,44].forEach((u,i)=>{
+      const name='power-shelf-'+(i+1),id='ps'+(i+1);add(name,'powershelf',u,1,50+i);
+      devices.push({id,name,inventory:name,kind:'other',nodes:[],ports:[{id:'management',name:'\u7ba1\u7406\u57e0',role:'power',nodes:[]}]});
+      cables.push({id:'power'+(i+1),network:'power',state:'confirmed',note:'',a:{device:id,port:'management'},b:{device:'sw1',port:'p'+(33+i)}});
+    });
+    add('CDU-1-main','cdu',0,0,55);
+    devices.push({id:'cdu',name:'CDU-1-main',inventory:'CDU-1-main',kind:'other',nodes:[],ports:[{id:'management',name:'\u7ba1\u7406\u57e0',role:'cooling',nodes:[]}]});
+    cables.push({id:'cooling',network:'cooling',state:'confirmed',note:'',a:{device:'cdu',port:'management'},b:{device:'sw1',port:'p36'}});
+    add('BLANK-NABOO','blanking',48,1,56);
     topologyDocs.set('Naboo',{revision:1,racks:[{id:'naboo',name:'Naboo Rack',devices,links:cables}]});
   }
   function rackPingFixture(project){
@@ -133,7 +140,7 @@
     const nodes=machines.filter(m=>m.project===project&&m.level==='rack'&&(m.rack_u>0||m.rack_mount==='external')&&m.mgx_type!=='blanking').map(m=>{
       const d=devices.find(d=>d.inventory===m.name),hostNodes=(d?.nodes||[]).filter(n=>n.host_os);
       const targets=m.mgx_type==='server'&&hostNodes.length
-        ? hostNodes.map(n=>({ip:n.host_os,field:'host_os',node_id:n.id,alive:!(m.name==='naboo-03'||m.name==='naboo-02'&&n.id==='n3')}))
+        ? hostNodes.map(n=>({ip:n.host_os,field:'host_os',node_id:n.id,node_name:n.name,alive:!(m.name==='naboo-03'||m.name==='naboo-02'&&n.id==='n3')}))
         : (m.os_ip||m.mgx_type!=='server'&&m.bmc_ip)
           ? [{ip:m.os_ip||m.bmc_ip,field:m.os_ip?'os_ip':'bmc_ip',alive:!['Switch-2201-2','power-shelf-2'].includes(m.name)&&(m.os_ip?m.os_alive===true:m.bmc_alive===true)}] : [];
       const alive=targets.filter(t=>t.alive).length,configured=targets.length;
@@ -157,7 +164,14 @@
       if(!projects.some(p=>p.name===name))return fail('找不到專案',404);
       if(method!=='POST')return fail('不支援的操作',405);
       const rack=current.racks.find(item=>item.id===body.rack_id);if(!rack)return fail('找不到指定的機櫃',404);
-      const targets=[];for(const device of rack.devices)for(const node of device.nodes)for(const field of ['host_os','host_bmc','dpu_os','dpu_bmc'])if(node[field])targets.push({device_id:device.id,node_id:node.id,field,ip:node[field],alive:!node[field].endsWith('.78')});
+      const targets=[];for(const device of rack.devices){
+        if(device.kind==='server'){
+          for(const node of device.nodes)if(node.host_os)targets.push({device_id:device.id,node_id:node.id,field:'host_os',ip:node.host_os,alive:window.__qaTopologyAllUp||!node.host_os.endsWith('.78')});
+          if(targets.some(target=>target.device_id===device.id))continue;
+        }
+        const machine=machines.find(item=>item.name===device.inventory),ip=machine?.os_ip||machine?.bmc_ip;
+        if(ip)targets.push({device_id:device.id,node_id:'',field:'primary_ip',ip,alive:window.__qaTopologyAllUp||machine.os_alive!==false});
+      }
       const alive=targets.filter(target=>target.alive).length;
       return response({ok:true,rack_id:rack.id,checked_at:new Date().toISOString(),duration_ms:42,targets,summary:{configured:targets.length,unique_ips:new Set(targets.map(target=>target.ip)).size,alive,down:targets.length-alive}});
     }

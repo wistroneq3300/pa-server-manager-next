@@ -55,15 +55,15 @@ class RackPingRegression(base.unittest.TestCase):
         self.assertEqual(node['rack_ping_state'], 'partial')
         self.assertEqual(node['rack_ping_source'], 'topology_host_os')
         self.assertEqual(node['ping_counts'], {'configured': 4, 'alive': 3, 'down': 1})
-        self.assertTrue(node['os_alive'])
-        self.assertTrue(node['bmc_alive'])
+        self.assertIsNone(node['os_alive'])
+        self.assertIsNone(node['bmc_alive'])
         self.assertEqual(Counter(ip for ip, _ in self.calls)['192.0.2.4'], 2)
         self.assertFalse(any(ip.startswith(('198.51.100.', '203.0.113.')) for ip, _ in self.calls))
         self.assertNotIn('os_pass', node)
         self.assertEqual((self.s['machines'], self.s['projects']), before)
         self.assertEqual(Path(self.s['DATA_FILE']).read_bytes(), disk)
 
-    def test_failed_os_stays_down_while_bmc_is_reachable_and_missing_os_stays_unknown(self):
+    def test_failed_os_stays_down_without_extra_bmc_probe_and_missing_os_stays_unknown(self):
         self.handlers()
         self.machine('failed-os', os_ip='192.0.2.1', bmc_ip='192.0.2.2')
         self.machine('bmc-only', bmc_ip='192.0.2.2')
@@ -71,11 +71,40 @@ class RackPingRegression(base.unittest.TestCase):
         results = self.result(project='rack')
         self.assertEqual(results['failed-os']['rack_ping_state'], 'down')
         self.assertFalse(results['failed-os']['os_alive'])
-        self.assertTrue(results['failed-os']['bmc_alive'])
+        self.assertIsNone(results['failed-os']['bmc_alive'])
         self.assertEqual(results['bmc-only']['rack_ping_state'], 'unknown')
         self.assertEqual(results['bmc-only']['ping_counts']['configured'], 0)
-        self.assertTrue(results['bmc-only']['bmc_alive'])
-        self.assertEqual(Counter(ip for ip, _ in self.calls), {'192.0.2.1': 2, '192.0.2.2': 1})
+        self.assertIsNone(results['bmc-only']['bmc_alive'])
+        self.assertEqual(Counter(ip for ip, _ in self.calls), {'192.0.2.1': 2})
+
+    def test_inventory_os_slots_are_used_before_legacy_primary_os(self):
+        self.handlers()
+        self.machine(os_ip='192.0.2.99', os=[
+            {'slot': 1, 'ip': '192.0.2.1'},
+            {'slot': 2, 'ip': '192.0.2.2'},
+        ])
+        self.failed.add('192.0.2.2')
+        node = self.result(project='rack')['server-1']
+        self.assertEqual(node['rack_ping_source'], 'inventory_os_slots')
+        self.assertEqual(node['rack_ping_state'], 'partial')
+        self.assertEqual(node['ping_counts'], {'configured': 2, 'alive': 1, 'down': 1})
+        self.assertEqual([target['node_name'] for target in node['ping_targets']],
+                         ['OS Slot 1', 'OS Slot 2'])
+        self.assertNotIn(('192.0.2.99', 1), self.calls)
+
+    def test_topology_values_override_same_slot_and_inventory_fills_missing_slots(self):
+        self.handlers()
+        self.machine(os_ip='192.0.2.99', os=[
+            {'slot': 1, 'ip': '192.0.2.1'},
+            {'slot': 2, 'ip': '192.0.2.2'},
+        ])
+        self.topology(ips=['192.0.2.10', ''])
+        node = self.result(project='rack')['server-1']
+        self.assertEqual(node['rack_ping_source'], 'topology_host_os+inventory_os_slots')
+        self.assertEqual([target['ip'] for target in node['ping_targets']],
+                         ['192.0.2.10', '192.0.2.2'])
+        self.assertNotIn(('192.0.2.1', 1), self.calls)
+        self.assertNotIn(('192.0.2.99', 1), self.calls)
 
     def test_powered_equipment_uses_management_ip_and_excludes_blank_l10_and_unplaced(self):
         self.handlers()
@@ -95,7 +124,7 @@ class RackPingRegression(base.unittest.TestCase):
         self.assertEqual(results['cdu']['rack_ping_state'], 'up')
         self.assertEqual(results['power']['ping_targets'][0]['field'], 'bmc_ip')
         self.assertEqual(results['unconfigured']['rack_ping_state'], 'unknown')
-        self.assertEqual({ip for ip, _ in self.calls}, {f'192.0.2.{i}' for i in range(1, 5)})
+        self.assertEqual({ip for ip, _ in self.calls}, {'192.0.2.1', '192.0.2.3', '192.0.2.4'})
         self.assertEqual(self.result(name='blank'), {})
 
     def test_empty_topology_host_ips_fall_back_to_legacy_os_without_matching_display_name(self):

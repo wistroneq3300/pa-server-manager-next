@@ -1773,23 +1773,46 @@ def _rack_ping_plan(machine, topology):
     targets = []
     source = "none"
     if kind == "server":
+        topology_nodes = {}
+        configured_slots = set()
         for rack in topology.get("racks") or []:
             if not isinstance(rack, dict):
                 continue
             for device in rack.get("devices") or []:
                 if not isinstance(device, dict) or device.get("inventory") != name:
                     continue
-                for node in device.get("nodes") or []:
+                for index, node in enumerate(device.get("nodes") or [], 1):
                     if not isinstance(node, dict):
                         continue
+                    topology_nodes.setdefault(index, (rack, device, node))
                     ip = _rack_ping_ip(node.get("host_os"), f"{name}/{node.get('name', '')}")
                     if ip:
+                        configured_slots.add(index)
                         targets.append({"ip": ip, "field": "host_os", "rack_id": rack.get("id", ""),
                                         "device_id": device.get("id", ""), "node_id": node.get("id", ""),
                                         "node_name": node.get("name", "")})
-        if targets:
+        topology_count = len(targets)
+        for index, slot in enumerate(machine.get("os") or [], 1):
+            if not isinstance(slot, dict) or index in configured_slots:
+                continue
+            ip = _rack_ping_ip(slot.get("ip"), f"{name}/OS Slot {index}")
+            if ip:
+                slot_number = slot.get("slot") or index
+                mapped = topology_nodes.get(index)
+                target = {"ip": ip, "field": "host_os",
+                          "node_id": mapped[2].get("id", "") if mapped else f"os-slot-{slot_number}",
+                          "node_name": mapped[2].get("name", "") if mapped else f"OS Slot {slot_number}"}
+                if mapped:
+                    target.update(rack_id=mapped[0].get("id", ""),
+                                  device_id=mapped[1].get("id", ""))
+                targets.append(target)
+        if topology_count and len(targets) > topology_count:
+            source = "topology_host_os+inventory_os_slots"
+        elif topology_count:
             source = "topology_host_os"
-        elif os_ip:
+        elif targets:
+            source = "inventory_os_slots"
+        elif not targets and os_ip:
             targets = [{"ip": os_ip, "field": "os_ip"}]
             source = "legacy_os"
     elif os_ip or bmc_ip:
@@ -1822,9 +1845,12 @@ def rack_ping(project: str = "", name: str = ""):
         topologies = {project_name: copy.deepcopy(projects.get(project_name, {}).get("topology", {}))
                       for project_name in {machine.get("project") for machine in selected}}
     plans = [_rack_ping_plan(machine, topologies.get(machine.get("project"), {})) for machine in snapshots]
-    unique_ips = sorted({ip for plan in plans for ip in
-                         [plan["os_address"], plan["bmc_address"]] +
-                         [target["ip"] for target in plan["ping_targets"]] if ip})
+    # Probe only the addresses selected by the Rack Ping policy.  In particular,
+    # server BMC/DPU addresses must not become hidden extra probes when Host OS
+    # nodes are configured, while non-server equipment contributes one primary
+    # management address.
+    unique_ips = sorted({target["ip"] for plan in plans
+                         for target in plan["ping_targets"]})
     if len(unique_ips) > 2048 or sum(len(plan["ping_targets"]) for plan in plans) > 4096:
         raise HTTPException(422, "\u55ae\u6b21\u6700\u591a\u6aa2\u67e5 2048 \u500b\u4e0d\u540c IP \u6216 4096 \u500b\u7bc0\u9ede IP \u6b04\u4f4d")
 
@@ -1881,30 +1907,67 @@ def put_project_topology(name: str, body: dict):
     return copy.deepcopy(document)
 
 
-_TOPOLOGY_PING_FIELDS = ("host_os", "host_bmc", "dpu_os", "dpu_bmc")
+_TOPOLOGY_PING_FIELDS = ("host_os",)
 
 
-def _topology_ping_targets(document: dict, rack_id: str):
-    """Flatten saved node IP annotations into safe, credential-free ping targets."""
+def _topology_ping_targets(document: dict, rack_id: str, inventory=None):
+    """Resolve server OS nodes and each non-server's primary inventory address."""
     racks = document.get("racks", [])
     selected = next((rack for rack in racks if rack.get("id") == rack_id), None)
     if selected is None:
         raise HTTPException(404, "找不到指定的機櫃")
     targets = []
+    inventory = inventory if isinstance(inventory, dict) else {}
+
+    def address(value, label):
+        value = str(value or "").strip()
+        if not value:
+            return ""
+        try:
+            return str(ipaddress.ip_address(value))
+        except ValueError as exc:
+            raise HTTPException(422, f"{label}\uff1aIP \u683c\u5f0f\u7121\u6548") from exc
+
     for device in selected.get("devices", []):
-        for node in device.get("nodes", []):
-            for field in _TOPOLOGY_PING_FIELDS:
-                value = str(node.get(field, "")).strip()
-                if not value:
+        if device.get("kind") == "server":
+            saved_nodes = device.get("nodes", [])
+            for node in saved_nodes:
+                device_name = device.get("name") or "\u8a2d\u5099"
+                node_name = node.get("name") or "\u7bc0\u9ede"
+                ip = address(node.get("host_os"),
+                             device_name + "\uff0f" + node_name)
+                if not ip:
                     continue
-                try:
-                    ip = str(ipaddress.ip_address(value))
-                except ValueError as exc:
-                    raise HTTPException(422, f"{device.get('name', '設備')}／{node.get('name', '節點')}：IP 格式無效") from exc
                 targets.append({
                     "device_id": device.get("id", ""), "node_id": node.get("id", ""),
-                    "field": field, "ip": ip,
+                    "node_name": node.get("name", ""), "field": "host_os", "ip": ip,
                 })
+        machine = inventory.get(device.get("inventory", ""))
+        if not isinstance(machine, dict):
+            continue
+        if device.get("kind") == "server":
+            for index, slot in enumerate(machine.get("os") or [], 1):
+                if not isinstance(slot, dict):
+                    continue
+                saved_node = (saved_nodes[index - 1]
+                              if index <= len(saved_nodes)
+                              and isinstance(saved_nodes[index - 1], dict) else {})
+                if str(saved_node.get("host_os") or "").strip():
+                    continue
+                ip = address(slot.get("ip"), device.get("name", "\u8a2d\u5099"))
+                if ip:
+                    slot_number = slot.get("slot") or index
+                    targets.append({"device_id": device.get("id", ""),
+                                    "node_id": saved_node.get("id") or f"os-slot-{slot_number}",
+                                    "node_name": f"OS Slot {slot_number}",
+                                    "field": "host_os", "ip": ip})
+            if any(target["device_id"] == device.get("id", "") for target in targets):
+                continue
+        ip = address(machine.get("os_ip") or machine.get("bmc_ip"),
+                     device.get("name", "\u8a2d\u5099"))
+        if ip:
+            targets.append({"device_id": device.get("id", ""), "node_id": "", "node_name": "",
+                            "field": "primary_ip", "ip": ip})
     return targets
 
 
@@ -1918,9 +1981,11 @@ def ping_project_topology(name: str, body: dict):
         if name not in projects:
             raise HTTPException(404, "找不到專案")
         document = copy.deepcopy(projects[name].get("topology", {"revision": 0, "racks": []}))
-    targets = _topology_ping_targets(document, rack_id)
+        inventory = {machine_name: copy.deepcopy(machine) for machine_name, machine in machines.items()
+                     if machine.get("project") == name}
+    targets = _topology_ping_targets(document, rack_id, inventory)
     if len(targets) > 4096:
-        raise HTTPException(422, "單次最多檢查 4096 個固定 IP 欄位")
+        raise HTTPException(422, "單次最多檢查 4096 個 IP 欄位")
     unique_ips = sorted({target["ip"] for target in targets})
     if len(unique_ips) > 2048:
         raise HTTPException(422, "單次最多檢查 2048 個不同 IP")

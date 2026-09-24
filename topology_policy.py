@@ -3,6 +3,9 @@ import copy
 import ipaddress
 
 
+NETWORK_ROLES = ('host', 'dpu', 'data', 'uplink', 'power', 'cooling', 'other')
+
+
 def validate(document):
     def require(ok, message):
         if not ok:
@@ -57,7 +60,7 @@ def validate(document):
             for port in ports:
                 p = {'id': port['id'], 'name': text(port.get('name'), '連接埠名稱'),
                      'role': text(port.get('role'), '連接埠用途')}
-                require(p['role'] in ('host', 'dpu', 'data', 'uplink', 'other'), '連接埠用途不正確')
+                require(p['role'] in NETWORK_ROLES, '連接埠用途不正確')
                 refs = port.get('nodes', [])
                 require(isinstance(refs, list) and all(isinstance(x, str) and x in node_ids for x in refs), '連接埠指向不存在的節點')
                 require(len(refs) == len(set(refs)), '節點對應重複')
@@ -74,7 +77,7 @@ def validate(document):
                     'state': text(link.get('state'), '連線狀態'),
                     'network': text(link.get('network'), '網路類型')}
             require(line['state'] in ('planned', 'confirmed'), '連線狀態不正確')
-            require(line['network'] in ('host', 'dpu', 'data', 'uplink', 'other'), '網路類型不正確')
+            require(line['network'] in NETWORK_ROLES, '網路類型不正確')
             for side in ('a', 'b'):
                 endpoint = link.get(side)
                 require(isinstance(endpoint, dict), '缺少線路端點')

@@ -4,12 +4,13 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Repository and delivery
 
-- Latest completed feature: saved topology in Rack 3D and Rack Ping LEDs (section below).
-- Starting main for this work was `d6b77f88bec65ddcb7d974682f58a5d5454c8fe4`.
-- Implementation and fixture validation are complete. Functional commit
-  `8024c454c87ac22966ffce8b5aef25392c8c2d1d` was pushed to main and verified against
-  `git ls-remote` on 2026-09-24. This documentation follow-up records that delivery.
-- No deployment, production-data change or live hardware test was performed for this work.
+- Current authorized work: Rack topology IP policy, Power Shelf/CDU cabling and
+  device-mounted Ping LED refinements (latest section below).
+- Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
+- Implementation and fixture validation are complete locally. The authorized main push
+  and remote hash verification are the remaining delivery steps.
+- No deployment or live hardware test was performed. The tracked Naboo production-data
+  topology changed from 65 to 69 confirmed links; inventory and credentials are unchanged.
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
   Prefer the current verified checkout if this project moves or runs on another host.
@@ -21,7 +22,43 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - No deployment or production service restart was performed. Pushed does not mean live.
 - Instruction/skill consolidation was published as `4e29682`.
 
-## Saved network cables and Rack Ping LEDs (2026-09-24)
+## Rack topology/IP/LED refinement (2026-09-24; current)
+
+- The user authorized implementation and publication. Work is complete locally; the final
+  delivery commit and remote verification will be recorded after the authorized push. No
+  deployment or live hardware Ping was performed.
+- `網路拓樸` is now the single Rack wiring workspace. The old separate empty `機櫃拓樸`
+  Rack UI was removed so saved wiring and IP checks no longer appear split between two views.
+- Inventory import defaults to per-server OS Slot inference from the machine `os` array.
+  Each valid slot creates one editable node and copies its `ip` / `bmc_ip` into Host OS /
+  Host BMC annotations. Mixed selections can produce different node counts. Machines without
+  valid OS Slots use the editable manual 1-64 node fallback; non-servers are never inferred.
+- Both `網路拓樸 → 檢查 IP` and Rack Ping check Server Host OS only, in this order:
+  saved topology Host OS nodes, inventory OS Slots for any missing nodes, legacy primary
+  OS IP. Other devices check one primary management IP. BMC/DPU annotations do not create
+  hidden Server probes.
+- The topology check has truthful unchecked/no-IP/all-success states and a compact failure
+  list containing device, server node when applicable, and failed IP. Rack Ping adds the
+  same useful failure detail in a panel above the Rack content without covering the 3D view.
+- Naboo now has 69 confirmed physical links: 32 Host cables to Switch-2201-1 ports 1-32,
+  32 DPU cables to Switch-2201-2 ports 1-32, three Power Shelf cables to Switch-2201-1
+  ports 33-35, the CDU cable to port 36, and the switch interconnect on both port 48s.
+  New validated `power` and `cooling` topology roles preserve those distinct cable purposes.
+- Rack 3D uses cyan Host/left, purple DPU/right, orange Power/left, teal Cooling/left and
+  gold uplink/right routing. It renders cable ducts only when at least one saved connection
+  is drawable. Switch endpoints remain grouped at the sides; exact physical socket CAD is
+  intentionally deferred.
+- Ping LEDs are attached to the right side of each applicable equipment face rather than
+  the Rack rail, including internal/external CDU. Green blinks when all checked targets are
+  reachable, red blinks on any failed target, gray means unchecked/no target, and passive
+  blanking panels have no LED. Reduced-motion keeps the color steady.
+- Validation passed: 81 isolated Python regressions; topology browser and targeted IP
+  summary QA; rack-network browser QA with 69 routes, failure-panel placement and more
+  than 800 visibly changing LED pixels; operations/equipment/core-scene checks; JavaScript/Python
+  syntax and whitespace validation. Success, partial-failure and Rack-layout screenshots
+  were visually reviewed. No external browser requests or live hardware probes occurred.
+
+## Saved network cables and Rack Ping LEDs (2026-09-24; prior baseline, superseded above)
 
 - User authorized the previously deferred 3D cable routing and Ping LEDs, then push to main.
 - Rack 3D reads the current project's saved topology and matches inventory-backed devices
@@ -199,7 +236,7 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Changes are included in the current user-authorized main publication. No deployment,
   production inventory mutation or device operation occurred.
 
-## Topology fixed-IP Ping validation (2026-09-24)
+## Topology fixed-IP Ping validation (2026-09-24; prior policy, superseded above)
 
 - A saved Rack can now check all configured Host OS/BMC and DPU OS/BMC fixed IPs on demand.
   The backend de-duplicates addresses, uses bounded 64-worker concurrency, retries failures
@@ -215,7 +252,7 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   responsive screenshots and zero page errors; changed JavaScript syntax passed.
 - User authorized commit/push to main. No deployment or real network probe was performed.
 
-## Naboo confirmed topology configuration (2026-09-24)
+## Naboo confirmed topology configuration (2026-09-24; 65-cable baseline, superseded above)
 
 - The tracked Naboo production-data snapshot now contains 32 rack servers and two switches
   as topology devices. Every server has four editable nodes, one BF4 label per node and two

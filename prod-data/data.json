@@ -1350,25 +1350,25 @@
                   {
                     "id": "sw1-p33",
                     "name": "33",
-                    "role": "other",
+                    "role": "power",
                     "nodes": []
                   },
                   {
                     "id": "sw1-p34",
                     "name": "34",
-                    "role": "other",
+                    "role": "power",
                     "nodes": []
                   },
                   {
                     "id": "sw1-p35",
                     "name": "35",
-                    "role": "other",
+                    "role": "power",
                     "nodes": []
                   },
                   {
                     "id": "sw1-p36",
                     "name": "36",
-                    "role": "other",
+                    "role": "cooling",
                     "nodes": []
                   },
                   {
@@ -3917,6 +3917,66 @@
                     ]
                   }
                 ]
+              },
+              {
+                "id": "naboo-power-shelf-1",
+                "name": "power-shelf-1",
+                "kind": "other",
+                "inventory": "power-shelf-1",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "naboo-power-shelf-1-management",
+                    "name": "管理埠",
+                    "role": "power",
+                    "nodes": []
+                  }
+                ]
+              },
+              {
+                "id": "naboo-power-shelf-2",
+                "name": "power-shelf-2",
+                "kind": "other",
+                "inventory": "power-shelf-2",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "naboo-power-shelf-2-management",
+                    "name": "管理埠",
+                    "role": "power",
+                    "nodes": []
+                  }
+                ]
+              },
+              {
+                "id": "naboo-power-shelf-3",
+                "name": "power-shelf-3",
+                "kind": "other",
+                "inventory": "power-shelf-3",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "naboo-power-shelf-3-management",
+                    "name": "管理埠",
+                    "role": "power",
+                    "nodes": []
+                  }
+                ]
+              },
+              {
+                "id": "naboo-cdu-1",
+                "name": "CDU-1-main",
+                "kind": "other",
+                "inventory": "CDU-1-main",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "naboo-cdu-1-management",
+                    "name": "管理埠",
+                    "role": "cooling",
+                    "nodes": []
+                  }
+                ]
               }
             ],
             "links": [
@@ -4829,11 +4889,67 @@
                   "device": "naboo-switch-2",
                   "port": "sw2-p48"
                 }
+              },
+              {
+                "id": "naboo-power-1",
+                "note": "power-shelf-1 管理網路",
+                "state": "confirmed",
+                "network": "power",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p33"
+                },
+                "b": {
+                  "device": "naboo-power-shelf-1",
+                  "port": "naboo-power-shelf-1-management"
+                }
+              },
+              {
+                "id": "naboo-power-2",
+                "note": "power-shelf-2 管理網路",
+                "state": "confirmed",
+                "network": "power",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p34"
+                },
+                "b": {
+                  "device": "naboo-power-shelf-2",
+                  "port": "naboo-power-shelf-2-management"
+                }
+              },
+              {
+                "id": "naboo-power-3",
+                "note": "power-shelf-3 管理網路",
+                "state": "confirmed",
+                "network": "power",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p35"
+                },
+                "b": {
+                  "device": "naboo-power-shelf-3",
+                  "port": "naboo-power-shelf-3-management"
+                }
+              },
+              {
+                "id": "naboo-cooling-1",
+                "note": "CDU-1-main 管理網路",
+                "state": "confirmed",
+                "network": "cooling",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p36"
+                },
+                "b": {
+                  "device": "naboo-cdu-1",
+                  "port": "naboo-cdu-1-management"
+                }
               }
             ]
           }
         ],
-        "revision": 1
+        "revision": 2
       }
     },
     "Wickie": {

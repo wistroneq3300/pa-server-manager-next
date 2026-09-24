@@ -38,8 +38,19 @@ def build_topology(data, project_name="Naboo"):
                        if machine.get("project") == project_name
                        and machine.get("level") == "rack"
                        and machine.get("mgx_type") == "switch"), key=natural_key)
-    if len(servers) != 32 or len(switches) != 2:
-        raise ValueError(f"Naboo 預期為 32 台伺服器與 2 台交換器，目前為 {len(servers)}／{len(switches)}")
+    power_shelves = sorted((name for name, machine in machines.items()
+                            if machine.get("project") == project_name
+                            and machine.get("level") == "rack"
+                            and machine.get("mgx_type") == "powershelf"), key=natural_key)
+    cdus = sorted((name for name, machine in machines.items()
+                   if machine.get("project") == project_name
+                   and machine.get("level") == "rack"
+                   and machine.get("mgx_type") == "cdu"), key=natural_key)
+    if len(servers) != 32 or len(switches) != 2 or len(power_shelves) != 3 or len(cdus) != 1:
+        raise ValueError(
+            "Naboo 預期為 32 台伺服器、2 台交換器、3 台 Power Shelf 與 1 台 CDU，"
+            f"目前為 {len(servers)}／{len(switches)}／{len(power_shelves)}／{len(cdus)}"
+        )
 
     current = projects[project_name].get("topology") or {"revision": 0, "racks": []}
     old_nodes = {}
@@ -58,6 +69,8 @@ def build_topology(data, project_name="Naboo"):
         for port_number in range(1, 49):
             role = "host" if switch_index == 1 and port_number <= 32 else \
                    "dpu" if switch_index == 2 and port_number <= 32 else \
+                   "power" if switch_index == 1 and 33 <= port_number <= 35 else \
+                   "cooling" if switch_index == 1 and port_number == 36 else \
                    "uplink" if port_number == 48 else "other"
             ports.append({"id": f"sw{switch_index}-p{port_number}", "name": str(port_number),
                           "role": role, "nodes": []})
@@ -100,6 +113,34 @@ def build_topology(data, project_name="Naboo"):
         "network": "uplink", "state": "confirmed", "note": "交換器互連",
     })
 
+    for shelf_index, name in enumerate(power_shelves, 1):
+        device_id = f"naboo-power-shelf-{shelf_index}"
+        port_id = f"naboo-power-shelf-{shelf_index}-management"
+        rack["devices"].append({
+            "id": device_id, "name": name, "kind": "other", "inventory": name,
+            "nodes": [], "ports": [{"id": port_id, "name": "管理埠",
+                                      "role": "power", "nodes": []}],
+        })
+        rack["links"].append({
+            "id": f"naboo-power-{shelf_index}",
+            "a": {"device": "naboo-switch-1", "port": f"sw1-p{32 + shelf_index}"},
+            "b": {"device": device_id, "port": port_id},
+            "network": "power", "state": "confirmed", "note": f"{name} 管理網路",
+        })
+
+    cdu_name = cdus[0]
+    rack["devices"].append({
+        "id": "naboo-cdu-1", "name": cdu_name, "kind": "other", "inventory": cdu_name,
+        "nodes": [], "ports": [{"id": "naboo-cdu-1-management", "name": "管理埠",
+                                  "role": "cooling", "nodes": []}],
+    })
+    rack["links"].append({
+        "id": "naboo-cooling-1",
+        "a": {"device": "naboo-switch-1", "port": "sw1-p36"},
+        "b": {"device": "naboo-cdu-1", "port": "naboo-cdu-1-management"},
+        "network": "cooling", "state": "confirmed", "note": f"{cdu_name} 管理網路",
+    })
+
     validated = topology_policy.validate({"racks": [rack]})
     validated["revision"] = int(current.get("revision", 0)) + 1
     return validated
@@ -131,7 +172,7 @@ def main():
     topology = build_topology(copy.deepcopy(data))
     data["projects"]["Naboo"]["topology"] = topology
     write_atomic(path, data, backup=not args.no_backup)
-    print(f"Naboo topology configured: 32 servers, 128 nodes, 65 confirmed links, revision {topology['revision']}")
+    print(f"Naboo topology configured: 38 devices, 128 nodes, 69 confirmed links, revision {topology['revision']}")
 
 
 if __name__ == "__main__":

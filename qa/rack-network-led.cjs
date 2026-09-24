@@ -46,18 +46,21 @@ function changingStatusPixels(before,after){
    return {status:response.status,data:await response.json()};
   },{url,method,body});
 
-  await page.goto(base+'/?preview=rack-network#/rack/Naboo');await ready();await routeCount(65);await settle();
+  await page.goto(base+'/?preview=rack-network#/rack/Naboo');await ready();await routeCount(69);await settle();
   assert.equal(await page.evaluate(()=>!!window.PA_PREVIEW),true);
   const saved=(await api('/api/projects/Naboo/topology')).data;
   const devices=saved.racks.flatMap(r=>r.devices),servers=devices.filter(d=>d.kind==='server');
   assert.equal(servers.length,32);assert.ok(servers.every(d=>d.nodes.length===4),'Every server retains four nodes');
   assert.ok(servers.every(d=>d.ports.length===2&&d.ports.every(p=>p.nodes.length===4)),'Both shared RJ45 ports must map all four nodes');
   let scene=await state();
-  assert.equal(scene.networkCabling.routeCount,65);assert.equal(scene.networkCabling.skipped.length,0);
+  assert.equal(scene.networkCabling.routeCount,69);assert.equal(scene.networkCabling.skipped.length,0);
   assert.deepEqual(scene.networkCabling.ducts.map(d=>d.side).sort(),['left','right']);
   assert.equal(scene.networkCabling.routes.filter(r=>r.network==='host').length,32);
   assert.equal(scene.networkCabling.routes.filter(r=>r.network==='dpu').length,32);
   assert.equal(scene.networkCabling.routes.filter(r=>r.network==='uplink').length,1);
+  assert.equal(scene.networkCabling.routes.filter(r=>r.network==='power').length,3);
+  assert.equal(scene.networkCabling.routes.filter(r=>r.network==='cooling').length,1);
+  assert.ok(scene.networkCabling.routes.filter(r=>['power','cooling'].includes(r.network)).every(r=>r.side==='left'));
   for(const server of servers){
    const inventory=server.inventory_name||server.inventory;
    assert.equal(scene.networkCabling.routes.filter(r=>r.from.inventory===inventory||r.to.inventory===inventory).length,2,`${inventory}: two physical cables, independent of four logical nodes`);
@@ -77,19 +80,26 @@ function changingStatusPixels(before,after){
   assert.ok(scene.pingIndicators.every(p=>p.state==='unknown'&&p.color==='gray'&&!p.animated),'Inventory os_alive/power alone must not fabricate a Rack Ping result');
   assert.ok(scene.pingIndicators.some(p=>p.name==='CDU-1-main'),'External CDU needs a status LED');
   assert.ok(!scene.pingIndicators.some(p=>/blank/i.test(p.name)),'Passive blank panels must never receive LEDs');
-  checks.push('Saved 32-server / 128-node topology becomes 64 shared RJ45 cables and one switch interconnect, via two side ducts; all powered devices have right-side unknown LEDs and passive panels have none');
+  checks.push('Saved topology becomes 69 physical cables: 64 shared server RJ45, one switch interconnect, three Power Shelf and one CDU management cable; power/cooling use the left duct and passive panels have no LED');
 
   await page.locator('#ew-network-toggle').click();await settle();assert.equal((await state()).networkCabling.visible,false);
-  assert.equal((await state()).networkCabling.routeCount,65,'Hiding cable geometry must not change saved connections');
+  assert.equal((await state()).networkCabling.routeCount,69,'Hiding cable geometry must not change saved connections');
   await page.locator('#ew-network-toggle').click();await settle();assert.equal((await state()).networkCabling.visible,true);
   await page.locator('#rack-ping-btn').click();
   await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas')?.paRackScene.getState().pingIndicators.some(p=>p.name==='naboo-01'&&p.state==='up'));
-  await ready();await routeCount(65);await settle();scene=await state();
+  await ready();await routeCount(69);await settle();scene=await state();
   const expected={'naboo-01':['up','green'],'naboo-02':['partial','red'],'naboo-03':['down','red'],'naboo-04':['unknown','gray'],'Switch-2201-1':['up','green'],'Switch-2201-2':['down','red'],'power-shelf-1':['up','green'],'power-shelf-2':['down','red'],'power-shelf-3':['unknown','gray'],'CDU-1-main':['up','green']};
   for(const [name,pair] of Object.entries(expected)){
    const led=scene.pingIndicators.find(p=>p.name===name);assert.ok(led,`${name}: LED exists`);assert.deepEqual([led.state,led.color],pair,`${name}: Rack Ping maps to the expected LED`);
   }
   assert.match(await page.locator('#rack-ping-summary').innerText(),/\u53ef\u9054 32[\s\S]*\u6709 IP \u7121\u56de\u61c9 4[\s\S]*\u672a\u6aa2\u67e5\uff0f\u672a\u8a2d IP 2/,'Summary agrees with the four-node LEDs and excludes passive panels');
+  assert.match(await page.locator('#rack-ping-failures').innerText(),/naboo-02[\s\S]*Node 4[\s\S]*10\.250\.2\.4/);
+  assert.match(await page.locator('#rack-ping-failures').innerText(),/Switch-2201-2[\s\S]*192\.0\.2\.43/);
+  assert.match(await page.locator('#rack-ping-failures').innerText(),/power-shelf-2[\s\S]*192\.0\.2\.52/);
+  await page.locator('.rack-ping-result').screenshot({path:path.join(out,'rack-ping-failures.png')});
+  const summaryBounds=await page.locator('.rack-ping-result').boundingBox(),canvasBounds=await canvas.boundingBox();
+  assert.ok(summaryBounds.y+summaryBounds.height<=canvasBounds.y,'Rack Ping failures must remain above the 3D canvas');
+  await page.screenshot({path:path.join(out,'rack-ping-layout-1600.png')});
   checks.push('Real Rack Ping button uses synthetic response: all four OS targets up -> green, any failed node -> red, no IP -> gray; switch/CDU/power-shelf management IPs are represented');
 
   await page.evaluate(()=>equipmentRackCamera('front'));await page.locator('#ew-rack-component').selectOption('naboo-01');await page.evaluate(()=>equipmentRackFocus());await settle();
@@ -111,7 +121,7 @@ function changingStatusPixels(before,after){
   });
   await page.waitForFunction(()=>document.querySelector('#ew-rack-canvas').paRackScene.getState().contextLost);
   assert.ok((await state()).pingIndicators.every(p=>!p.animated));
-  await page.evaluate(()=>__qaNetworkContext.restoreContext());await ready();await routeCount(65);await page.evaluate(()=>equipmentRackCamera('front'));await settle();
+  await page.evaluate(()=>__qaNetworkContext.restoreContext());await ready();await routeCount(69);await page.evaluate(()=>equipmentRackCamera('front'));await settle();
   assert.equal((await state()).pingIndicators.find(p=>p.name==='naboo-02').color,'red','Restoration preserves the last real Ping result');
   checks.push('WebGL context loss stops LED animation; restoration rebuilds saved cables and Ping colors');
 
@@ -135,14 +145,15 @@ function changingStatusPixels(before,after){
   const changed=structuredClone(saved);changed.racks[0].links.pop();
   const updated=await api('/api/projects/Naboo/topology','PUT',changed);assert.equal(updated.status,200);
   await page.evaluate(document=>{window.__qaSceneBeforeSave=window.document.querySelector('#ew-rack-canvas').paRackScene;dispatchEvent(new CustomEvent('pa-topology-saved',{detail:{project:'Naboo',document}}));},updated.data);
-  await routeCount(64);assert.equal(await page.evaluate(()=>__qaSceneBeforeSave===document.querySelector('#ew-rack-canvas').paRackScene),true);
+  await routeCount(68);assert.equal(await page.evaluate(()=>__qaSceneBeforeSave===document.querySelector('#ew-rack-canvas').paRackScene),true);
   assert.ok((await state()).pingIndicators.every(p=>p.state==='unknown'),'Saved topology invalidates the previous Rack Ping results');
   checks.push('Successful topology save immediately refreshes cables and clears outdated Ping LEDs without remounting the scene');
 
   await page.evaluate(()=>{window.__qaOldScene=document.querySelector('#ew-rack-canvas').paRackScene;rackSetProject('proj_k');});await ready();await routeCount(0);
   assert.equal(await page.evaluate(()=>__qaOldScene.getState().disposed),true);
+  assert.equal((await state()).networkCabling.ducts.length,0,'A rack without saved cables must not render empty cable ducts');
   assert.ok((await state()).pingIndicators.every(p=>p.state==='unknown'),'Other project cannot inherit Naboo Ping');
-  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(64);
+  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(68);
   checks.push('Switching projects disposes old scene and keeps saved cable/Ping state scoped to its project');
 
   // Simulate a transport which resolves despite abort. A late answer from the
@@ -163,13 +174,13 @@ function changingStatusPixels(before,after){
   await holdResponse('topology');await page.evaluate(()=>rackSetProject('Naboo'));await page.waitForFunction(()=>window.__qaHeld);
   await page.evaluate(()=>rackSetProject('proj_k'));await ready();await routeCount(0);await page.evaluate(()=>__qaRelease());await page.waitForFunction(()=>window.__qaReleased);await settle();
   assert.equal((await state()).networkCabling.routeCount,0,'Late topology response must not populate another project');await page.evaluate(()=>__qaRestoreFetch());
-  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(64);await holdResponse('ping');
+  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(68);await holdResponse('ping');
   await page.evaluate(()=>{void rackPing('Naboo');});await page.waitForFunction(()=>window.__qaHeld);
   await page.evaluate(()=>rackSetProject('proj_k'));await ready();await routeCount(0);await page.evaluate(()=>__qaRelease());await page.waitForFunction(()=>window.__qaReleased);await settle();
   assert.ok((await state()).pingIndicators.every(p=>p.state==='unknown'),'Late Rack Ping result must not illuminate another project');await page.evaluate(()=>__qaRestoreFetch());
   checks.push('Delayed topology and Rack Ping responses are ignored after changing project, even when the transport ignores abort');
 
-  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(64);await holdResponse('ping');
+  await page.evaluate(()=>rackSetProject('Naboo'));await ready();await routeCount(68);await holdResponse('ping');
   await page.locator('#rack-ping-btn').click();await page.waitForFunction(()=>window.__qaHeld);assert.equal(await page.locator('#rack-ping-btn').isDisabled(),true);
   const latest=(await api('/api/projects/Naboo/topology')).data;
   const savedDuringPing=await api('/api/projects/Naboo/topology','PUT',latest);assert.equal(savedDuringPing.status,200);

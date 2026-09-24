@@ -112,19 +112,52 @@ class TopologyRegression(base.unittest.TestCase):
         self.assertNotIn('secret', json.dumps(result))
         self.assertEqual(len(result['racks']), 2)
 
+    def test_power_and_cooling_management_network_roles_are_valid(self):
+        self.handlers()
+        doc = self.doc(); rack = doc['racks'][0]
+        rack['links'] = []
+        switch = rack['devices'][1]
+        switch['ports'] = [
+            dict(id='power-port', name='33', role='power', nodes=[]),
+            dict(id='cooling-port', name='36', role='cooling', nodes=[]),
+        ]
+        for role in ('power', 'cooling'):
+            device = dict(id=role, name=role.title(), kind='other', inventory=role,
+                          nodes=[], ports=[dict(id='management', name='Management',
+                                               role=role, nodes=[])])
+            rack['devices'].append(device)
+            rack['links'].append(dict(id='link-' + role,
+                a=dict(device=role, port='management'),
+                b=dict(device='switch', port=role + '-port'),
+                network=role, state='confirmed', note=''))
+        result = self.s['put_project_topology']('rack', doc)
+        saved = result['racks'][0]
+        self.assertEqual([link['network'] for link in saved['links']], ['power', 'cooling'])
+        self.assertEqual([port['role'] for port in saved['devices'][1]['ports']],
+                         ['power', 'cooling'])
+
     def test_ping_deduplicates_ips_retries_failures_and_does_not_persist_results(self):
         self.handlers()
         doc = self.doc()
-        node = doc['racks'][0]['devices'][0]['nodes'][0]
-        node.update(host_bmc='192.0.2.1', dpu_bmc='192.0.2.2')
+        server = doc['racks'][0]['devices'][0]
+        server['nodes'].append(dict(id='n2', name='Node 2', bf4='BF4 #2',
+                                   host_os='192.0.2.2', host_bmc='192.0.2.1',
+                                   dpu_os='2001:db8::2', dpu_bmc=''))
+        server['ports'][0]['nodes'].append('n2')
+        switch = doc['racks'][0]['devices'][1]
+        switch['inventory'] = 'switch-1'
+        self.s['machines']['switch-1'] = dict(name='switch-1', project='rack',
+                                               mgx_type='switch', os_ip='192.0.2.3')
         saved = self.s['put_project_topology']('rack', doc)
         calls = []
         self.s['ping_check'] = lambda ip, timeout: calls.append((ip, timeout)) or ip == '192.0.2.1'
         result = self.s['ping_project_topology']('rack', {'rack_id': 'rack1'})
-        self.assertEqual(result['summary'], {'configured': 4, 'unique_ips': 3, 'alive': 2, 'down': 2})
+        self.assertEqual(result['summary'], {'configured': 3, 'unique_ips': 3, 'alive': 1, 'down': 2})
         self.assertEqual(calls.count(('192.0.2.1', 1)), 1)
         self.assertEqual(calls.count(('192.0.2.2', 1)), 2)
-        self.assertEqual(calls.count(('2001:db8::1', 1)), 2)
+        self.assertEqual(calls.count(('192.0.2.3', 1)), 2)
+        self.assertFalse(any('2001:db8' in ip for ip, _ in calls))
+        self.assertEqual(result['targets'][-1]['field'], 'primary_ip')
         self.assertEqual(self.s['get_project_topology']('rack'), saved)
 
     def test_ping_supports_512_targets_and_rejects_unknown_rack(self):
@@ -146,3 +179,36 @@ class TopologyRegression(base.unittest.TestCase):
         with self.assertRaises(base.ApiError) as err:
             self.s['ping_project_topology']('rack', {'rack_id': 'missing'})
         self.assertEqual(err.exception.status_code, 404)
+
+    def test_ping_uses_inventory_os_slots_when_saved_node_ips_are_empty(self):
+        self.handlers()
+        doc = self.doc(); node = doc['racks'][0]['devices'][0]['nodes'][0]
+        node.update(host_os='', host_bmc='', dpu_os='', dpu_bmc='')
+        self.s['machines']['node'] = dict(name='node', project='rack', mgx_type='server',
+            os_ip='192.0.2.99', os=[{'slot': 1, 'ip': '192.0.2.11'},
+                                    {'slot': 2, 'ip': '192.0.2.12'}])
+        self.s['put_project_topology']('rack', doc)
+        self.s['ping_check'] = lambda ip, timeout: ip.endswith('.11')
+        result = self.s['ping_project_topology']('rack', {'rack_id': 'rack1'})
+        self.assertEqual(result['summary'],
+                         {'configured': 2, 'unique_ips': 2, 'alive': 1, 'down': 1})
+        self.assertEqual([target['node_name'] for target in result['targets']],
+                         ['OS Slot 1', 'OS Slot 2'])
+        self.assertEqual(result['targets'][0]['node_id'], node['id'])
+        self.assertEqual({target['field'] for target in result['targets']}, {'host_os'})
+
+    def test_ping_merges_saved_host_os_with_missing_inventory_slots(self):
+        self.handlers()
+        doc = self.doc(); server = doc['racks'][0]['devices'][0]
+        server['nodes'].append(dict(id='n2', name='Node 2', bf4='BF4 #2',
+                                   host_os='', host_bmc='', dpu_os='', dpu_bmc=''))
+        server['ports'][0]['nodes'].append('n2')
+        self.s['machines']['node'] = dict(name='node', project='rack', mgx_type='server',
+            os_ip='192.0.2.99', os=[{'slot': 1, 'ip': '192.0.2.11'},
+                                    {'slot': 2, 'ip': '192.0.2.12'}])
+        self.s['put_project_topology']('rack', doc)
+        self.s['ping_check'] = lambda ip, timeout: True
+        result = self.s['ping_project_topology']('rack', {'rack_id': 'rack1'})
+        self.assertEqual([target['ip'] for target in result['targets']],
+                         ['192.0.2.1', '192.0.2.12'])
+        self.assertEqual([target['node_id'] for target in result['targets']], ['n1', 'n2'])
