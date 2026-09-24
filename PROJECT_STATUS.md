@@ -106,7 +106,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   Planned/confirmed lines are manual cabling records; live carrier status remains unknown.
 - Atomic validated storage, revision-conflict protection, failed-save draft retention, export,
   discard confirmations, physical port exclusivity and dependent-link cleanup. Project rename
-  preserves topology and all existing project metadata. No new device operations or DPU Ping.
+  preserves topology and all existing project metadata. On-demand fixed-IP Ping was added in
+  the later validation section; it remains separate from single-device operations.
 - Legacy /api/links remains separate. Imported equipment is a topology snapshot; inventory
   rename/deletion does not silently alter saved wiring. Node IPs are annotations only.
 - Guide: docs/NETWORK_TOPOLOGY.md. Limits, snapshot behavior and storage contract documented.
@@ -143,6 +144,38 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Cache version updated. Functional commit `c6e6782516e6e8da202fe52d97602f3304c161c7`
   was pushed to main and verified against git ls-remote. No deployment, inventory change or
   device operation occurred.
+
+## Network topology Traditional Chinese UI (2026-09-24)
+
+- User requested removal of the remaining English-heavy topology UI. Both Rack entries now
+  use the same `網路拓樸` label, making their shared destination clear.
+- Topology title, workspace, Rack/device/node/port forms, templates, network roles, counters,
+  connection state, confirmation prompts and validation/save errors are Traditional Chinese.
+  OS, BMC, DPU, VLAN and JSON remain as standard technical abbreviations.
+- Backend topology validation/conflict/save errors and preview fixture responses are also
+  localized, so failures do not fall back to English after a Chinese form submission.
+- Topology browser regression includes a localization assertion and passed the complete
+  old-browser, template, wiring, save/conflict and responsive workflow with zero page errors.
+  Python regressions passed 63/63; operations and equipment regressions passed. Updated
+  light/dark desktop/mobile screenshots are in qa/artifacts/topology/.
+- Changes are included in the current user-authorized main publication. No deployment,
+  production inventory mutation or device operation occurred.
+
+## Topology fixed-IP Ping validation (2026-09-24)
+
+- A saved Rack can now check all configured Host OS/BMC and DPU OS/BMC fixed IPs on demand.
+  The backend de-duplicates addresses, uses bounded 64-worker concurrency, retries failures
+  once and supports at least 512 targets without storing results or credentials.
+- Results roll up from each node field to its mapped RJ45 port, device and documented cable.
+  The UI shows reachable/partial/no-response/unconfigured states and filters failed,
+  partially reachable or unconfigured wiring. Ping confirms IP reachability only; physical
+  switch-port identity, carrier state and LLDP discovery remain outside this check.
+- Limits are 4096 mapped fields and 2048 unique IPs per Rack sweep. A topology must be saved
+  before checking, so displayed results always correspond to the server-side saved document.
+- Validation: 65 isolated Python regressions, including 512 targets, address de-duplication,
+  retry behavior and no persistence; full topology browser workflow with Ping status/filter,
+  responsive screenshots and zero page errors; changed JavaScript syntax passed.
+- User authorized commit/push to main. No deployment or real network probe was performed.
 
 ## Power Shelf appearance alignment (2026-09-24)
 

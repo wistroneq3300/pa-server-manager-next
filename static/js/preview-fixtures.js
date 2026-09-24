@@ -109,13 +109,23 @@
     const minutes=Math.min(1440,Math.max(1,Number(url.searchParams.get('minutes'))||60));
     const sampleNow=Math.floor(Date.now()/1000),ts=Array.from({length:25},(_,i)=>sampleNow-minutes*60+i*minutes*60/24),wave=(base,amp)=>ts.map((_,i)=>Math.round((base+Math.sin(i*.65)*amp+Math.cos(i*.19)*amp*.3)*10)/10);
     let body={};try{body=JSON.parse(options.body||'{}');}catch{}
+    const topologyPingMatch=path.match(/^\/api\/projects\/(.+)\/topology\/ping$/);
+    if(topologyPingMatch){
+      const name=topologyPingMatch[1],current=topologyDocs.get(name)||{revision:0,racks:[]};
+      if(!projects.some(p=>p.name===name))return fail('找不到專案',404);
+      if(method!=='POST')return fail('不支援的操作',405);
+      const rack=current.racks.find(item=>item.id===body.rack_id);if(!rack)return fail('找不到指定的機櫃',404);
+      const targets=[];for(const device of rack.devices)for(const node of device.nodes)for(const field of ['host_os','host_bmc','dpu_os','dpu_bmc'])if(node[field])targets.push({device_id:device.id,node_id:node.id,field,ip:node[field],alive:!node[field].endsWith('.78')});
+      const alive=targets.filter(target=>target.alive).length;
+      return response({ok:true,rack_id:rack.id,checked_at:new Date().toISOString(),duration_ms:42,targets,summary:{configured:targets.length,unique_ips:new Set(targets.map(target=>target.ip)).size,alive,down:targets.length-alive}});
+    }
     const topologyMatch=path.match(/^\/api\/projects\/(.+)\/topology$/);
     if(topologyMatch){
-      const name=topologyMatch[1];if(!projects.some(p=>p.name===name))return fail('Project not found',404);
+      const name=topologyMatch[1];if(!projects.some(p=>p.name===name))return fail('找不到專案',404);
       const current=topologyDocs.get(name)||{revision:0,racks:[]};
       if(method==='GET')return response(current);
       if(method==='PUT'){
-        if(body.revision!==current.revision)return fail('Topology changed in another session',409);
+        if(body.revision!==current.revision)return fail('其他視窗已修改拓樸。請先匯出目前草稿，再重新載入後重試。',409);
         const updated={...body,revision:current.revision+1};topologyDocs.set(name,updated);return response(updated);
       }
       return fail('Method not allowed',405);

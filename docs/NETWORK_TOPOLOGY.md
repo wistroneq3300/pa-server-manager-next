@@ -51,13 +51,23 @@ Use the network filter to isolate Host, DPU, data or inter-switch wiring.
 Click a device in the diagram or expand its card to highlight its paths and
 inspect logical node mappings. The connection list identifies exact ports.
 Solid lines mean manually confirmed cabling; dashed lines mean planned cabling.
-Neither reports carrier status, Ping, LLDP discovery, VLAN reachability or redundancy.
+Neither reports carrier status, LLDP discovery, VLAN reachability or redundancy. The project
+topology can run an on-demand ICMP Ping sweep against the fixed node IPs recorded in a Rack.
 
 Devices imported from inventory are explicitly snapshots for topology planning.
 Renaming/moving/deleting inventory does not silently rewrite these diagrams;
 edit the topology device label or remove it as needed. Existing legacy `/api/links`
 diagrams remain separate and are not automatically converted. There is no new
-device action, credential storage, DPU Ping collector or OS/BMC operational target.
+device action, credential storage or OS/BMC operational target. Ping results are transient and
+do not modify inventory, topology data or device network settings.
+
+## Fixed-IP Ping check
+
+Save the topology, choose a Rack and click `檢查固定 IP`. The backend de-duplicates addresses,
+checks up to 2048 unique IPs (4096 mapped fields) with bounded parallelism, and retries a failed
+ICMP probe once. The UI rolls node results up to each RJ45 mapping and cable, then supports
+failure, partial and unconfigured filters. A green result confirms only that the recorded IP
+answered ICMP at that moment; it does not prove the documented switch port or cable path.
 
 Deleting a topology device/port removes its dependent cables after confirmation.
 Deleting a node removes its port mappings. Deleting a Rack affects that topology

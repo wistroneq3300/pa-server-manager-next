@@ -1043,7 +1043,7 @@ function pageRack() {
       ${toolbar}
       ${anyRack ? `
       <button class="btn primary" id="rack-ping-btn" onclick="rackPing('${esc(rackView.project)}')">📡 Ping Rack</button>
-      <button class="btn" onclick="rackNetworkingTopology()">🗺 新增拓樸</button>
+      <button class="btn" onclick="rackNetworkingTopology()">🗺 網路拓樸</button>
       <button class="btn" onclick="rackPowerAllDialog()">⏻ 開機整櫃</button>
       <button class="btn btn-danger" onclick="rackPowerAllDialog(false)">⏻ 關機整櫃</button>
       <button class="btn btn-warn" onclick="rackBulkReboot()">⟳ Reboot 整櫃</button>
@@ -1227,7 +1227,7 @@ function rackSubviewTabs() {
   ];
   return `<div class="rack-subtabs" role="tablist">` + defs.map(([k, lbl]) =>
     `<button class="btn small ${devicesView === k ? "active" : ""}" onclick="devicesSetView('${k}')">${lbl}</button>`
-  ).join("") + `<button class="btn small" onclick="rackNetworkingTopology()" aria-haspopup="dialog">Networking Topology</button></div>`;
+  ).join("") + `<button class="btn small" onclick="rackNetworkingTopology()" aria-haspopup="dialog">網路拓樸</button></div>`;
 }
 
 function devicesHtml(members, pinged) {
@@ -1548,7 +1548,7 @@ function rackTopoHtml(members) {
   if (!rel.length) {
     return `<div class="topo-card">
       <div class="topo-card-title">🗺 機櫃拓樸</div>
-      <div class="topo-empty">此機櫃沒有連線資料。<br>點「新增拓樸」把 server↔switch/PDU/CDU 接起來，即會顯示實體連線圖。</div>
+      <div class="topo-empty">此機櫃沒有連線資料。<br>點「網路拓樸」把伺服器與交換器／PDU／CDU 接起來，即會顯示實體連線圖。</div>
     </div>`;
   }
 

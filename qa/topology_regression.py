@@ -1,6 +1,9 @@
 """Topology isolation, persistence, validation and concurrent edit regressions."""
 import copy
+import datetime
+import ipaddress
 import json
+import time
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -13,7 +16,11 @@ class TopologyRegression(base.unittest.TestCase):
 
     def handlers(self):
         self.s['topology_policy'] = topology_policy
-        base.extract('main.py', ['get_project_topology', 'put_project_topology', 'edit_project', '_load_data'], self.s)
+        self.s.update(ipaddress=ipaddress, time=time, datetime=datetime,
+                      ThreadPoolExecutor=base.ThreadPoolExecutor,
+                      _TOPOLOGY_PING_FIELDS=('host_os', 'host_bmc', 'dpu_os', 'dpu_bmc'))
+        base.extract('main.py', ['get_project_topology', 'put_project_topology', 'ping_project_topology',
+                    '_topology_ping_targets', 'edit_project', '_load_data'], self.s)
 
     def doc(self):
         node = dict(id='n1', name='Node 1', bf4='BF4 #1', host_os='192.0.2.1',
@@ -104,3 +111,38 @@ class TopologyRegression(base.unittest.TestCase):
         result = self.s['put_project_topology']('rack', doc)
         self.assertNotIn('secret', json.dumps(result))
         self.assertEqual(len(result['racks']), 2)
+
+    def test_ping_deduplicates_ips_retries_failures_and_does_not_persist_results(self):
+        self.handlers()
+        doc = self.doc()
+        node = doc['racks'][0]['devices'][0]['nodes'][0]
+        node.update(host_bmc='192.0.2.1', dpu_bmc='192.0.2.2')
+        saved = self.s['put_project_topology']('rack', doc)
+        calls = []
+        self.s['ping_check'] = lambda ip, timeout: calls.append((ip, timeout)) or ip == '192.0.2.1'
+        result = self.s['ping_project_topology']('rack', {'rack_id': 'rack1'})
+        self.assertEqual(result['summary'], {'configured': 4, 'unique_ips': 3, 'alive': 2, 'down': 2})
+        self.assertEqual(calls.count(('192.0.2.1', 1)), 1)
+        self.assertEqual(calls.count(('192.0.2.2', 1)), 2)
+        self.assertEqual(calls.count(('2001:db8::1', 1)), 2)
+        self.assertEqual(self.s['get_project_topology']('rack'), saved)
+
+    def test_ping_supports_512_targets_and_rejects_unknown_rack(self):
+        self.handlers()
+        doc = self.doc(); rack = doc['racks'][0]; rack['links'] = []
+        rack['devices'] = []
+        for group in range(8):
+            nodes = [dict(id=f'n{group}-{i}', name=f'Node {group}-{i}', bf4='',
+                host_os=f'10.{group}.{i // 254}.{i % 254 + 1}', host_bmc='', dpu_os='', dpu_bmc='')
+                for i in range(64)]
+            rack['devices'].append(dict(id=f'server-{group}', name=f'Server {group}', kind='server',
+                inventory='', nodes=nodes, ports=[dict(id='host', name='RJ45', role='host',
+                nodes=[node['id'] for node in nodes])]))
+        self.s['put_project_topology']('rack', doc)
+        self.s['ping_check'] = lambda ip, timeout: True
+        result = self.s['ping_project_topology']('rack', {'rack_id': 'rack1'})
+        self.assertEqual(result['summary']['configured'], 512)
+        self.assertEqual(result['summary']['alive'], 512)
+        with self.assertRaises(base.ApiError) as err:
+            self.s['ping_project_topology']('rack', {'rack_id': 'missing'})
+        self.assertEqual(err.exception.status_code, 404)

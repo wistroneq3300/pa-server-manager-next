@@ -150,7 +150,7 @@ def _save_data():
                 os.fsync(f.fileno())
             os.replace(tmp, DATA_FILE)
         except Exception as exc:
-            raise HTTPException(503, "Data could not be saved; no changes committed") from exc
+            raise HTTPException(503, "資料無法儲存，變更尚未寫入") from exc
         finally:
             if tmp and os.path.exists(tmp):
                 try:
@@ -1784,7 +1784,7 @@ def rack_ping(project: str = "", name: str = ""):
 def get_project_topology(name: str):
     with _DATA_LOCK:
         if name not in projects:
-            raise HTTPException(404, "Project not found")
+            raise HTTPException(404, "找不到專案")
         return copy.deepcopy(projects[name].get("topology", {"revision": 0, "racks": []}))
 
 
@@ -1792,11 +1792,11 @@ def get_project_topology(name: str):
 @_data_transaction
 def put_project_topology(name: str, body: dict):
     if name not in projects:
-        raise HTTPException(404, "Project not found")
+        raise HTTPException(404, "找不到專案")
     current = projects[name].get("topology", {"revision": 0, "racks": []})
     revision = body.get("revision")
     if type(revision) is not int or revision != current["revision"]:
-        raise HTTPException(409, "Topology changed in another session. Export your draft, reload and retry.")
+        raise HTTPException(409, "其他視窗已修改拓樸。請先匯出目前草稿，再重新載入後重試。")
     try:
         document = topology_policy.validate(body)
     except ValueError as exc:
@@ -1805,6 +1805,72 @@ def put_project_topology(name: str, body: dict):
     projects[name]["topology"] = document
     _save_data()
     return copy.deepcopy(document)
+
+
+_TOPOLOGY_PING_FIELDS = ("host_os", "host_bmc", "dpu_os", "dpu_bmc")
+
+
+def _topology_ping_targets(document: dict, rack_id: str):
+    """Flatten saved node IP annotations into safe, credential-free ping targets."""
+    racks = document.get("racks", [])
+    selected = next((rack for rack in racks if rack.get("id") == rack_id), None)
+    if selected is None:
+        raise HTTPException(404, "找不到指定的機櫃")
+    targets = []
+    for device in selected.get("devices", []):
+        for node in device.get("nodes", []):
+            for field in _TOPOLOGY_PING_FIELDS:
+                value = str(node.get(field, "")).strip()
+                if not value:
+                    continue
+                try:
+                    ip = str(ipaddress.ip_address(value))
+                except ValueError as exc:
+                    raise HTTPException(422, f"{device.get('name', '設備')}／{node.get('name', '節點')}：IP 格式無效") from exc
+                targets.append({
+                    "device_id": device.get("id", ""), "node_id": node.get("id", ""),
+                    "field": field, "ip": ip,
+                })
+    return targets
+
+
+@app.post("/api/projects/{name}/topology/ping")
+def ping_project_topology(name: str, body: dict):
+    """Probe the fixed IPs recorded for one rack; results are transient."""
+    rack_id = str(body.get("rack_id", "")).strip()
+    if not rack_id:
+        raise HTTPException(422, "請選擇要檢查的機櫃")
+    with _DATA_LOCK:
+        if name not in projects:
+            raise HTTPException(404, "找不到專案")
+        document = copy.deepcopy(projects[name].get("topology", {"revision": 0, "racks": []}))
+    targets = _topology_ping_targets(document, rack_id)
+    if len(targets) > 4096:
+        raise HTTPException(422, "單次最多檢查 4096 個固定 IP 欄位")
+    unique_ips = sorted({target["ip"] for target in targets})
+    if len(unique_ips) > 2048:
+        raise HTTPException(422, "單次最多檢查 2048 個不同 IP")
+
+    started = time.monotonic()
+    def probe(ip):
+        # Retry once to reduce a single dropped ICMP packet being shown as a failure.
+        return ping_check(ip, 1) or ping_check(ip, 1)
+
+    if unique_ips:
+        with ThreadPoolExecutor(max_workers=min(64, len(unique_ips))) as pool:
+            states = dict(zip(unique_ips, pool.map(probe, unique_ips)))
+    else:
+        states = {}
+    results = [{**target, "alive": bool(states[target["ip"]])} for target in targets]
+    alive = sum(1 for target in results if target["alive"])
+    return {
+        "ok": True, "rack_id": rack_id,
+        "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "duration_ms": round((time.monotonic() - started) * 1000),
+        "targets": results,
+        "summary": {"configured": len(results), "unique_ips": len(unique_ips),
+                    "alive": alive, "down": len(results) - alive},
+    }
 
 
 @app.get("/api/links")
