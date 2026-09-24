@@ -14,7 +14,8 @@
       "project": "ShengClient",
       "created": "2026-08-21T23:26:54",
       "order": 0,
-      "level": "system"
+      "level": "system",
+      "mgx_type": "server"
     },
     "boba-ami": {
       "id": 41,
@@ -30,7 +31,8 @@
       "project": "EQ3300",
       "level": "system",
       "order": 1,
-      "created": "2026-08-24T09:57:55"
+      "created": "2026-08-24T09:57:55",
+      "mgx_type": "server"
     },
     "Wickie-B300-SUT2": {
       "id": 45,
@@ -49,7 +51,8 @@
       "order": 0,
       "created": "2026-08-25T16:50:14",
       "bmc_kvm_user": "admin",
-      "bmc_kvm_pass": ""
+      "bmc_kvm_pass": "",
+      "mgx_type": "server"
     },
     "Blanking Panel": {
       "id": 51,
@@ -153,7 +156,7 @@
       "project": "Naboo",
       "level": "rack",
       "mgx_type": "blanking",
-      "rack_u": 1,
+      "rack_u": 3,
       "rack_side": "front",
       "rack_size": 1,
       "use_c17": true,
@@ -901,7 +904,7 @@
       "bmc_port": 623,
       "project": "Naboo",
       "mgx_type": "powershelf",
-      "rack_u": 7,
+      "rack_u": 6,
       "rack_size": 3,
       "passive": true,
       "level": "rack",
@@ -923,8 +926,8 @@
       "bmc_port": 623,
       "project": "Naboo",
       "mgx_type": "powershelf",
-      "rack_u": 4,
-      "rack_size": 3,
+      "rack_u": 7,
+      "rack_size": 1,
       "passive": true,
       "level": "rack",
       "rack_side": "front",
@@ -990,26 +993,27 @@
       "mgx_type": "cdu",
       "rack_u": 0,
       "rack_side": "front",
-      "rack_size": 4,
+      "rack_size": 0,
       "use_c17": true,
       "passive": true,
       "order": 61,
-      "created": "2026-08-26T16:20:38"
+      "created": "2026-08-26T16:20:38",
+      "rack_mount": "external"
     },
     "EQ3300-AIAgent": {
       "id": 105,
       "name": "EQ3300-AIAgent",
-      "os_ip": "10.35.229.70",
+      "os_ip": "10.35.228.144",
       "os_user": "root",
       "os_pass": "",
-      "bmc_ip": "10.35.229.130",
+      "bmc_ip": "10.35.228.145",
       "bmc_user": "root",
       "bmc_pass": "",
       "os_port": 22,
       "bmc_port": 623,
       "project": "L11 Test",
       "level": "rack",
-      "rack_size": 1,
+      "rack_size": 4,
       "rack_u": 48,
       "use_c17": true,
       "order": 63,
@@ -1038,8 +1042,77 @@
           "bmc_pass": ""
         }
       ],
-      "active_os": 2,
+      "active_os": 1,
       "mgx_type": "server"
+    },
+    "blank panel": {
+      "id": 106,
+      "name": "blank panel",
+      "os_ip": "",
+      "os_user": "",
+      "os_pass": "",
+      "bmc_ip": "",
+      "bmc_user": "",
+      "bmc_pass": "",
+      "os_port": 22,
+      "bmc_port": 623,
+      "project": "Naboo",
+      "level": "rack",
+      "mgx_type": "blanking",
+      "rack_mount": "internal",
+      "rack_u": 0,
+      "rack_side": "front",
+      "rack_size": 5,
+      "use_c17": true,
+      "passive": true,
+      "order": 64,
+      "created": "2026-09-24T11:01:24"
+    },
+    "CDU-01": {
+      "id": 107,
+      "name": "CDU-01",
+      "os_ip": "",
+      "os_user": "",
+      "os_pass": "",
+      "bmc_ip": "",
+      "bmc_user": "",
+      "bmc_pass": "",
+      "os_port": 22,
+      "bmc_port": 623,
+      "project": "L11 Test",
+      "level": "rack",
+      "mgx_type": "cdu",
+      "rack_mount": "internal",
+      "rack_u": 4,
+      "rack_side": "front",
+      "rack_size": 4,
+      "use_c17": true,
+      "passive": true,
+      "order": 65,
+      "created": "2026-09-24T13:13:57"
+    },
+    "Blanking panel 0": {
+      "id": 108,
+      "name": "Blanking panel 0",
+      "os_ip": "",
+      "os_user": "",
+      "os_pass": "",
+      "bmc_ip": "",
+      "bmc_user": "",
+      "bmc_pass": "",
+      "os_port": 22,
+      "bmc_port": 623,
+      "project": "Naboo",
+      "level": "rack",
+      "mgx_type": "blanking",
+      "rack_mount": "internal",
+      "rack_u": 2,
+      "rack_side": "front",
+      "rack_size": 2,
+      "use_c17": true,
+      "passive": true,
+      "order": 66,
+      "created": "2026-09-24T14:51:01"
     }
   },
   "projects": {
@@ -1112,5 +1185,5 @@
       "b_port": "cool-lo"
     }
   ],
-  "seq": 106
+  "seq": 109
 }
