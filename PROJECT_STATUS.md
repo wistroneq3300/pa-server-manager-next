@@ -5,7 +5,7 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 ## Repository and delivery
 
 - Current work: comprehensive Traditional Chinese in-app user guide update.
-  Guide publication is authorized; validation completed locally, commit/push pending.
+  Guide functional commit `f3b6e99` is pushed to main and remotely verified.
   No deployment or device operations.
 - Previous work: external CDU focused inspection and Switch face-overlap fixes.
   Functional commit `8414923ee647aa9c75f2d064c439eaa21ab495b1` is pushed to main
@@ -45,7 +45,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   maximize/reopen and 390/320px layouts using an isolated fixture server. No browser
   errors or external requests. Dark/mobile and light screenshots reviewed under
   qa/artifacts/userguide/. No live backend, device actions or deployment.
-- Delivery: local changes validated; committing and pushing next.
+- Delivery: functional commit `f3b6e99` pushed to main and verified with git ls-remote.
+  This follow-up aligns table-of-contents numbering and records delivery; no deployment.
 
 ## External CDU inspection and Switch face corrections (2026-09-24; current)
 
