@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "External CDU only, unobstructed through four orbit quadrants",
+    "Centered pivot and unclipped bounds at 1600/390px",
+    "Picking and selection retain correct target",
+    "Full rack and 69 saved routes restored on exit"
+  ],
+  "errors": [],
+  "external": []
+}

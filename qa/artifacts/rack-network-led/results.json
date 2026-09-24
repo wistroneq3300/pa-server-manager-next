@@ -5,7 +5,7 @@
     "Real Rack Ping button uses synthetic response: all four OS targets up -> green, any failed node -> red, no IP -> gray; switch/CDU/power-shelf management IPs are represented",
     {
       "check": "LED pixels blink; reduced motion, offscreen and rear view stop the animation",
-      "changingStatusPixels": 788
+      "changingStatusPixels": 554
     },
     "WebGL context loss stops LED animation; restoration rebuilds saved cables and Ping colors",
     "3D cables and LEDs fit desktop/front/rear/perspective and 390/320px light/dark layouts",

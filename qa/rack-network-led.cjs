@@ -78,7 +78,7 @@ function changingStatusPixels(before,after){
   assert.equal(scene.pingIndicators.length,powered.length);
   assert.ok(scene.pingIndicators.every(p=>p.side==='right'&&p.position[0]>0));
   const switchIndicators=scene.pingIndicators.filter(p=>p.type==='switch');
-  assert.ok(switchIndicators.length>0&&switchIndicators.every(p=>p.local[0]-p.outerRadius>1.6485),'Switch Ping LEDs must sit on the right service strip without covering the QSFP port matrix');
+  assert.ok(switchIndicators.length>0&&switchIndicators.every(p=>p.local[0]-p.outerRadius>1.6835),'Switch Ping LEDs must sit on the right service strip without covering the QSFP port matrix');
   assert.ok(switchIndicators.every(p=>p.local[0]===1.75&&p.local[1]>.06),'Switch Ping LEDs preserve the approved upper-right position, clear of the cable endpoint');
   const shelfIndicators=scene.pingIndicators.filter(p=>p.type==='powershelf');
   assert.equal(shelfIndicators.length,3,'Every installed Power Shelf needs its own Ping LED');

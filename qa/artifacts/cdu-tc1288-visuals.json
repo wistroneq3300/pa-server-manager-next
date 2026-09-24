@@ -3,8 +3,8 @@
   "results": [
     {
       "check": "Blue light flows in front and focused views while water is paused",
-      "frontBlueChanges": 8438,
-      "focusBlueChanges": 6264
+      "frontBlueChanges": 8432,
+      "focusBlueChanges": 7313
     },
     "Reduced motion stops the moving light; normal preference restores it",
     "Offscreen and lost WebGL context stop animation; visibility and context restoration resume it",

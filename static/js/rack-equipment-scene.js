@@ -147,7 +147,7 @@
     const h=Math.max(.12,Number(item.height)||U-.026),inside=(y,margin=.062)=>clamp(y,-h/2+margin,h/2-margin);
     const face={
       server:[1.68,inside(h/2-.078)],
-      // The two QSFP rows end at x=1.6485. Keep the complete Ping lamp
+      // The two QSFP rows end at x=1.6835. Keep the complete Ping lamp
       // on the narrow service strip to their right,
       // clear of both the sockets and the rack ear/handle.
       switch:[1.75,inside(h/2-.060)],
@@ -226,8 +226,12 @@
       if(item.size>1)grille(m,0,-.13,rear-.062,2.85,Math.min(.46,h-.35),C.steel,-1);
     }else if(type==='switch'){
       V(0,0,f,3.90,h-.01,.10,C.dark,.015);const rowH=.073,dy=.052,cy=item.size>1?h/2-.14:0;
-      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=-1.67+c*.205+(c>=8?.16:0),y=cy+(row?dy:-dy);qsfp(m,x,y,f+.056,.167,rowH);}
-      grille(m,0,cy,f+.059,.18,.18,C.steel);handle(m,-1.88,0,Math.min(h*.65,.42));handle(m,1.88,0,Math.min(h*.65,.42));led(m,item,1.72,cy+.086,f+.096);B(0,h/2-.008,f+.060,3.74,.010,.019,C.edge);
+      // Mirror both eight-column banks around a dedicated central vent gap.
+      // The old offset put the first right port over the grille's edge.
+      for(let row=0;row<2;row++)for(let c=0;c<16;c++){const x=c<8?-1.60+c*.20:.20+(c-8)*.20,y=cy+(row?dy:-dy);qsfp(m,x,y,f+.056,.167,rowH);}
+      // The shared Ping lens replaces the former service lamp at this spot;
+      // retaining that gray housing would obscure the lens's upper-left edge.
+      grille(m,0,cy,f+.059,.18,.18,C.steel);handle(m,-1.88,0,Math.min(h*.65,.42));handle(m,1.88,0,Math.min(h*.65,.42));B(0,h/2-.008,f+.060,3.74,.010,.019,C.edge);
       if(item.size>1)grille(m,0,-.12,f+.059,3.32,h-.32,C.steel);
       const rear=FRONT-depth-.04;for(let i=0;i<2;i++){V(-1.36+i*.76,0,rear,.67,h*.86,.09,C.steel,.015);vent(m,-1.36+i*.76,0,rear-.052,.56,h*.66,2,7);B(-1.36+i*.76,-h*.22,rear-.069,.25,.025,.035,C.edge);}
       for(let i=0;i<4;i++){const x=.18+i*.43;B(x,0,rear,.36,h*.85,.09,C.dark);fan(m,x,0,rear-.060,Math.min(.095,h*.34));B(x+.13,0,rear-.082,.03,Math.min(h*.68,.22),.028,C.blue);}
@@ -635,13 +639,17 @@
     function pingAnimated(){return components.some(part=>indicatorAnimated(part.item));}
     function draw(now=0){
       frame=0;if(disposed||lost||!program)return;const rect=canvas.getBoundingClientRect();if(rect.width<1||rect.height<1)return;const dpr=Math.min(window.devicePixelRatio||1,1.65,maxSize/Math.max(rect.width,rect.height)),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
-      const centerX=focus?(placement.valid.find(p=>p.name===focus)?.x||0):(cooling.mode==='external'?3.50:0);
-      const rotationMatrix=rotation(yaw,pitch),model=multiply(rotationMatrix,translation(-centerX,-targetY,0)),aspect=w/h,eye=[0,0,34];
+      const focused=focus?components.find(p=>p.item.name===focus):null;
+      const isolated=!!focused?.item.external;
+      // A floor-standing CDU needs its own orbit pivot and inspection scene.
+      // Otherwise the adjacent rack rotates across and completely hides it.
+      const offset=isolated?focused.min.map((v,i)=>(v+focused.max[i])/2):[0,0,0];
+      const centerX=focused?(focused.item.x||0)+offset[0]:(cooling.mode==='external'?3.50:0);
+      const rotationMatrix=rotation(yaw,pitch),model=multiply(rotationMatrix,translation(-centerX,-targetY-offset[1],-offset[2])),aspect=w/h,eye=[0,0,34];
       // Fit the projected orbit envelope at every angle. Device inspection uses
       // the selected part's own bounds; selection near U48 is not clipped away.
-      const focused=focus?components.find(p=>p.item.name===focus):null;
-      const showNetwork=networkVisible&&networkBuffer;
-      const bounds=focused?{min:[focused.min[0],focused.min[1],focused.min[2]],max:[focused.max[0],focused.max[1],focused.max[2]+.22]}:{min:[Math.min(cooling.bounds.min[0],showNetwork?-2.78:Infinity)-centerX,cooling.bounds.min[1],cooling.bounds.min[2]],max:[Math.max(cooling.bounds.max[0],showNetwork?2.78:-Infinity)-centerX,cooling.bounds.max[1],Math.max(cooling.bounds.max[2],showNetwork?3.56:-Infinity)]};
+      const showNetwork=!isolated&&networkVisible&&networkBuffer;
+      const bounds=focused?{min:focused.min.map((v,i)=>v-offset[i]),max:focused.max.map((v,i)=>v-offset[i]+(i===2&&!isolated ? .22 : 0))}:{min:[Math.min(cooling.bounds.min[0],showNetwork?-2.78:Infinity)-centerX,cooling.bounds.min[1],cooling.bounds.min[2]],max:[Math.max(cooling.bounds.max[0],showNetwork?2.78:-Infinity)-centerX,cooling.bounds.max[1],Math.max(cooling.bounds.max[2],showNetwork?3.56:-Infinity)]};
       let maxX=0,maxY=0,required=0;const tan=Math.tan(.55/2),marginX=focused?.83:.92,marginY=focused?.78:.94;
       for(const x of [bounds.min[0],bounds.max[0]])for(const y of [bounds.min[1],bounds.max[1]])for(const z of [bounds.min[2],bounds.max[2]]){const p=transform(rotationMatrix,[x,y,z,1]);maxX=Math.max(maxX,Math.abs(p[0]));maxY=Math.max(maxY,Math.abs(p[1]));required=Math.max(required,p[2]+Math.abs(p[0])/(tan*aspect*marginX),p[2]+Math.abs(p[1])/(tan*marginY));}
       const vertical=Math.max(maxY/marginY,maxX/(aspect*marginX),focused?1.10:0)/zoom,horizontal=vertical*aspect,isPlan=view==='front'||view==='rear';
@@ -650,11 +658,14 @@
       gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uLedTime,decorativeAnimated()?now/1000:0);gl.uniform1f(uniform.uPingTime,pingAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
       function part(mesh,matrix,isSelected){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);let offset=0;[['aPosition',3],['aNormal',3],['aColor',3],['aMaterial',2]].forEach(([name,size])=>{gl.enableVertexAttribArray(attrib[name]);gl.vertexAttribPointer(attrib[name],size,gl.FLOAT,false,44,offset);offset+=size*4;});gl.uniformMatrix4fv(uniform.uPart,false,matrix);gl.uniform1f(uniform.uSelected,isSelected?1:0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
       gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
-      part(frameMesh,identity(),false);for(const p of components)part(p,translation(p.item.x||0,p.item.y,p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0),p.item.name===selected);
+      if(!isolated)part(frameMesh,identity(),false);for(const p of isolated?[focused]:components)part(p,translation(p.item.x||0,p.item.y,p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0),p.item.name===selected);
       if(showNetwork)part(networkBuffer,identity(),false);
-      part(coolingBuffers[0],identity(),false);
-      gl.uniform1f(uniform.uAlpha,.88);part(coolingBuffers[1],identity(),false);
-      gl.depthMask(false);gl.uniform1f(uniform.uAlpha,.20);part(coolingBuffers[2],identity(),false);gl.depthMask(true);gl.disable(gl.BLEND);
+      if(!isolated){
+        part(coolingBuffers[0],identity(),false);
+        gl.uniform1f(uniform.uAlpha,.88);part(coolingBuffers[1],identity(),false);
+        gl.depthMask(false);gl.uniform1f(uniform.uAlpha,.20);part(coolingBuffers[2],identity(),false);gl.depthMask(true);
+      }
+      gl.disable(gl.BLEND);
       canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());canvas.dataset.decorativeAnimated=String(decorativeAnimated());canvas.dataset.pingAnimated=String(pingAnimated());if(flowAnimated()||decorativeAnimated()||pingAnimated())requestDraw();
       if(!ready){const error=gl.getError();if(error!==gl.NO_ERROR){fail('Rack WebGL render error '+error);return;}ready=true;canvas.dataset.rackState='ready';delete canvas.dataset.rackError;canvas.dispatchEvent(new CustomEvent('pa-rack-ready',{bubbles:true}));}
     }
@@ -662,7 +673,8 @@
     function pick(x,y){
       if(!inverseMvp)return null;const rect=canvas.getBoundingClientRect(),nx=(x-rect.left)/rect.width*2-1,ny=1-(y-rect.top)/rect.height*2;
       const points=[-1,1].map(z=>{const p=transform(inverseMvp,[nx,ny,z,1]);return p.slice(0,3).map(v=>v/p[3]);}),origin=points[0],dir=points[1].map((v,i)=>v-origin[i]);let nearest=Infinity,hit=null;
-      for(const p of components){const pull=p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0,min=[p.min[0]+(p.item.x||0),p.min[1]+p.item.y,p.min[2]+pull],max=[p.max[0]+(p.item.x||0),p.max[1]+p.item.y,p.max[2]+pull];let enter=0,exit=1;for(let axis=0;axis<3;axis++){if(Math.abs(dir[axis])<1e-9){if(origin[axis]<min[axis]||origin[axis]>max[axis]){exit=-1;break;}}else{const t1=(min[axis]-origin[axis])/dir[axis],t2=(max[axis]-origin[axis])/dir[axis];enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));}}if(enter<=exit&&enter<nearest){nearest=enter;hit=p.item.name;}}
+      const isolated=components.find(p=>p.item.name===focus&&p.item.external);
+      for(const p of isolated?[isolated]:components){const pull=p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0,min=[p.min[0]+(p.item.x||0),p.min[1]+p.item.y,p.min[2]+pull],max=[p.max[0]+(p.item.x||0),p.max[1]+p.item.y,p.max[2]+pull];let enter=0,exit=1;for(let axis=0;axis<3;axis++){if(Math.abs(dir[axis])<1e-9){if(origin[axis]<min[axis]||origin[axis]>max[axis]){exit=-1;break;}}else{const t1=(min[axis]-origin[axis])/dir[axis],t2=(max[axis]-origin[axis])/dir[axis];enter=Math.max(enter,Math.min(t1,t2));exit=Math.min(exit,Math.max(t1,t2));}}if(enter<=exit&&enter<nearest){nearest=enter;hit=p.item.name;}}
       return hit;
     }
     function select(name){const next=String(name??'');selected=placement.valid.some(p=>p.name===next)?next:'';if(focus){const item=placement.valid.find(p=>p.name===selected);focus=item?.name||'';targetY=item?.y||0;}sync();requestDraw();}
