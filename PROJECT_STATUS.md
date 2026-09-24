@@ -82,6 +82,18 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Functional commit `c5bfd09cf8ac0eeefeb5837cf6781e666712b105` was pushed to main and
   verified against `git ls-remote`. Not deployed.
 
+## Naboo inventory and OpenHands merge (2026-09-24)
+
+- Fast-forwarded `origin/fix/ssh-probe-and-user-name` into main through commit
+  `54ffe9144d660d61cfe5fae53ba106b8d5616a69`, pushed main and verified the remote hash.
+- Naboo production inventory contains 32 L11 servers, 2 switches, 3 power shelves,
+  7 blanking panels and 1 external CDU, plus 1 L10 server in the same project.
+- All placed Naboo components are within 48U with no overlaps. One blanking panel is
+  intentionally/unresolved as unplaced; the external CDU does not consume rack U space.
+- The committed production inventory contains no OS or BMC password values.
+- Python regression 56/56, operations/equipment regressions, equipment browser and desktop
+  acceptance 23/23 passed after the merge. No deployment or live equipment action occurred.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):
