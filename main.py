@@ -2126,7 +2126,7 @@ def machine_detail(name: str, refresh: int = 0):
         want_fresh = bool(refresh) or name not in _os_info_cache
         if want_fresh:
             hostname, rc, err = ssh_run(m["os_ip"], m.get("os_user",""), m.get("os_pass",""), m.get("os_port",22),
-                                        "uname -a && echo ---OSREL--- && cat /etc/os-release 2>/dev/null | head -4 && echo ---UPTIME--- && uptime && echo ---CPU--- && nproc && echo ---MEM--- && free -h | head -2 && echo ---GPU--- && (nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu --format=csv,noheader 2>/dev/null || (command -v rocm-smi >/dev/null 2>&1 && { rocm-smi --showuse 2>/dev/null; rocm-smi --showmemuse vram 2>/dev/null })) | head -20")
+                                        "uname -a && echo ---OSREL--- && cat /etc/os-release 2>/dev/null | head -4 && echo ---UPTIME--- && uptime && echo ---CPU--- && nproc && echo ---MEM--- && free -h | head -2 && echo ---GPU--- && (nvidia-smi --query-gpu=name,memory.total,memory.used,utilization.gpu --format=csv,noheader 2>/dev/null || rocm-smi --showuse 2>/dev/null || rocm-smi --showmemuse vram 2>/dev/null) | head -20")
             if machines.get(name) == m:
                 _os_access_cache[name] = {"source": "SSH", "observed_at": time.time(),
                     "state": "success" if rc == 0 else "authentication_failed" if any(t in (err or "").lower() for t in ("authentication", "permission denied")) else "connection_failed"}
