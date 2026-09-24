@@ -24,7 +24,7 @@
     })();
   </script>
   <link rel="stylesheet" href="/static/css/equipment-workspace.css?v=20260924-tc1288">
-  <link rel="stylesheet" href="/static/css/kvm-solo.css?v=20260924-style1">
+  <link rel="stylesheet" href="/static/css/kvm-solo.css?v=20260924-ux1">
 </head>
 <body>
   <div id="app">
@@ -33,6 +33,7 @@
       <span class="kvm-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg></span>
       <div class="kvm-heading"><span class="kvm-eyebrow">REMOTE CONSOLE</span><h1>KVM <span class="kvm-separator">/</span> <span id="mname">&#x2026;</span></h1></div>
       <div class="kvm-connection" role="status" aria-live="polite"><span class="dot" id="st-dot" aria-hidden="true"></span><span id="st-lbl">&#x9023;&#x7dda;&#x4e2d;&#x2026;</span></div>
+      <div class="kvm-actions"><button id="retry" type="button">&#x91cd;&#x65b0;&#x9023;&#x7dda;</button><button id="stop" type="button">&#x505c;&#x6b62;&#x9023;&#x7dda;</button></div>
     </header>
     <div id="stage">
       <div id="screen"></div>
@@ -41,79 +42,6 @@
     <footer id="kvm-foot"><span><i aria-hidden="true"></i>ENGINEERING WORKSPACE</span><span>&#x9ede;&#x64ca;&#x756b;&#x9762;&#x5f8c;&#x53ef;&#x4f7f;&#x7528;&#x9375;&#x76e4;&#x8207;&#x6ed1;&#x9f20;&#x64cd;&#x4f5c;</span></footer>
   </div>
 
-  <script type="module">
-    import RFB from "/static/vendor/novnc/core/rfb.js";
-
-    const params = new URLSearchParams(location.search);
-    const machine = params.get("m") || "unknown";
-    document.getElementById("mname").textContent = machine;
-    document.title = `KVM / ${machine}`;
-
-    const dot   = document.getElementById("st-dot");
-    const lbl   = document.getElementById("st-lbl");
-    const overlay = document.getElementById("overlay");
-    const screen  = document.getElementById("screen");
-    const stage = document.getElementById("stage");
-
-    // ── noVNC 連線 ─────────────────────────────────────────────
-    const wsUrl = `${location.origin.replace(/^http/, "ws")}/ws/kvm/${encodeURIComponent(machine)}`;
-    const rfb = new RFB(screen, wsUrl, {
-      wsProtocols: [],          // 對齊廣播 KVM：不請求特定 subprotocol，避免後端不回應導致斷線
-      scaleViewport: true,   // 依視窗大小縮放，避免裁切
-      resizeSession: false,
-      clipViewport: false,
-      focusOnLoad: true,
-    });
-
-    function setStatus(ok, text) {
-      dot.className = "dot" + (ok === true ? " on" : ok === false ? " err" : "");
-      lbl.textContent = text;
-    }
-
-    rfb.addEventListener("connect", () => {
-      setStatus(true, "已連線");
-      overlay.style.display = "none";
-    });
-    rfb.addEventListener("disconnect", (e) => {
-      setStatus(false, e.detail.clean ? "已斷線" : "連線中斷，重新連線中…");
-      overlay.style.display = "flex";
-      overlay.textContent = "連線已中斷，嘗試重新連線…";
-      // 自動重連
-      setTimeout(() => { try { rfb.connect(); } catch (_) {} }, 2500);
-    });
-    rfb.addEventListener("credentialsrequired", () => {
-      setStatus(false, "需要驗證（未設定）");
-    });
-    rfb.addEventListener("securityfailure", () => {
-      setStatus(false, "安全驗證失敗");
-    });
-
-    // ── 視窗縮放：視窗大小改變時，讓 RFB 重新貼合 ──────────────
-    function refit() { rfb.scaleViewport = true; }
-    window.addEventListener("resize", refit);
-
-    // ── 拖曳標題列移動視窗 ─────────────────────────────────────
-    const head = document.getElementById("head");
-    let dragging = false, sx = 0, sy = 0;
-    head.addEventListener("mousedown", (e) => {
-      if (e.target.closest(".kvm-btn")) return;   // 按到按鈕不啟動拖曳
-      dragging = true;
-      sx = e.screenX - window.screenX;
-      sy = e.screenY - window.screenY;
-      head.style.cursor = "grabbing";
-      e.preventDefault();
-    });
-    window.addEventListener("mousemove", (e) => {
-      if (!dragging) return;
-      window.moveTo(e.screenX - sx, e.screenY - sy);
-    });
-    window.addEventListener("mouseup", () => {
-      dragging = false;
-      head.style.cursor = "move";
-    });
-
-    // 讓畫布取得鍵盤焦點
-    screen.addEventListener("click", () => rfb.focus && rfb.focus());
-  </script>
+  <script type="module" src="/static/js/kvm-solo.js?v=20260924-ux1"></script>
 </body>
 </html>

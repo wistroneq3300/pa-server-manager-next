@@ -7,16 +7,15 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
   Prefer the current verified checkout if this project moves or runs on another host.
-- Latest verified functional commit: `ab6fc8f7bb6327831c9cb58db1240c246426a4f7` on `main`.
-- That functional commit was pushed and verified using `git ls-remote` on 2026-09-24.
+- Prior verified functional commit: `132a8965a42d60a989918d2c46962171d8a184f1` on main.
+- Current workspace UX / rack-height functional commit: `30508c7fb01fb7c341817c1d3f5c74f3324257e7`.
+- Pushed to main and verified against git ls-remote on 2026-09-24.
+- Prior changes were pushed and verified on 2026-09-24.
+- User authorized the current workspace UX / rack-height implementation and push.
 - No deployment or production service restart was performed. Pushed does not mean live.
-- User authorized the CDU visual changes and push on 2026-09-24. The functional commit
-  above is committed and pushed; `git ls-remote` matched it after publication.
-- This status update is a documentation follow-up to that verified functional commit.
-  Check HEAD and origin/main for the current documentation revision.
 - Instruction/skill consolidation was published as `4e29682`.
 
-## KVM solo presentation (2026-09-24)
+## Earlier KVM solo presentation (2026-09-24; superseded by lifecycle work below)
 
 - Applied to the original Next checkout; user authorized commit/push for this work.
 - Single-device KVM popup now shares equipment workspace surfaces, colors, connection
@@ -30,6 +29,58 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   against the unchanged baseline; unrelated to this KVM presentation change.
 - Publication: included in this user-authorized commit/push; verify HEAD against origin/main.
   No deployment, live backend or hardware connection was performed.
+
+## Workspace UX and rack height (2026-09-24)
+
+- User authorized all UI/UX review improvements, explicit L10 -> L11 height selection,
+  existing L11 height correction, a before/after comparison and commit/push.
+- Implementation and detailed comparison: docs/UI_UX_COMPARISON.md.
+  Baseline findings remain docs/UI_UX_REVIEW.md (historical, before changes).
+- New rack-specification endpoint validates expected level/project/height/position, 1-48U,
+  target project, overlap and bounds; failed persistence rolls back. Ordinary placement
+  still cannot change type/height. Internal CDU stays on U1; external CDU stays 0U.
+- Unified mobile shell, useful dashboard first screen, retained collapsible 3D, consistent
+  type/buttons/icons, grouped Rack actions, compact detail summary, list persistence and
+  browser history, typed telemetry units/timestamps, task target/selection review.
+- Solo KVM uses fresh instances with bounded backoff, timeout, manual retry/stop,
+  immediate scaleViewport setter, authentication failure handling and lifecycle cleanup.
+- Unified confirmation/feedback and explicit command-accepted language; duplicate power
+  submissions blocked; expected_target preserved. Failed DELETE no longer hides the item.
+- Python: 56 isolated regression tests passed. Desktop acceptance: 23/23 groups passed.
+- New workspace browser: height promotion/correction/conflict/stale state, history/search,
+  Escape, selection review, telemetry and 5 routes x 4 widths x 2 themes passed.
+- KVM unit/browser and workspace-operation tests passed. Existing operations/equipment/
+  engineering/theme/equipment-browser/CDU-visual checks passed. Source syntax and diff
+  checks passed; representative desktop/light/mobile screenshots visually reviewed.
+- Current evidence: qa/artifacts/workspace-ux/; selected baseline: qa/artifacts/ui-ux-review/.
+- Delivery: functional commit 30508c7 pushed to main; remote hash verified.
+  This status entry is a documentation follow-up. No deployment or live device operation.
+
+## Rack view navigation follow-up (2026-09-24)
+
+- List and Telemetry now sit directly beside 48U configuration; removed auto left margin.
+- Added Networking Topology entry to shared Rack view controls with a planning dialog.
+- Topology scope, data sources and interactions remain pending user discussion.
+- L10 and L11 server details now share the same right-side system-operation deck. L10 shows
+  an in-place L11 promotion/height action; L11 shows height correction in the same group.
+- Detail rendering takes current level/project/rack fields from the live inventory list, so a
+  completed promotion cannot remain visually mixed with a stale L10 detail snapshot.
+- Verified fixture layout at 1440/390/320px without page overflow, adjacent desktop buttons,
+  planning dialog and Escape. L10/L11 operation-deck browser checks, workspace UX matrix,
+  equipment browser, operations/equipment regressions and clean desktop acceptance 23/23 passed.
+- Functional commit `71117eca4bc8ebcd45dd21be15e887de3d79ac47` was pushed to main and
+  verified against `git ls-remote`. No backend, live device action or deployment.
+
+## L10 promotion visibility follow-up (2026-09-24)
+
+- The product list presentation had moved every non-Terminal row action into the overflow
+  menu, which made the existing L10 promotion control appear to be missing.
+- L10 `升 L11` is visible again beside Terminal while secondary actions remain in the menu.
+- The same promotion flow still selects the L11 project and explicit 1-48U height.
+- Targeted fixture browser check passed: visible row action outside the overflow menu opens
+  the L11 specification dialog. Full workspace UX matrix also passed at 1440/768/390/320px.
+- Functional commit `c5bfd09cf8ac0eeefeb5837cf6781e666712b105` was pushed to main and
+  verified against `git ls-remote`. Not deployed.
 
 ## Completed
 
@@ -68,7 +119,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Pending and deliberately deferred
 
-- No remaining implementation task from the CDU visual request; take the user's next request.
+- No remaining implementation from the current workspace UX / rack-height request.
+  Real device validation and deployment are separate from the completed fixture checks.
 - U7: Rack Reboot, AUX and some topology entry workflows remain deferred.
 - 32 machines x 4 nodes architecture remains undecided; do not implement it yet.
 - Do not add DPU OS/BMC Ping to single-machine detail.

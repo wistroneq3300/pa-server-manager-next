@@ -26,6 +26,7 @@ async function ready(){await page.waitForSelector('.nav-btn');await page.waitFor
 async function go(hash='dashboard',query=''){
   // Hash-only navigation does not reset the in-memory service; each go starts a
   // clean sample so a previous workflow's successful mutations cannot leak.
+  if(page.url().startsWith(BASE))await page.evaluate(()=>sessionStorage.clear());
   const response=await page.goto(BASE+'/'+query+'#/'+hash);
   if(!response)await page.reload();
   await ready();
@@ -96,6 +97,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     const row=page.locator('#project-list-body tr').filter({hasText:'qa-project'});await row.waitFor();assert.match(await row.innerText(),/0（R0\/S0）/);
     await row.locator('button[onclick*="editProjectStart"]').click();await page.locator('#new-project-name').fill('qa-project-renamed');await page.locator('#project-add-btn').click();
     await page.locator('#project-list-body tr').filter({hasText:'qa-project-renamed'}).getByRole('button',{name:'刪除',exact:true}).click();
+    await page.locator('#rm-dialog-foot .primary').click();
     await page.waitForFunction(()=>!document.querySelector('#project-list-body').textContent.includes('qa-project-renamed'));
     await page.locator('#project-modal button[onclick="closeProjectModal()"]').click();
   });
@@ -106,7 +108,7 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     assert.equal(await page.locator('.mach-link').filter({hasText:'demo-system-1'}).count(),1);
     await page.locator('#refresh-btn').click();await page.waitForFunction(()=>!document.querySelector('#refresh-btn').disabled);
     const row=page.locator('[data-pname="fleet_l"] tbody tr').filter({hasText:'demo-system-1'});await row.locator('summary').click();await row.locator('button[onclick*="changeOsIp"]').click();await page.locator('#new-os-ip-input').fill('192.0.2.251');await page.locator('#new-bmc-ip-input').fill('198.51.100.251');await page.locator('#ip-submit-btn').click();await page.locator('#rm-dialog-foot').getByRole('button',{name:'知道了'}).click();await page.waitForFunction(()=>document.querySelector('#proj-sort-list').textContent.includes('192.0.2.251'));
-    await row.locator('summary').click();await row.locator('button[onclick*="deleteMachine"]').click();await page.waitForFunction(()=>!document.querySelector('#proj-sort-list').textContent.includes('demo-system-1'));
+    await row.locator('summary').click();await row.locator('button[onclick*="deleteMachine"]').click();await page.locator('#rm-dialog-foot .primary').click();await page.waitForFunction(()=>!document.querySelector('#proj-sort-list').textContent.includes('demo-system-1'));
   });
   await check('07 Single-system five tabs, hardware and operations',async()=>{
     await detail();assert.equal(await page.locator('[data-pd-tab]').count(),5);
@@ -143,9 +145,9 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await screenshot('rack-workspace-1600');
   });
   await check('12 Rack component move, unmount, remount and add passive',async()=>{
-    await page.locator('.rm-row[data-u="9"] button[title="從機櫃移除"]').click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('43/48'));
+    await page.locator('.rm-row[data-u="9"] button[title="從機櫃移除"]').click();await page.locator('#rm-dialog-foot .primary').click();await page.waitForFunction(()=>document.querySelector('.rm-head-stat')?.textContent.includes('43/48'));
     for(const [from,to]of [[48,9],[9,48]]){
-      await page.locator('.rm-row[data-u="'+from+'"] button[title="換位/類型"]').click();await page.locator('#rm-move-u').selectOption(String(to));await page.locator('#rm-dialog-foot').getByRole('button',{name:'儲存位置'}).click();await page.waitForSelector('.rm-row[data-u="'+to+'"] .rm-name');
+      await page.locator('.rm-row[data-u="'+from+'"] button[title="機櫃位置"]').click();await page.locator('#rm-move-u').selectOption(String(to));await page.locator('#rm-dialog-foot').getByRole('button',{name:'儲存位置'}).click();await page.waitForSelector('.rm-row[data-u="'+to+'"] .rm-name');
       assert.equal((await api('/api/machines')).data.machines.find(m=>m.name==='BLANK-TOP-01').rack_u,to);
     }
     // Unmount only releases the position; its actual device height must survive.
@@ -184,7 +186,8 @@ async function api(url,method='GET',body){return page.evaluate(async({url,method
     await api('/api/machine/host_a/power','POST',{on:true});
     assert.equal((await api('/api/projects/fleet_l','DELETE')).status,409);
     const rename=await api('/api/projects/fleet_l','PATCH',{name:'fleet-renamed'});assert.equal(rename.status,200);assert.equal((await api('/api/machine/host_a/detail')).data.machine.project,'fleet-renamed');await api('/api/projects/fleet-renamed','PATCH',{name:'fleet_l'});
-    assert.equal((await api('/api/machines/BLANK-RESERVE-05U','PATCH',{rack_u:44,rack_size:2})).status,409);
+    assert.equal((await api('/api/machines/BLANK-RESERVE-05U','PATCH',{rack_u:44,rack_size:2})).status,400);
+    assert.equal((await api('/api/machines/BLANK-RESERVE-05U/placement','PATCH',{rack_u:44,expected_project:'proj_k'})).status,409);
     assert.equal((await api('/api/links','POST',{a:'SERVER-04U',b:'SW-01'})).status,501);
     const tel=(await api('/api/machine/host_a/telemetry?minutes=360')).data;assert.equal(tel.gpu.series.length,8);assert.equal(tel.os.os.at(-1).ts-tel.os.os[0].ts,21600);
   });

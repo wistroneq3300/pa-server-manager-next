@@ -799,6 +799,48 @@ def edit_machine(name: str, body: dict):
     return {"ok": True, "machine": _bmc_safe(m)}
 
 
+@app.patch("/api/machines/{name}/rack-specification")
+@_data_transaction
+def set_rack_specification(name: str, body: dict):
+    """Explicit promotion or height correction; ordinary placement stays immutable."""
+    if name not in machines:
+        raise HTTPException(404, "Machine not found")
+    m = copy.deepcopy(machines[name])
+    required = {"rack_size", "project", "expected_level", "expected_project",
+                "expected_size", "expected_u"}
+    if set(body) != required:
+        raise HTTPException(422, "Provide height, project and the current equipment snapshot")
+    for key, stored in (("level", m.get("level", "system")), ("project", m.get("project", "")),
+                        ("size", m.get("rack_size", 1)), ("u", m.get("rack_u", 0))):
+        actual = body["expected_" + key]
+        if actual != stored or type(actual) is not type(stored):
+            raise HTTPException(409, "Equipment changed; reload before updating its height")
+    kind = telemetry_core.kind_of(m, name)
+    if m.get("level") != "rack" and (kind != "server" or m.get("passive")):
+        raise HTTPException(400, "Only L10 servers can be promoted")
+    if m.get("rack_mount", "internal") == "external":
+        raise HTTPException(400, "External CDU uses the installation workflow, not a U height")
+    project = body["project"]
+    if (not isinstance(project, str) or (not project and m.get("level") != "rack")
+            or (project and (project not in projects or projects[project].get("level") == "system"))):
+        raise HTTPException(400, "Select an L11 project")
+    if project and m.get("level") != "rack" and projects[project].get("level") != "rack":
+        members = [item for item in machines.values() if item.get("project") == project]
+        if members and not any(item.get("level") == "rack" for item in members):
+            raise HTTPException(400, "Select an empty or L11 project, not a pure L10 project")
+    if m.get("level") == "rack" and project != (m.get("project") or ""):
+        raise HTTPException(400, "Height correction must stay in the current project")
+    size = _rack_integer(body["rack_size"], "rack_size", 1, 48)
+    top = m.get("rack_u", 0) if m.get("level") == "rack" else 0
+    if kind == "cdu" and top:
+        top = size
+    m.update(level="rack", project=project, rack_size=size, rack_u=top)
+    _validate_rack(m, name)
+    machines[name] = m
+    _save_data()
+    return {"ok": True, "machine": _bmc_safe(m)}
+
+
 @app.patch("/api/machines/{name}/placement")
 @_data_transaction
 def place_machine(name: str, body: dict):

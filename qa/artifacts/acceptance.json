@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-23T18:57:25.127Z",
-  "baseURL": "http://127.0.0.1:8879",
+  "generatedAt": "2026-09-24T06:13:52.894Z",
+  "baseURL": "http://127.0.0.1:18769",
   "browser": "131.0.6778.205",
   "results": [
     {
       "name": "01 Dashboard desktop and fixture identity",
       "status": "passed",
-      "durationMs": 1840,
+      "durationMs": 1845,
       "details": {
-        "machines": 47,
+        "machines": 48,
         "projects": 6,
         "webgl": "ready",
         "scrollTransition": "system → rack → system, same canvas"
@@ -17,131 +17,131 @@
     {
       "name": "02 L10 / L11 separation and OS/BMC columns",
       "status": "passed",
-      "durationMs": 493
+      "durationMs": 608
     },
     {
       "name": "03 System/project search and no-results recovery",
       "status": "passed",
-      "durationMs": 84
+      "durationMs": 76
     },
     {
       "name": "04 Project collapse, expand and drag order",
       "status": "passed",
-      "durationMs": 148
+      "durationMs": 186
     },
     {
       "name": "05 Project create, rename and empty-project delete",
       "status": "passed",
-      "durationMs": 620
+      "durationMs": 957
     },
     {
       "name": "06 Add system, scan, settings and delete",
       "status": "passed",
-      "durationMs": 1919
+      "durationMs": 2235
     },
     {
       "name": "07 Single-system five tabs, hardware and operations",
       "status": "passed",
-      "durationMs": 2083
+      "durationMs": 1941
     },
     {
       "name": "08 Sensors and diagnosis produce reports",
       "status": "passed",
-      "durationMs": 389
+      "durationMs": 390
     },
     {
       "name": "09 All thirteen telemetry canvases and eight GPU series",
       "status": "passed",
-      "durationMs": 314,
+      "durationMs": 346,
       "details": [
         {
           "id": "tel-cpu",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-cputemp",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-load",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 3,
           "points": 25
         },
         {
           "id": "tel-mem",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-memgb",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 2,
           "points": 25
         },
         {
           "id": "tel-swap",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-disk",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-diskused",
           "width": 479,
-          "height": 156,
+          "height": 134,
           "series": 1,
           "points": 25
         },
         {
           "id": "tel-net",
           "width": 973,
-          "height": 156,
+          "height": 134,
           "series": 2,
           "points": 25
         },
         {
           "id": "tel-gpu",
           "width": 479,
-          "height": 150,
+          "height": 130,
           "series": 8,
           "points": 25
         },
         {
           "id": "tel-gpumem",
           "width": 479,
-          "height": 150,
+          "height": 130,
           "series": 8,
           "points": 25
         },
         {
           "id": "tel-gputemp",
           "width": 479,
-          "height": 150,
+          "height": 130,
           "series": 8,
           "points": 25
         },
         {
           "id": "tel-gpupow",
           "width": 479,
-          "height": 150,
+          "height": 130,
           "series": 8,
           "points": 25
         }
@@ -150,7 +150,7 @@
     {
       "name": "10 Test library six categories and 3112 cases",
       "status": "passed",
-      "durationMs": 2292,
+      "durationMs": 2330,
       "details": [
         {
           "sheet": "Functionality",
@@ -181,47 +181,47 @@
     {
       "name": "11 48U rack placement, multi-U and topology",
       "status": "passed",
-      "durationMs": 2314
+      "durationMs": 2175
     },
     {
       "name": "12 Rack component move, unmount, remount and add passive",
       "status": "passed",
-      "durationMs": 3710
+      "durationMs": 4607
     },
     {
       "name": "13 Rack list, telemetry kinds and time range",
       "status": "passed",
-      "durationMs": 934
+      "durationMs": 1227
     },
     {
       "name": "14 Terminal preview modes and close",
       "status": "passed",
-      "durationMs": 1459
+      "durationMs": 1468
     },
     {
       "name": "15 Live KVM shell with isolated RFB stub and Broadcast preview",
       "status": "passed",
-      "durationMs": 2966
+      "durationMs": 2351
     },
     {
       "name": "16 Fixture mutations respect API contracts",
       "status": "passed",
-      "durationMs": 333
+      "durationMs": 336
     },
     {
       "name": "17 Empty, loading and recoverable error states",
       "status": "passed",
-      "durationMs": 4341
+      "durationMs": 4369
     },
     {
       "name": "18 Deep links and reload",
       "status": "passed",
-      "durationMs": 5083
+      "durationMs": 4937
     },
     {
       "name": "19 Desktop 1440 / 1600 / 1920 widths",
       "status": "passed",
-      "durationMs": 12448,
+      "durationMs": 14084,
       "details": [
         {
           "width": 1440,
@@ -300,17 +300,17 @@
     {
       "name": "20 Reduced-motion style and stable tables",
       "status": "passed",
-      "durationMs": 747
+      "durationMs": 698
     },
     {
       "name": "21 WebGL unavailable: static fallback remains usable",
       "status": "passed",
-      "durationMs": 606
+      "durationMs": 558
     },
     {
       "name": "22 Failed WebGL restoration stays in fallback without draw errors",
       "status": "passed",
-      "durationMs": 582
+      "durationMs": 566
     },
     {
       "name": "23 Browser errors and external requests",

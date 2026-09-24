@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "check": "Blue light flows in front and focused views while water is paused",
+      "frontBlueChanges": 8484,
+      "focusBlueChanges": 6258
+    },
+    "Reduced motion stops the moving light; normal preference restores it",
+    "Offscreen and lost WebGL context stop animation; visibility and context restoration resume it",
+    "External CDU renders in dark/light themes and fits 390/320px mobile viewports",
+    "External CDU detail shows the Cooling cabinet with matching caption and installation, preserves 0U, and stops the disposed rack animation",
+    "External to internal to external saved fixture changes immediately refresh drawing, caption, installation information and 0U/U1-U4 placement on the same detail page"
+  ],
+  "errors": [],
+  "external": []
+}

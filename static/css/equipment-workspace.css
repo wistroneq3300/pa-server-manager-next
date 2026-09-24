@@ -61,7 +61,7 @@
 #kvm-grid .kvm-box>div:first-child b{color:var(--ew-text)!important}
 #kvm-grid .oc-reason{color:var(--ew-muted)!important}
 #kvm-banner{background:var(--ew-raised)!important;color:var(--ew-text)!important;border-bottom:1px solid var(--ew-line)}
-.ew-view-switch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0}.ew-view-switch .rack-subtabs{margin-left:auto}
+.ew-view-switch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0}.ew-view-switch .rack-subtabs{display:contents;margin-left:0}.ew-view-switch #ew-rack-add{margin-left:auto}
 .rack-hero{flex-wrap:wrap!important;gap:12px!important;align-items:center!important;padding:24px!important}.rack-hero-left{flex:1 1 55%;min-width:260px}.rack-hero-title{font-size:26px!important}.rack-hero-sub,.rack-hero-desc{max-width:650px;line-height:1.65!important}.rack-hero>.spacer{display:none}.rack-hero .rack-sel{flex:0 1 330px;display:flex;align-items:center;gap:12px;white-space:nowrap}.rack-hero .rack-sel select{min-width:180px}.rack-hero>.btn{flex:0 0 auto}.rack-hero>.rack-sel+.btn{margin-left:0}.rack-status-legend{flex-wrap:wrap;line-height:1.8}
 .ew-rack-deck{display:grid;grid-template-columns:minmax(0,1fr) 330px;overflow:hidden;border:1px solid var(--ew-line);border-radius:18px;background:var(--ew-surface)}
 .ew-rack-stage{position:relative;min-width:0;background:radial-gradient(ellipse at 50% 44%,#00739318,transparent 64%)}

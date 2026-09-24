@@ -119,7 +119,8 @@
   };
 
   document.addEventListener('keydown', event => {
-    if (!currentDialog || !visible(currentDialog)) return;
+    if (!currentDialog || !visible(currentDialog)) currentDialog=[...document.querySelectorAll('.modal-backdrop')].filter(visible).at(-1);
+    if (!currentDialog) return;
     const modal = currentDialog.querySelector('.modal');
     if (!modal) return;
     if (event.key === 'Tab') {
