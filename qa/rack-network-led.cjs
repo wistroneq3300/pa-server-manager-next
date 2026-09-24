@@ -77,6 +77,13 @@ function changingStatusPixels(before,after){
   const powered=scene.placements.filter(p=>p.type!=='blanking');
   assert.equal(scene.pingIndicators.length,powered.length);
   assert.ok(scene.pingIndicators.every(p=>p.side==='right'&&p.position[0]>0));
+  const switchIndicators=scene.pingIndicators.filter(p=>p.type==='switch');
+  assert.ok(switchIndicators.length>0&&switchIndicators.every(p=>p.local[0]-((p.radius||.031)+.018)>1.6485),'Switch Ping LEDs must sit on the right service strip without covering the QSFP port matrix');
+  assert.ok(switchIndicators.every(p=>p.local[1]>.06&&p.local[2]>3.31),'Switch Ping LEDs must use the raised upper service pod, clear of the cable endpoint');
+  const shelfIndicators=scene.pingIndicators.filter(p=>p.type==='powershelf');
+  assert.equal(shelfIndicators.length,3,'Every installed Power Shelf needs its own Ping LED');
+  assert.ok(shelfIndicators.every(p=>p.local[2]>3.30&&p.radius>=.05),'Power Shelf LEDs must use a visible raised pod on the right equipment face');
+  assert.ok(shelfIndicators.every(p=>p.local[0]-p.outerRadius>1.817&&p.local[0]+p.outerRadius<1.955),'The complete Power Shelf LED bezel must fit between the last fan cartridge and chassis edge');
   assert.ok(scene.pingIndicators.every(p=>p.state==='unknown'&&p.color==='gray'&&!p.animated),'Inventory os_alive/power alone must not fabricate a Rack Ping result');
   assert.ok(scene.pingIndicators.some(p=>p.name==='CDU-1-main'),'External CDU needs a status LED');
   assert.ok(!scene.pingIndicators.some(p=>/blank/i.test(p.name)),'Passive blank panels must never receive LEDs');

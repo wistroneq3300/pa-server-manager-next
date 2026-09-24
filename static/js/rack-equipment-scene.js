@@ -125,9 +125,12 @@
     const h=Math.max(.12,Number(item.height)||U-.026),inside=(y,margin=.062)=>clamp(y,-h/2+margin,h/2-margin);
     const face={
       server:[1.68,inside(h/2-.078)],
-      switch:[1.56,inside(-h*.20)],
+      // The two QSFP rows end at x=1.6485. Keep the complete Ping lamp
+      // (outer radius .052) on the narrow service strip to their right,
+      // clear of both the sockets and the rack ear/handle.
+      switch:[1.75,inside(h/2-.060)],
       nvlink:[1.61,inside(h/2-.080)],
-      powershelf:[1.72,inside(h/2-.096)],
+      powershelf:[1.886,inside(h/2-.090)],
       pdu:[1.48,inside(-h*.18)],
       cdu:[1.55,inside(h/2-.102,.070)],
       storage:[1.69,inside(-h/2+.082)],
@@ -135,16 +138,24 @@
     }[item.mgx_type]||[1.65,inside(0)];
     // The external CDU lamp sits on the upper-right door skin, clear of its
     // blue decorative rails, screen and emergency stop.
-    const local=item.external?[2.10,4.05,3.265]:[face[0],face[1],FRONT+.205];
-    return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
+    // The Power Shelf fan cartridges reach farther forward than the other
+    // rackmount faces. Give its status lamp a dedicated raised service pod so
+    // the lamp cannot disappear behind the final fan cartridge or its grille.
+    const raisedZ=item.mgx_type==='powershelf'?FRONT+.290:item.mgx_type==='switch'?FRONT+.285:FRONT+.205;
+    const local=item.external?[2.10,4.05,3.265]:[face[0],face[1],raisedZ];
+    const radius=item.mgx_type==='powershelf'?.052:item.mgx_type==='switch'?.034:.031;
+    const outerRadius=item.mgx_type==='powershelf'?.068:item.mgx_type==='switch'?.052:.049;
+    return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,radius,outerRadius,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
   }
   function addPingIndicator(mesh,item){
     const indicator=pingIndicator(item);if(!indicator)return;
-    const [x,y,z]=indicator.local,color=indicator.color==='green'?[.11,.98,.27]:indicator.color==='red'?[1,.055,.035]:C.unknown;
-    mesh.disc(x,y,z-.012,.049,C.black,.25,16);mesh.ring(x,y,z-.006,.037,.008,C.edge,16);
+    const [x,y,z]=indicator.local,r=indicator.radius,outer=indicator.outerRadius,color=indicator.color==='green'?[.11,.98,.27]:indicator.color==='red'?[1,.055,.035]:C.unknown;
+    if(item.mgx_type==='powershelf')mesh.bevel(x,y,z-.038,.132,.15,.070,C.dark,.018,.35);
+    if(item.mgx_type==='switch')mesh.bevel(x,y,z-.038,.13,.11,.060,C.dark,.015,.35);
+    mesh.disc(x,y,z-.012,outer,C.black,.25,16);mesh.ring(x,y,z-.006,r+.005,.008,C.edge,16);
     // Material -5 is reserved for measured Ping status; decorative CDU rails
     // and coolant animation keep their existing, separate material channels.
-    mesh.disc(x,y,z,.031,color,indicator.state==='unknown'?.15:-5,16);
+    mesh.disc(x,y,z,r,color,indicator.state==='unknown'?.15:-5,16);
   }
   function vent(m,x,y,z,w,h,rows=2,cols=10){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)m.box(x-w/2+w*(c+.5)/cols,y-h/2+h*(r+.5)/rows,z,w/cols*.58,h/rows*.28,.013,C.black,.1);}
   function qsfp(m,x,y,z,w=.18,h=.079,front=1,frameColor=C.edge){m.box(x,y,z,w,h,.030,frameColor);m.box(x,y,z+front*.02,w-.025,h-.018,.020,C.black,.05);m.box(x,y-h*.41,z+front*.037,w*.67,.009,.008,frameColor===C.edge?C.steel:frameColor);}
