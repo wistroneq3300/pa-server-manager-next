@@ -78,11 +78,17 @@ function changingStatusPixels(before,after){
   assert.equal(scene.pingIndicators.length,powered.length);
   assert.ok(scene.pingIndicators.every(p=>p.side==='right'&&p.position[0]>0));
   const switchIndicators=scene.pingIndicators.filter(p=>p.type==='switch');
-  assert.ok(switchIndicators.length>0&&switchIndicators.every(p=>p.local[0]-((p.radius||.031)+.018)>1.6485),'Switch Ping LEDs must sit on the right service strip without covering the QSFP port matrix');
-  assert.ok(switchIndicators.every(p=>p.local[1]>.06&&p.local[2]>3.31),'Switch Ping LEDs must use the raised upper service pod, clear of the cable endpoint');
+  assert.ok(switchIndicators.length>0&&switchIndicators.every(p=>p.local[0]-p.outerRadius>1.6485),'Switch Ping LEDs must sit on the right service strip without covering the QSFP port matrix');
+  assert.ok(switchIndicators.every(p=>p.local[0]===1.75&&p.local[1]>.06),'Switch Ping LEDs preserve the approved upper-right position, clear of the cable endpoint');
   const shelfIndicators=scene.pingIndicators.filter(p=>p.type==='powershelf');
   assert.equal(shelfIndicators.length,3,'Every installed Power Shelf needs its own Ping LED');
-  assert.ok(shelfIndicators.every(p=>p.local[2]>3.30&&p.radius>=.05),'Power Shelf LEDs must use a visible raised pod on the right equipment face');
+  assert.ok(shelfIndicators.every(p=>p.local[0]===1.886&&p.radius>=.035),'Power Shelf LEDs retain their approved right-side location and a readable optical aperture');
+  assert.ok(scene.pingIndicators.every(p=>Number.isFinite(p.surfaceZ)&&p.local[2]>p.surfaceZ&&p.local[2]-p.surfaceZ<=.01),'Every lens must sit within .01 of its own equipment skin instead of floating on a raised pod');
+  for(const indicator of [...switchIndicators,...shelfIndicators]){
+   const placed=scene.placements.find(p=>p.name===indicator.name),h=placed.size*.30-.026;
+   const expectedY=Math.max(-h/2+.062,Math.min(h/2-.062,h/2-(indicator.type==='switch'?.060:.090)));
+   assert.ok(Math.abs(indicator.local[1]-expectedY)<1e-10,`${indicator.name}: approved vertical LED position stays unchanged`);
+  }
   assert.ok(shelfIndicators.every(p=>p.local[0]-p.outerRadius>1.817&&p.local[0]+p.outerRadius<1.955),'The complete Power Shelf LED bezel must fit between the last fan cartridge and chassis edge');
   assert.ok(scene.pingIndicators.every(p=>p.state==='unknown'&&p.color==='gray'&&!p.animated),'Inventory os_alive/power alone must not fabricate a Rack Ping result');
   assert.ok(scene.pingIndicators.some(p=>p.name==='CDU-1-main'),'External CDU needs a status LED');
@@ -147,6 +153,28 @@ function changingStatusPixels(before,after){
    await page.setViewportSize({width:1600,height:1100});
   }
   checks.push('3D cables and LEDs fit desktop/front/rear/perspective and 390/320px light/dark layouts');
+
+
+  // Freeze the pulse for repeatable close-ups, keeping the saved routes visible.
+  // setView resets the previous focus before selecting each device, and a final
+  // reset prevents focused camera state from leaking into lifecycle checks.
+  await page.emulateMedia({reducedMotion:'reduce'});
+  const finishes=[['Switch-2201-1','switch-green'],['Switch-2201-2','switch-red'],['power-shelf-1','power-shelf-green'],['power-shelf-2','power-shelf-red'],['power-shelf-3','power-shelf-gray'],['naboo-01','server-green']];
+  for(const theme of ['light','dark']){
+   await page.evaluate(t=>applyTheme(t),theme);
+   for(const [name,label] of finishes)for(const view of theme==='light'?['front','perspective']:['front']){
+    await page.evaluate(v=>equipmentRackCamera(v),view);
+    await page.locator('#ew-rack-component').selectOption(name);
+    await page.evaluate(()=>equipmentRackFocus());await settle();
+    const focused=await state();assert.equal(focused.focus,name);
+    assert.equal(focused.networkCabling.visible,true,'Focused finish review must include the saved cable geometry');
+    await canvas.screenshot({path:path.join(out,`finish-${theme}-${label}-${view}.png`)});
+   }
+  }
+  await page.evaluate(()=>equipmentRackCamera('front'));await page.locator('#ew-rack-component').selectOption('naboo-01');
+  await page.emulateMedia({reducedMotion:'no-preference'});await settle();
+  assert.equal((await state()).focus,'','Finish close-ups must not leave the next lifecycle checks focused');
+  checks.push('Integrated lens finish close-ups cover Switch green/red, Power Shelf green/red/gray and Server in light/dark; shallow contact geometry retains approved centers and clears ports/fans');
 
   // A saved topology notification should update this exact scene without reopening it.
   const changed=structuredClone(saved);changed.racks[0].links.pop();

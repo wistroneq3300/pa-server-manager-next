@@ -78,9 +78,31 @@
     function disc(x,y,z,r,color,metal=.5,segments=18){
       for(let i=0;i<segments;i++){vertex([x,y,z],[0,0,1],color,metal);for(const a of [i/segments*TAU,(i+1)/segments*TAU])vertex([x+Math.cos(a)*r,y+Math.sin(a)*r,z],[0,0,1],color,metal);}
     }
+    // Shallow turned bezel and optical lens. The sleeve starts at the actual
+    // device skin; radial normals and graduated glass replace a flat neon disc.
+    function statusLens(x,y,z,r,outer,color,trim,active){
+      const segments=32;
+      const band=(ra,za,rb,zb,tint,metal,profileA=0,profileB=0,na=0,nb=0)=>{
+        const point=(radius,depth,a)=>[x+radius*Math.cos(a),y+radius*Math.sin(a),z+depth];
+        const normal=(tilt,a)=>[Math.cos(a)*tilt,Math.sin(a)*tilt,Math.sqrt(1-tilt*tilt)];
+        for(let i=0;i<segments;i++){
+          const a=i/segments*TAU,b=(i+1)/segments*TAU;
+          const corners=[[ra,za,a,profileA,na],[ra,za,b,profileA,na],[rb,zb,b,profileB,nb],[rb,zb,a,profileB,nb]];
+          for(const k of [0,1,2,0,2,3]){const [radius,depth,angle,profile,tilt]=corners[k];vertex(point(radius,depth,angle),normal(tilt,angle),tint,metal,profile);}
+        }
+      };
+      disc(x,y,z+.001,outer,C.black,.12,segments);
+      band(outer,.001,outer-.004,.005,trim,.65,0,0,.45,.20);
+      band(outer-.004,.005,r+.004,.005,trim,.55);
+      band(r+.004,.005,r,.002,C.socket,.28,0,0,-.25,-.30);
+      const material=active?-5:.35;
+      band(r,.002,r*.72,.005,color,material,.30,.76,.42,.28);
+      band(r*.72,.005,r*.34,.007,color,material,.76,1.0,.28,.13);
+      band(r*.34,.007,0,.0075,color,material,1.0,1.0,.13,0);
+    }
     function face(x,y,z,w,h,color,metal=.2,front=1,emission=0){quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],[0,0,front],color,metal,emission);}
     function polygon(points,z,color,metal=.2){for(let i=1;i<points.length-1;i++)for(const p of [points[0],points[i],points[i+1]])vertex([p[0],p[1],z],[0,0,1],color,metal);}
-    return {data,box,bevel,tube,ring,disc,face,polygon};
+    return {data,box,bevel,tube,ring,disc,statusLens,face,polygon};
   }
   function createFrame(){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube;
@@ -126,7 +148,7 @@
     const face={
       server:[1.68,inside(h/2-.078)],
       // The two QSFP rows end at x=1.6485. Keep the complete Ping lamp
-      // (outer radius .052) on the narrow service strip to their right,
+      // on the narrow service strip to their right,
       // clear of both the sockets and the rack ear/handle.
       switch:[1.75,inside(h/2-.060)],
       nvlink:[1.61,inside(h/2-.080)],
@@ -138,24 +160,20 @@
     }[item.mgx_type]||[1.65,inside(0)];
     // The external CDU lamp sits on the upper-right door skin, clear of its
     // blue decorative rails, screen and emergency stop.
-    // The Power Shelf fan cartridges reach farther forward than the other
-    // rackmount faces. Give its status lamp a dedicated raised service pod so
-    // the lamp cannot disappear behind the final fan cartridge or its grille.
-    const raisedZ=item.mgx_type==='powershelf'?FRONT+.290:item.mgx_type==='switch'?FRONT+.285:FRONT+.205;
-    const local=item.external?[2.10,4.05,3.265]:[face[0],face[1],raisedZ];
-    const radius=item.mgx_type==='powershelf'?.052:item.mgx_type==='switch'?.034:.031;
-    const outerRadius=item.mgx_type==='powershelf'?.068:item.mgx_type==='switch'?.052:.049;
-    return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,radius,outerRadius,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
+    // Follow each skin's real depth. In particular, the service strip beside
+    // Power Shelf fans is behind the cartridges, not on their projecting grips.
+    const skinOffset={server:.0855,switch:.078,nvlink:.082,powershelf:.083,pdu:.1325,cdu:.0805,storage:.1345,network:.108}[item.mgx_type]??.083;
+    const surfaceZ=item.external?3.2485:FRONT+skinOffset;
+    const local=item.external?[2.10,4.05,surfaceZ+.0075]:[face[0],face[1],surfaceZ+.0075];
+    const radius=item.mgx_type==='powershelf'?.038:item.mgx_type==='switch'?.030:.028;
+    const outerRadius=radius+.010;
+    return {name:item.name,type:item.mgx_type,state,color:state==='up'?'green':state==='unknown'?'gray':'red',side:'right',local,radius,outerRadius,surfaceZ,position:[local[0]+(item.x||0),local[1]+item.y,local[2]]};
   }
   function addPingIndicator(mesh,item){
     const indicator=pingIndicator(item);if(!indicator)return;
-    const [x,y,z]=indicator.local,r=indicator.radius,outer=indicator.outerRadius,color=indicator.color==='green'?[.11,.98,.27]:indicator.color==='red'?[1,.055,.035]:C.unknown;
-    if(item.mgx_type==='powershelf')mesh.bevel(x,y,z-.038,.132,.15,.070,C.dark,.018,.35);
-    if(item.mgx_type==='switch')mesh.bevel(x,y,z-.038,.13,.11,.060,C.dark,.015,.35);
-    mesh.disc(x,y,z-.012,outer,C.black,.25,16);mesh.ring(x,y,z-.006,r+.005,.008,C.edge,16);
-    // Material -5 is reserved for measured Ping status; decorative CDU rails
-    // and coolant animation keep their existing, separate material channels.
-    mesh.disc(x,y,z,r,color,indicator.state==='unknown'?.15:-5,16);
+    const [x,y]=indicator.local,color=indicator.color==='green'?[.12,.86,.32]:indicator.color==='red'?[.94,.07,.04]:[.13,.18,.20];
+    const trim=['server','nvlink'].includes(item.mgx_type)?[.38,.35,.29]:[.25,.285,.31];
+    mesh.statusLens(x,y,indicator.surfaceZ,indicator.radius,indicator.outerRadius,color,trim,indicator.state!=='unknown');
   }
   function vent(m,x,y,z,w,h,rows=2,cols=10){for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)m.box(x-w/2+w*(c+.5)/cols,y-h/2+h*(r+.5)/rows,z,w/cols*.58,h/rows*.28,.013,C.black,.1);}
   function qsfp(m,x,y,z,w=.18,h=.079,front=1,frameColor=C.edge){m.box(x,y,z,w,h,.030,frameColor);m.box(x,y,z+front*.02,w-.025,h-.018,.020,C.black,.05);m.box(x,y-h*.41,z+front*.037,w*.67,.009,.008,frameColor===C.edge?C.steel:frameColor);}
@@ -566,7 +584,11 @@
         // Green/red mean Rack Ping reachability, never measured power state.
         // A zero clock (reduced motion or hidden view) leaves a steady lamp.
         float pulse=pow(.5+.5*cos(uPingTime*6.2831853),2.0);
-        c=vColor*(.20+pulse*1.48);
+        float lens=clamp(vMaterial.y,0.0,1.0);
+        c=vColor*(.20+pulse*.96)*(.36+lens*.64);
+        // A small glass highlight remains optical rather than a second status
+        // color; it follows the existing light direction as the rack rotates.
+        c+=vec3(.48,.55,.59)*spec*.14;
       }else if(vMaterial.x<-2.5){
         // Decorative light travels up the physical rail, with a long soft tail
         // and a compact bright head. It is unrelated to the coolant shader.
