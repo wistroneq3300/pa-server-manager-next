@@ -177,6 +177,24 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   responsive screenshots and zero page errors; changed JavaScript syntax passed.
 - User authorized commit/push to main. No deployment or real network probe was performed.
 
+## Naboo confirmed topology configuration (2026-09-24)
+
+- The tracked Naboo production-data snapshot now contains 32 rack servers and two switches
+  as topology devices. Every server has four editable nodes, one BF4 label per node and two
+  shared management RJ45 ports mapped across all four nodes.
+- Switch-2201-1 ports 1-32 connect to each server Host-management RJ45; Switch-2201-2 ports
+  1-32 connect to each DPU-management RJ45. Switch port 48 connects the two switches.
+  All 65 cables are recorded as confirmed: 32 Host, 32 DPU and one switch interconnect.
+- `scripts/configure_naboo_topology.py` safely regenerates the same topology from inventory,
+  validates the result, increments its revision, preserves node IP fields by inventory name
+  and node position, writes atomically and creates a timestamped backup by default.
+- Validation: production snapshot reports 34 devices, 128 nodes and 65/65 confirmed links;
+  67 isolated Python regressions passed, including exact counts, mappings, IP preservation
+  and refusal when the inventory is not exactly 32 rack servers and two rack switches.
+- The local production-data snapshot is configured. Applying it to `/srv/pa-manager-prod/data`
+  still requires running the configuration tool on the deployed host; no service restart,
+  live API mutation or device command was performed from this workstation.
+
 ## Power Shelf appearance alignment (2026-09-24)
 
 - User requested the single-device Power Shelf drawing match the Rack 3D design.

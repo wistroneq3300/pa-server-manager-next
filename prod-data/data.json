@@ -1141,7 +1141,3700 @@
     "Naboo": {
       "name": "Naboo",
       "desc": "",
-      "order": 6
+      "order": 6,
+      "topology": {
+        "racks": [
+          {
+            "id": "naboo-rack",
+            "name": "Naboo Rack",
+            "devices": [
+              {
+                "id": "naboo-switch-1",
+                "name": "Switch-2201-1",
+                "kind": "switch",
+                "inventory": "Switch-2201-1",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "sw1-p1",
+                    "name": "1",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p2",
+                    "name": "2",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p3",
+                    "name": "3",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p4",
+                    "name": "4",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p5",
+                    "name": "5",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p6",
+                    "name": "6",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p7",
+                    "name": "7",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p8",
+                    "name": "8",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p9",
+                    "name": "9",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p10",
+                    "name": "10",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p11",
+                    "name": "11",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p12",
+                    "name": "12",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p13",
+                    "name": "13",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p14",
+                    "name": "14",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p15",
+                    "name": "15",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p16",
+                    "name": "16",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p17",
+                    "name": "17",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p18",
+                    "name": "18",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p19",
+                    "name": "19",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p20",
+                    "name": "20",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p21",
+                    "name": "21",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p22",
+                    "name": "22",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p23",
+                    "name": "23",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p24",
+                    "name": "24",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p25",
+                    "name": "25",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p26",
+                    "name": "26",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p27",
+                    "name": "27",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p28",
+                    "name": "28",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p29",
+                    "name": "29",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p30",
+                    "name": "30",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p31",
+                    "name": "31",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p32",
+                    "name": "32",
+                    "role": "host",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p33",
+                    "name": "33",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p34",
+                    "name": "34",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p35",
+                    "name": "35",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p36",
+                    "name": "36",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p37",
+                    "name": "37",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p38",
+                    "name": "38",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p39",
+                    "name": "39",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p40",
+                    "name": "40",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p41",
+                    "name": "41",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p42",
+                    "name": "42",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p43",
+                    "name": "43",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p44",
+                    "name": "44",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p45",
+                    "name": "45",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p46",
+                    "name": "46",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p47",
+                    "name": "47",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw1-p48",
+                    "name": "48",
+                    "role": "uplink",
+                    "nodes": []
+                  }
+                ]
+              },
+              {
+                "id": "naboo-switch-2",
+                "name": "Switch-2201-2",
+                "kind": "switch",
+                "inventory": "Switch-2201-2",
+                "nodes": [],
+                "ports": [
+                  {
+                    "id": "sw2-p1",
+                    "name": "1",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p2",
+                    "name": "2",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p3",
+                    "name": "3",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p4",
+                    "name": "4",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p5",
+                    "name": "5",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p6",
+                    "name": "6",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p7",
+                    "name": "7",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p8",
+                    "name": "8",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p9",
+                    "name": "9",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p10",
+                    "name": "10",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p11",
+                    "name": "11",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p12",
+                    "name": "12",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p13",
+                    "name": "13",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p14",
+                    "name": "14",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p15",
+                    "name": "15",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p16",
+                    "name": "16",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p17",
+                    "name": "17",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p18",
+                    "name": "18",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p19",
+                    "name": "19",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p20",
+                    "name": "20",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p21",
+                    "name": "21",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p22",
+                    "name": "22",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p23",
+                    "name": "23",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p24",
+                    "name": "24",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p25",
+                    "name": "25",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p26",
+                    "name": "26",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p27",
+                    "name": "27",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p28",
+                    "name": "28",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p29",
+                    "name": "29",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p30",
+                    "name": "30",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p31",
+                    "name": "31",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p32",
+                    "name": "32",
+                    "role": "dpu",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p33",
+                    "name": "33",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p34",
+                    "name": "34",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p35",
+                    "name": "35",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p36",
+                    "name": "36",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p37",
+                    "name": "37",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p38",
+                    "name": "38",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p39",
+                    "name": "39",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p40",
+                    "name": "40",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p41",
+                    "name": "41",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p42",
+                    "name": "42",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p43",
+                    "name": "43",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p44",
+                    "name": "44",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p45",
+                    "name": "45",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p46",
+                    "name": "46",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p47",
+                    "name": "47",
+                    "role": "other",
+                    "nodes": []
+                  },
+                  {
+                    "id": "sw2-p48",
+                    "name": "48",
+                    "role": "uplink",
+                    "nodes": []
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-01",
+                "name": "naboo-01",
+                "kind": "server",
+                "inventory": "naboo-01",
+                "nodes": [
+                  {
+                    "id": "naboo-01-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-01-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-01-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-01-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-01-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-01-node-1",
+                      "naboo-01-node-2",
+                      "naboo-01-node-3",
+                      "naboo-01-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-01-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-01-node-1",
+                      "naboo-01-node-2",
+                      "naboo-01-node-3",
+                      "naboo-01-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-02",
+                "name": "naboo-02",
+                "kind": "server",
+                "inventory": "naboo-02",
+                "nodes": [
+                  {
+                    "id": "naboo-02-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-02-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-02-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-02-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-02-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-02-node-1",
+                      "naboo-02-node-2",
+                      "naboo-02-node-3",
+                      "naboo-02-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-02-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-02-node-1",
+                      "naboo-02-node-2",
+                      "naboo-02-node-3",
+                      "naboo-02-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-03",
+                "name": "naboo-03",
+                "kind": "server",
+                "inventory": "naboo-03",
+                "nodes": [
+                  {
+                    "id": "naboo-03-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-03-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-03-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-03-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-03-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-03-node-1",
+                      "naboo-03-node-2",
+                      "naboo-03-node-3",
+                      "naboo-03-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-03-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-03-node-1",
+                      "naboo-03-node-2",
+                      "naboo-03-node-3",
+                      "naboo-03-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-04",
+                "name": "naboo-04",
+                "kind": "server",
+                "inventory": "naboo-04",
+                "nodes": [
+                  {
+                    "id": "naboo-04-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-04-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-04-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-04-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-04-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-04-node-1",
+                      "naboo-04-node-2",
+                      "naboo-04-node-3",
+                      "naboo-04-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-04-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-04-node-1",
+                      "naboo-04-node-2",
+                      "naboo-04-node-3",
+                      "naboo-04-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-05",
+                "name": "naboo-05",
+                "kind": "server",
+                "inventory": "naboo-05",
+                "nodes": [
+                  {
+                    "id": "naboo-05-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-05-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-05-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-05-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-05-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-05-node-1",
+                      "naboo-05-node-2",
+                      "naboo-05-node-3",
+                      "naboo-05-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-05-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-05-node-1",
+                      "naboo-05-node-2",
+                      "naboo-05-node-3",
+                      "naboo-05-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-06",
+                "name": "naboo-06",
+                "kind": "server",
+                "inventory": "naboo-06",
+                "nodes": [
+                  {
+                    "id": "naboo-06-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-06-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-06-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-06-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-06-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-06-node-1",
+                      "naboo-06-node-2",
+                      "naboo-06-node-3",
+                      "naboo-06-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-06-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-06-node-1",
+                      "naboo-06-node-2",
+                      "naboo-06-node-3",
+                      "naboo-06-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-07",
+                "name": "naboo-07",
+                "kind": "server",
+                "inventory": "naboo-07",
+                "nodes": [
+                  {
+                    "id": "naboo-07-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-07-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-07-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-07-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-07-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-07-node-1",
+                      "naboo-07-node-2",
+                      "naboo-07-node-3",
+                      "naboo-07-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-07-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-07-node-1",
+                      "naboo-07-node-2",
+                      "naboo-07-node-3",
+                      "naboo-07-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-08",
+                "name": "naboo-08",
+                "kind": "server",
+                "inventory": "naboo-08",
+                "nodes": [
+                  {
+                    "id": "naboo-08-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-08-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-08-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-08-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-08-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-08-node-1",
+                      "naboo-08-node-2",
+                      "naboo-08-node-3",
+                      "naboo-08-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-08-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-08-node-1",
+                      "naboo-08-node-2",
+                      "naboo-08-node-3",
+                      "naboo-08-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-09",
+                "name": "naboo-09",
+                "kind": "server",
+                "inventory": "naboo-09",
+                "nodes": [
+                  {
+                    "id": "naboo-09-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-09-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-09-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-09-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-09-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-09-node-1",
+                      "naboo-09-node-2",
+                      "naboo-09-node-3",
+                      "naboo-09-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-09-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-09-node-1",
+                      "naboo-09-node-2",
+                      "naboo-09-node-3",
+                      "naboo-09-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-10",
+                "name": "naboo-10",
+                "kind": "server",
+                "inventory": "naboo-10",
+                "nodes": [
+                  {
+                    "id": "naboo-10-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-10-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-10-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-10-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-10-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-10-node-1",
+                      "naboo-10-node-2",
+                      "naboo-10-node-3",
+                      "naboo-10-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-10-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-10-node-1",
+                      "naboo-10-node-2",
+                      "naboo-10-node-3",
+                      "naboo-10-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-11",
+                "name": "naboo-11",
+                "kind": "server",
+                "inventory": "naboo-11",
+                "nodes": [
+                  {
+                    "id": "naboo-11-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-11-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-11-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-11-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-11-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-11-node-1",
+                      "naboo-11-node-2",
+                      "naboo-11-node-3",
+                      "naboo-11-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-11-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-11-node-1",
+                      "naboo-11-node-2",
+                      "naboo-11-node-3",
+                      "naboo-11-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-12",
+                "name": "naboo-12",
+                "kind": "server",
+                "inventory": "naboo-12",
+                "nodes": [
+                  {
+                    "id": "naboo-12-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-12-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-12-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-12-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-12-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-12-node-1",
+                      "naboo-12-node-2",
+                      "naboo-12-node-3",
+                      "naboo-12-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-12-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-12-node-1",
+                      "naboo-12-node-2",
+                      "naboo-12-node-3",
+                      "naboo-12-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-13",
+                "name": "naboo-13",
+                "kind": "server",
+                "inventory": "naboo-13",
+                "nodes": [
+                  {
+                    "id": "naboo-13-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-13-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-13-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-13-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-13-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-13-node-1",
+                      "naboo-13-node-2",
+                      "naboo-13-node-3",
+                      "naboo-13-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-13-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-13-node-1",
+                      "naboo-13-node-2",
+                      "naboo-13-node-3",
+                      "naboo-13-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-14",
+                "name": "naboo-14",
+                "kind": "server",
+                "inventory": "naboo-14",
+                "nodes": [
+                  {
+                    "id": "naboo-14-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-14-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-14-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-14-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-14-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-14-node-1",
+                      "naboo-14-node-2",
+                      "naboo-14-node-3",
+                      "naboo-14-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-14-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-14-node-1",
+                      "naboo-14-node-2",
+                      "naboo-14-node-3",
+                      "naboo-14-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-15",
+                "name": "naboo-15",
+                "kind": "server",
+                "inventory": "naboo-15",
+                "nodes": [
+                  {
+                    "id": "naboo-15-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-15-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-15-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-15-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-15-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-15-node-1",
+                      "naboo-15-node-2",
+                      "naboo-15-node-3",
+                      "naboo-15-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-15-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-15-node-1",
+                      "naboo-15-node-2",
+                      "naboo-15-node-3",
+                      "naboo-15-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-16",
+                "name": "naboo-16",
+                "kind": "server",
+                "inventory": "naboo-16",
+                "nodes": [
+                  {
+                    "id": "naboo-16-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-16-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-16-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-16-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-16-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-16-node-1",
+                      "naboo-16-node-2",
+                      "naboo-16-node-3",
+                      "naboo-16-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-16-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-16-node-1",
+                      "naboo-16-node-2",
+                      "naboo-16-node-3",
+                      "naboo-16-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-17",
+                "name": "naboo-17",
+                "kind": "server",
+                "inventory": "naboo-17",
+                "nodes": [
+                  {
+                    "id": "naboo-17-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-17-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-17-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-17-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-17-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-17-node-1",
+                      "naboo-17-node-2",
+                      "naboo-17-node-3",
+                      "naboo-17-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-17-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-17-node-1",
+                      "naboo-17-node-2",
+                      "naboo-17-node-3",
+                      "naboo-17-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-18",
+                "name": "naboo-18",
+                "kind": "server",
+                "inventory": "naboo-18",
+                "nodes": [
+                  {
+                    "id": "naboo-18-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-18-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-18-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-18-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-18-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-18-node-1",
+                      "naboo-18-node-2",
+                      "naboo-18-node-3",
+                      "naboo-18-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-18-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-18-node-1",
+                      "naboo-18-node-2",
+                      "naboo-18-node-3",
+                      "naboo-18-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-19",
+                "name": "naboo-19",
+                "kind": "server",
+                "inventory": "naboo-19",
+                "nodes": [
+                  {
+                    "id": "naboo-19-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-19-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-19-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-19-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-19-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-19-node-1",
+                      "naboo-19-node-2",
+                      "naboo-19-node-3",
+                      "naboo-19-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-19-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-19-node-1",
+                      "naboo-19-node-2",
+                      "naboo-19-node-3",
+                      "naboo-19-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-20",
+                "name": "naboo-20",
+                "kind": "server",
+                "inventory": "naboo-20",
+                "nodes": [
+                  {
+                    "id": "naboo-20-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-20-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-20-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-20-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-20-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-20-node-1",
+                      "naboo-20-node-2",
+                      "naboo-20-node-3",
+                      "naboo-20-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-20-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-20-node-1",
+                      "naboo-20-node-2",
+                      "naboo-20-node-3",
+                      "naboo-20-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-21",
+                "name": "naboo-21",
+                "kind": "server",
+                "inventory": "naboo-21",
+                "nodes": [
+                  {
+                    "id": "naboo-21-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-21-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-21-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-21-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-21-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-21-node-1",
+                      "naboo-21-node-2",
+                      "naboo-21-node-3",
+                      "naboo-21-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-21-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-21-node-1",
+                      "naboo-21-node-2",
+                      "naboo-21-node-3",
+                      "naboo-21-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-22",
+                "name": "naboo-22",
+                "kind": "server",
+                "inventory": "naboo-22",
+                "nodes": [
+                  {
+                    "id": "naboo-22-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-22-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-22-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-22-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-22-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-22-node-1",
+                      "naboo-22-node-2",
+                      "naboo-22-node-3",
+                      "naboo-22-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-22-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-22-node-1",
+                      "naboo-22-node-2",
+                      "naboo-22-node-3",
+                      "naboo-22-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-23",
+                "name": "naboo-23",
+                "kind": "server",
+                "inventory": "naboo-23",
+                "nodes": [
+                  {
+                    "id": "naboo-23-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-23-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-23-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-23-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-23-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-23-node-1",
+                      "naboo-23-node-2",
+                      "naboo-23-node-3",
+                      "naboo-23-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-23-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-23-node-1",
+                      "naboo-23-node-2",
+                      "naboo-23-node-3",
+                      "naboo-23-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-24",
+                "name": "naboo-24",
+                "kind": "server",
+                "inventory": "naboo-24",
+                "nodes": [
+                  {
+                    "id": "naboo-24-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-24-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-24-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-24-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-24-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-24-node-1",
+                      "naboo-24-node-2",
+                      "naboo-24-node-3",
+                      "naboo-24-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-24-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-24-node-1",
+                      "naboo-24-node-2",
+                      "naboo-24-node-3",
+                      "naboo-24-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-25",
+                "name": "naboo-25",
+                "kind": "server",
+                "inventory": "naboo-25",
+                "nodes": [
+                  {
+                    "id": "naboo-25-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-25-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-25-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-25-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-25-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-25-node-1",
+                      "naboo-25-node-2",
+                      "naboo-25-node-3",
+                      "naboo-25-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-25-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-25-node-1",
+                      "naboo-25-node-2",
+                      "naboo-25-node-3",
+                      "naboo-25-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-26",
+                "name": "naboo-26",
+                "kind": "server",
+                "inventory": "naboo-26",
+                "nodes": [
+                  {
+                    "id": "naboo-26-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-26-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-26-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-26-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-26-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-26-node-1",
+                      "naboo-26-node-2",
+                      "naboo-26-node-3",
+                      "naboo-26-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-26-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-26-node-1",
+                      "naboo-26-node-2",
+                      "naboo-26-node-3",
+                      "naboo-26-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-27",
+                "name": "naboo-27",
+                "kind": "server",
+                "inventory": "naboo-27",
+                "nodes": [
+                  {
+                    "id": "naboo-27-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-27-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-27-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-27-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-27-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-27-node-1",
+                      "naboo-27-node-2",
+                      "naboo-27-node-3",
+                      "naboo-27-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-27-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-27-node-1",
+                      "naboo-27-node-2",
+                      "naboo-27-node-3",
+                      "naboo-27-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-28",
+                "name": "naboo-28",
+                "kind": "server",
+                "inventory": "naboo-28",
+                "nodes": [
+                  {
+                    "id": "naboo-28-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-28-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-28-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-28-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-28-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-28-node-1",
+                      "naboo-28-node-2",
+                      "naboo-28-node-3",
+                      "naboo-28-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-28-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-28-node-1",
+                      "naboo-28-node-2",
+                      "naboo-28-node-3",
+                      "naboo-28-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-29",
+                "name": "naboo-29",
+                "kind": "server",
+                "inventory": "naboo-29",
+                "nodes": [
+                  {
+                    "id": "naboo-29-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-29-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-29-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-29-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-29-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-29-node-1",
+                      "naboo-29-node-2",
+                      "naboo-29-node-3",
+                      "naboo-29-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-29-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-29-node-1",
+                      "naboo-29-node-2",
+                      "naboo-29-node-3",
+                      "naboo-29-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-30",
+                "name": "naboo-30",
+                "kind": "server",
+                "inventory": "naboo-30",
+                "nodes": [
+                  {
+                    "id": "naboo-30-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-30-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-30-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-30-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-30-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-30-node-1",
+                      "naboo-30-node-2",
+                      "naboo-30-node-3",
+                      "naboo-30-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-30-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-30-node-1",
+                      "naboo-30-node-2",
+                      "naboo-30-node-3",
+                      "naboo-30-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-31",
+                "name": "naboo-31",
+                "kind": "server",
+                "inventory": "naboo-31",
+                "nodes": [
+                  {
+                    "id": "naboo-31-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-31-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-31-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-31-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-31-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-31-node-1",
+                      "naboo-31-node-2",
+                      "naboo-31-node-3",
+                      "naboo-31-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-31-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-31-node-1",
+                      "naboo-31-node-2",
+                      "naboo-31-node-3",
+                      "naboo-31-node-4"
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "naboo-server-32",
+                "name": "naboo-32",
+                "kind": "server",
+                "inventory": "naboo-32",
+                "nodes": [
+                  {
+                    "id": "naboo-32-node-1",
+                    "name": "節點 1",
+                    "bf4": "BF4 #1",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-32-node-2",
+                    "name": "節點 2",
+                    "bf4": "BF4 #2",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-32-node-3",
+                    "name": "節點 3",
+                    "bf4": "BF4 #3",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  },
+                  {
+                    "id": "naboo-32-node-4",
+                    "name": "節點 4",
+                    "bf4": "BF4 #4",
+                    "host_os": "",
+                    "host_bmc": "",
+                    "dpu_os": "",
+                    "dpu_bmc": ""
+                  }
+                ],
+                "ports": [
+                  {
+                    "id": "naboo-32-host",
+                    "name": "RJ45 #1",
+                    "role": "host",
+                    "nodes": [
+                      "naboo-32-node-1",
+                      "naboo-32-node-2",
+                      "naboo-32-node-3",
+                      "naboo-32-node-4"
+                    ]
+                  },
+                  {
+                    "id": "naboo-32-dpu",
+                    "name": "RJ45 #2",
+                    "role": "dpu",
+                    "nodes": [
+                      "naboo-32-node-1",
+                      "naboo-32-node-2",
+                      "naboo-32-node-3",
+                      "naboo-32-node-4"
+                    ]
+                  }
+                ]
+              }
+            ],
+            "links": [
+              {
+                "id": "naboo-host-01",
+                "note": "naboo-01 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p1"
+                },
+                "b": {
+                  "device": "naboo-server-01",
+                  "port": "naboo-01-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-01",
+                "note": "naboo-01 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p1"
+                },
+                "b": {
+                  "device": "naboo-server-01",
+                  "port": "naboo-01-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-02",
+                "note": "naboo-02 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p2"
+                },
+                "b": {
+                  "device": "naboo-server-02",
+                  "port": "naboo-02-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-02",
+                "note": "naboo-02 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p2"
+                },
+                "b": {
+                  "device": "naboo-server-02",
+                  "port": "naboo-02-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-03",
+                "note": "naboo-03 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p3"
+                },
+                "b": {
+                  "device": "naboo-server-03",
+                  "port": "naboo-03-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-03",
+                "note": "naboo-03 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p3"
+                },
+                "b": {
+                  "device": "naboo-server-03",
+                  "port": "naboo-03-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-04",
+                "note": "naboo-04 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p4"
+                },
+                "b": {
+                  "device": "naboo-server-04",
+                  "port": "naboo-04-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-04",
+                "note": "naboo-04 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p4"
+                },
+                "b": {
+                  "device": "naboo-server-04",
+                  "port": "naboo-04-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-05",
+                "note": "naboo-05 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p5"
+                },
+                "b": {
+                  "device": "naboo-server-05",
+                  "port": "naboo-05-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-05",
+                "note": "naboo-05 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p5"
+                },
+                "b": {
+                  "device": "naboo-server-05",
+                  "port": "naboo-05-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-06",
+                "note": "naboo-06 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p6"
+                },
+                "b": {
+                  "device": "naboo-server-06",
+                  "port": "naboo-06-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-06",
+                "note": "naboo-06 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p6"
+                },
+                "b": {
+                  "device": "naboo-server-06",
+                  "port": "naboo-06-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-07",
+                "note": "naboo-07 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p7"
+                },
+                "b": {
+                  "device": "naboo-server-07",
+                  "port": "naboo-07-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-07",
+                "note": "naboo-07 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p7"
+                },
+                "b": {
+                  "device": "naboo-server-07",
+                  "port": "naboo-07-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-08",
+                "note": "naboo-08 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p8"
+                },
+                "b": {
+                  "device": "naboo-server-08",
+                  "port": "naboo-08-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-08",
+                "note": "naboo-08 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p8"
+                },
+                "b": {
+                  "device": "naboo-server-08",
+                  "port": "naboo-08-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-09",
+                "note": "naboo-09 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p9"
+                },
+                "b": {
+                  "device": "naboo-server-09",
+                  "port": "naboo-09-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-09",
+                "note": "naboo-09 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p9"
+                },
+                "b": {
+                  "device": "naboo-server-09",
+                  "port": "naboo-09-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-10",
+                "note": "naboo-10 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p10"
+                },
+                "b": {
+                  "device": "naboo-server-10",
+                  "port": "naboo-10-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-10",
+                "note": "naboo-10 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p10"
+                },
+                "b": {
+                  "device": "naboo-server-10",
+                  "port": "naboo-10-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-11",
+                "note": "naboo-11 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p11"
+                },
+                "b": {
+                  "device": "naboo-server-11",
+                  "port": "naboo-11-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-11",
+                "note": "naboo-11 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p11"
+                },
+                "b": {
+                  "device": "naboo-server-11",
+                  "port": "naboo-11-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-12",
+                "note": "naboo-12 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p12"
+                },
+                "b": {
+                  "device": "naboo-server-12",
+                  "port": "naboo-12-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-12",
+                "note": "naboo-12 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p12"
+                },
+                "b": {
+                  "device": "naboo-server-12",
+                  "port": "naboo-12-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-13",
+                "note": "naboo-13 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p13"
+                },
+                "b": {
+                  "device": "naboo-server-13",
+                  "port": "naboo-13-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-13",
+                "note": "naboo-13 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p13"
+                },
+                "b": {
+                  "device": "naboo-server-13",
+                  "port": "naboo-13-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-14",
+                "note": "naboo-14 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p14"
+                },
+                "b": {
+                  "device": "naboo-server-14",
+                  "port": "naboo-14-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-14",
+                "note": "naboo-14 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p14"
+                },
+                "b": {
+                  "device": "naboo-server-14",
+                  "port": "naboo-14-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-15",
+                "note": "naboo-15 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p15"
+                },
+                "b": {
+                  "device": "naboo-server-15",
+                  "port": "naboo-15-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-15",
+                "note": "naboo-15 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p15"
+                },
+                "b": {
+                  "device": "naboo-server-15",
+                  "port": "naboo-15-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-16",
+                "note": "naboo-16 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p16"
+                },
+                "b": {
+                  "device": "naboo-server-16",
+                  "port": "naboo-16-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-16",
+                "note": "naboo-16 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p16"
+                },
+                "b": {
+                  "device": "naboo-server-16",
+                  "port": "naboo-16-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-17",
+                "note": "naboo-17 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p17"
+                },
+                "b": {
+                  "device": "naboo-server-17",
+                  "port": "naboo-17-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-17",
+                "note": "naboo-17 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p17"
+                },
+                "b": {
+                  "device": "naboo-server-17",
+                  "port": "naboo-17-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-18",
+                "note": "naboo-18 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p18"
+                },
+                "b": {
+                  "device": "naboo-server-18",
+                  "port": "naboo-18-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-18",
+                "note": "naboo-18 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p18"
+                },
+                "b": {
+                  "device": "naboo-server-18",
+                  "port": "naboo-18-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-19",
+                "note": "naboo-19 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p19"
+                },
+                "b": {
+                  "device": "naboo-server-19",
+                  "port": "naboo-19-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-19",
+                "note": "naboo-19 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p19"
+                },
+                "b": {
+                  "device": "naboo-server-19",
+                  "port": "naboo-19-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-20",
+                "note": "naboo-20 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p20"
+                },
+                "b": {
+                  "device": "naboo-server-20",
+                  "port": "naboo-20-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-20",
+                "note": "naboo-20 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p20"
+                },
+                "b": {
+                  "device": "naboo-server-20",
+                  "port": "naboo-20-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-21",
+                "note": "naboo-21 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p21"
+                },
+                "b": {
+                  "device": "naboo-server-21",
+                  "port": "naboo-21-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-21",
+                "note": "naboo-21 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p21"
+                },
+                "b": {
+                  "device": "naboo-server-21",
+                  "port": "naboo-21-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-22",
+                "note": "naboo-22 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p22"
+                },
+                "b": {
+                  "device": "naboo-server-22",
+                  "port": "naboo-22-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-22",
+                "note": "naboo-22 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p22"
+                },
+                "b": {
+                  "device": "naboo-server-22",
+                  "port": "naboo-22-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-23",
+                "note": "naboo-23 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p23"
+                },
+                "b": {
+                  "device": "naboo-server-23",
+                  "port": "naboo-23-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-23",
+                "note": "naboo-23 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p23"
+                },
+                "b": {
+                  "device": "naboo-server-23",
+                  "port": "naboo-23-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-24",
+                "note": "naboo-24 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p24"
+                },
+                "b": {
+                  "device": "naboo-server-24",
+                  "port": "naboo-24-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-24",
+                "note": "naboo-24 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p24"
+                },
+                "b": {
+                  "device": "naboo-server-24",
+                  "port": "naboo-24-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-25",
+                "note": "naboo-25 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p25"
+                },
+                "b": {
+                  "device": "naboo-server-25",
+                  "port": "naboo-25-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-25",
+                "note": "naboo-25 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p25"
+                },
+                "b": {
+                  "device": "naboo-server-25",
+                  "port": "naboo-25-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-26",
+                "note": "naboo-26 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p26"
+                },
+                "b": {
+                  "device": "naboo-server-26",
+                  "port": "naboo-26-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-26",
+                "note": "naboo-26 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p26"
+                },
+                "b": {
+                  "device": "naboo-server-26",
+                  "port": "naboo-26-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-27",
+                "note": "naboo-27 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p27"
+                },
+                "b": {
+                  "device": "naboo-server-27",
+                  "port": "naboo-27-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-27",
+                "note": "naboo-27 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p27"
+                },
+                "b": {
+                  "device": "naboo-server-27",
+                  "port": "naboo-27-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-28",
+                "note": "naboo-28 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p28"
+                },
+                "b": {
+                  "device": "naboo-server-28",
+                  "port": "naboo-28-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-28",
+                "note": "naboo-28 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p28"
+                },
+                "b": {
+                  "device": "naboo-server-28",
+                  "port": "naboo-28-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-29",
+                "note": "naboo-29 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p29"
+                },
+                "b": {
+                  "device": "naboo-server-29",
+                  "port": "naboo-29-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-29",
+                "note": "naboo-29 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p29"
+                },
+                "b": {
+                  "device": "naboo-server-29",
+                  "port": "naboo-29-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-30",
+                "note": "naboo-30 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p30"
+                },
+                "b": {
+                  "device": "naboo-server-30",
+                  "port": "naboo-30-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-30",
+                "note": "naboo-30 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p30"
+                },
+                "b": {
+                  "device": "naboo-server-30",
+                  "port": "naboo-30-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-31",
+                "note": "naboo-31 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p31"
+                },
+                "b": {
+                  "device": "naboo-server-31",
+                  "port": "naboo-31-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-31",
+                "note": "naboo-31 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p31"
+                },
+                "b": {
+                  "device": "naboo-server-31",
+                  "port": "naboo-31-dpu"
+                }
+              },
+              {
+                "id": "naboo-host-32",
+                "note": "naboo-32 主機管理",
+                "state": "confirmed",
+                "network": "host",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p32"
+                },
+                "b": {
+                  "device": "naboo-server-32",
+                  "port": "naboo-32-host"
+                }
+              },
+              {
+                "id": "naboo-dpu-32",
+                "note": "naboo-32 DPU 管理",
+                "state": "confirmed",
+                "network": "dpu",
+                "a": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p32"
+                },
+                "b": {
+                  "device": "naboo-server-32",
+                  "port": "naboo-32-dpu"
+                }
+              },
+              {
+                "id": "naboo-switch-interconnect",
+                "note": "交換器互連",
+                "state": "confirmed",
+                "network": "uplink",
+                "a": {
+                  "device": "naboo-switch-1",
+                  "port": "sw1-p48"
+                },
+                "b": {
+                  "device": "naboo-switch-2",
+                  "port": "sw2-p48"
+                }
+              }
+            ]
+          }
+        ],
+        "revision": 1
+      }
     },
     "Wickie": {
       "name": "Wickie",
