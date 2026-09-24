@@ -299,13 +299,11 @@
         lightStrip(side*2.43,y+(side<0?.18:0),h,.060,phase+(side<0?0:.44));
       }
     }
-    // Raised cyan MGCooling wordmark rendered as slim vector strokes. It is a
+    // Raised cyan Cooling label rendered as slim vector strokes. It is a
     // reference badge only; inventory classification and model names stay intact.
     const stroke=(points,x,y,w,h)=>{for(let i=1;i<points.length;i++)T([x+points[i-1][0]*w,y+points[i-1][1]*h,front+.119],[x+points[i][0]*w,y+points[i][1]*h,front+.119],.027,[.035,.46,.60],8,.15);};
     const arc=(cx,cy,rx,ry,a,b,n=12)=>Array.from({length:n+1},(_,i)=>[cx+Math.cos(a+(b-a)*i/n)*rx,cy+Math.sin(a+(b-a)*i/n)*ry]);
     const letters=[
-      {w:.36,paths:[[[0,0],[0,1],[.5,.34],[1,1],[1,0]]]},
-      {w:.33,paths:[arc(.5,.5,.5,.5,.21*Math.PI,1.80*Math.PI),[[.96,.36],[.96,.51],[.56,.51]]]},
       {w:.32,paths:[arc(.5,.5,.5,.5,.22*Math.PI,1.78*Math.PI)]},
       {w:.26,paths:[arc(.5,.35,.5,.35,0,TAU)]},
       {w:.26,paths:[arc(.5,.35,.5,.35,0,TAU)]},

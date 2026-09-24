@@ -18,7 +18,7 @@
       <rect x="72" y="13" width="96" height="297" rx="2" fill="url(#${id}-door)" stroke="#090e15" stroke-width="1.1"/>
       <path d="M74 15H166M74 16V307" fill="none" stroke="#434b54" stroke-width=".45"/>
       <g stroke-linecap="round">${rails}${segments}</g>
-      <text x="120" y="61" text-anchor="middle" fill="#2797b7" font-family="Arial,sans-serif" font-size="12" letter-spacing="-.5">MGCooling</text>
+      <text x="120" y="61" text-anchor="middle" fill="#2797b7" font-family="Arial,sans-serif" font-size="12" letter-spacing="-.5">Cooling</text>
       <rect x="103" y="79" width="36" height="29" rx="1.4" fill="#0a0d13" stroke="#3f4850" stroke-width="1.4"/>
       <rect x="107" y="83" width="28" height="21" fill="#203d51" stroke="#617a89" stroke-width=".6"/>
       <path d="M110 86h22M119 88v12M110 94h21M126 88v12" stroke="#45768c" stroke-width=".6"/>
@@ -39,9 +39,10 @@
     const stage = root.querySelector('.pd-hardware-stage');
     if (stage) {
       stage.dataset.componentType = type;
-      // Detail uses the same horizontal CDU illustration as the rack-bottom unit.
-      // Rendering never converts an external device or changes its stored 0U placement.
-      stage.innerHTML = PAHardwareVisuals.render(machine) + `<span class="pd-stage-caption">${esc(PAHardwareVisuals.caption(type))}</span>`;
+      // Match the saved CDU installation without changing its inventory or U slots.
+      const external = rackIsExternal(machine);
+      const caption = external ? 'TC1288 \u5916\u7f6e CDU \u5916\u89c0\u53c3\u8003 \u00b7 \u975e\u672c\u6a5f\u5be6\u969b\u5916\u89c0' : PAHardwareVisuals.caption(type);
+      stage.innerHTML = (external ? externalCduVisual() : PAHardwareVisuals.render(machine)) + `<span class="pd-stage-caption">${esc(caption)}</span>`;
     }
     root.querySelector('.pd-workspace').dataset.componentType = type;
     const hw = machineDetailCache[_activeMachine]?.os_info?.hw || {};

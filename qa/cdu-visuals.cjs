@@ -63,6 +63,7 @@ function pixelChanges(before,after,{blueOnly=false,rightHalf=false}={}){
   assert.deepEqual(originalPlacement,{rack_mount:'external',rack_u:0,rack_size:0,project:'proj_k'});
   assert.equal((await state()).cooling.mode,'external');
   await page.locator('#ew-rack-component').selectOption('CDU-01');
+  assert.deepEqual(await page.locator('#ew-rack-inspector .ew-cdu-cabinet text').allTextContents(),['Cooling'],'Rack inspector must retain Cooling without the MGC branding');
   await page.evaluate(()=>applyTheme('dark'));await settle();
   await page.locator('.ew-rack-deck').screenshot({path:path.join(out,'cdu-tc1288-perspective.png')});
 
@@ -127,14 +128,24 @@ function pixelChanges(before,after,{blueOnly=false,rightHalf=false}={}){
   await page.waitForSelector('.pd-hardware-stage svg');await settle();
   assert.equal(await page.evaluate(()=>__qaCduOldScene.getState().disposed),true);
   assert.equal(await page.evaluate(()=>__qaCduOldScene.getState().decorativeLighting.animated),false);
+  const detailUrl=page.url();
 
   async function detailCheck(installation){
+   const externalInstallation=installation==='external';
    const visual=page.locator('.pd-hardware-stage svg');
    assert.equal(await visual.getAttribute('data-hardware-type'),'cdu');
-   assert.equal(await visual.getAttribute('data-hardware-view'),'perspective');
-   assert.equal(await page.locator('.pd-hardware-stage .ew-cdu-cabinet').count(),0,'Detail must use the horizontal CDU illustration');
+   assert.equal(await visual.getAttribute('data-hardware-view'),externalInstallation?'front':'perspective');
+   assert.equal(await visual.getAttribute('data-hardware-units'),externalInstallation?'0':'4');
+   assert.equal(await page.locator('.pd-hardware-stage .ew-cdu-cabinet').count(),externalInstallation?1:0,'CDU detail appearance must follow its stored installation');
    const viewBox=(await visual.getAttribute('viewBox')).split(/\s+/).map(Number);
-   assert.ok(viewBox[2]>viewBox[3],'CDU detail illustration must be horizontal');
+   assert.ok(externalInstallation?viewBox[3]>viewBox[2]:viewBox[2]>viewBox[3],`${installation} CDU detail must use the correct portrait or horizontal proportions`);
+   if(externalInstallation)assert.deepEqual(await visual.locator('text').allTextContents(),['Cooling'],'External detail must retain Cooling without the MGC branding');
+   const caption=await page.locator('.pd-stage-caption').innerText();
+   assert.match(caption,externalInstallation?/\u5916\u7f6e/:/\u6ac3\u5167/,'Illustration caption must describe the current installation');
+   assert.doesNotMatch(caption,externalInstallation?/\u6ac3\u5167/:/\u5916\u7f6e/,'Illustration caption must not retain the previous installation');
+   const placementLabel=externalInstallation?/\u5916\u7f6e/:/U4\u2013U1\s*\/\s*4U/;
+   assert.match(await page.locator('.pd-connect-panel').innerText(),placementLabel,'Connection panel must agree with the stored installation');
+   assert.match(await page.locator('.pd-operations .operation-target').innerText(),placementLabel,'Equipment information must agree with the stored installation');
    for(const width of [1600,390,320]){
     await page.setViewportSize({width,height:width<500?900:1100});await settle();await assertViewport(`${installation} detail at ${width}px`);
     const bounded=await page.evaluate(()=>{
@@ -146,17 +157,27 @@ function pixelChanges(before,after,{blueOnly=false,rightHalf=false}={}){
    }
   }
   await detailCheck('external');
-  assert.deepEqual(await storedPlacement(),originalPlacement,'Viewing a horizontal illustration must not convert external installation or consume U slots');
-  results.push('External CDU detail is horizontal while stored external installation remains 0U; disposed rack animation stops');
+  assert.deepEqual(await storedPlacement(),originalPlacement,'Viewing the cabinet illustration must preserve external installation and zero U occupancy');
+  results.push('External CDU detail shows the Cooling cabinet with matching caption and installation, preserves 0U, and stops the disposed rack animation');
 
-  // Convert only the in-memory preview fixture through its dedicated installation endpoint.
+  // Convert only the preview fixture, then refresh inventory on this same detail page.
+  // Reopening or reloading the page would conceal stale presentation after a saved change.
+  async function changeInstallation(installation){
+   assert.equal((await api('/api/machines/CDU-01/cdu-installation','PATCH',{rack_mount:installation,rack_size:installation==='external'?0:4,expected_project:'proj_k'})).status,200);
+   await page.evaluate(async()=>{await loadMachines(false);setView(state.view);});
+   await page.waitForFunction(installation=>document.querySelector('.pd-hardware-stage svg')?.dataset.hardwareUnits===(installation==='external'?'0':'4'),installation);
+   await settle();
+   assert.equal(page.url(),detailUrl,'Saved installation refresh must remain on the same device detail page');
+   assert.equal(await page.locator('.pd-workspace').getAttribute('data-system'),'CDU-01');
+  }
   assert.equal((await api('/api/machines/BLANK-BOTTOM-04U','PATCH',{rack_u:0})).status,200);
-  assert.equal((await api('/api/machines/CDU-01/cdu-installation','PATCH',{rack_mount:'internal',rack_size:4,expected_project:'proj_k'})).status,200);
-  await page.evaluate(async()=>{await loadMachines(false);openMachine('CDU-01');});
-  await page.waitForSelector('.pd-hardware-stage svg');await settle();
+  await changeInstallation('internal');
   await detailCheck('internal');
   assert.deepEqual(await storedPlacement(),{rack_mount:'internal',rack_u:4,rack_size:4,project:'proj_k'});
-  results.push('Internal CDU detail uses the same horizontal presentation and preserves its U1-U4 installation');
+  await changeInstallation('external');
+  await detailCheck('external');
+  assert.deepEqual(await storedPlacement(),originalPlacement);
+  results.push('External to internal to external saved fixture changes immediately refresh drawing, caption, installation information and 0U/U1-U4 placement on the same detail page');
   assert.deepEqual(errors,[],'No browser script or console errors');
   assert.deepEqual(external,[],'No request leaves the isolated fixture preview');
   fs.writeFileSync(path.join(out,'cdu-tc1288-visuals.json'),JSON.stringify({passed:true,results,errors,external},null,2));

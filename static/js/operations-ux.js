@@ -133,7 +133,7 @@ document.addEventListener('click',e=>{
       root.querySelectorAll('.pd-diagnostic,.pd-showcase-copy button').forEach(n=>n.remove());
       const telemetry=root.querySelector('#pd-panel-telemetry');
       if(telemetry)telemetry.innerHTML='<section class="operation-target"><h2>CDU \u76e3\u63a7</h2><p>\u6d41\u91cf (L/min) / \u9032\u51fa\u6c34\u6eab / \u6c34\u58d3</p><p>\u5c1a\u672a\u6574\u5408\u63a1\u96c6\u5668\uff0c\u76ee\u524d\u7121\u5373\u6642\u91cf\u6e2c\u503c\u3002</p></section>';
-      const caption=root.querySelector('.pd-stage-caption');if(caption)caption.textContent='\u6ac3\u5167\u6a6b\u5f0f CDU \u5916\u89c0\u793a\u610f \u00b7 \u975e\u672c\u6a5f\u5be6\u969b\u5916\u89c0';
+      const caption=root.querySelector('.pd-stage-caption');if(caption)caption.textContent=rackIsExternal(m)?'TC1288 \u5916\u7f6e CDU \u5916\u89c0\u53c3\u8003 \u00b7 \u975e\u672c\u6a5f\u5be6\u969b\u5916\u89c0':'\u6ac3\u5167\u6a6b\u5f0f CDU \u5916\u89c0\u793a\u610f \u00b7 \u975e\u672c\u6a5f\u5be6\u969b\u5916\u89c0';
       const heading=root.querySelector('.pd-ops-heading h2');if(heading)heading.textContent='\u8a2d\u5099\u8cc7\u8a0a';
       const context=root.querySelector('.pd-ops-context');if(context)context.textContent=`${m.project||''} / CDU / ${placement}`;
       if(info)info.textContent=`\u7ba1\u7406 IP: ${m.bmc_ip||m.os_ip||'\u672a\u8a2d\u5b9a'} / \u76e3\u63a7\u5c1a\u672a\u6574\u5408`;
