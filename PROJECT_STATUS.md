@@ -79,7 +79,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - The same promotion flow still selects the L11 project and explicit 1-48U height.
 - Targeted fixture browser check passed: visible row action outside the overflow menu opens
   the L11 specification dialog. Full workspace UX matrix also passed at 1440/768/390/320px.
-- Local changes only; not committed, pushed or deployed for this follow-up.
+- Functional commit `c5bfd09cf8ac0eeefeb5837cf6781e666712b105` was pushed to main and
+  verified against `git ls-remote`. Not deployed.
 
 ## Completed
 
