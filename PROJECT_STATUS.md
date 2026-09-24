@@ -4,8 +4,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Repository and delivery
 
-- Current authorized work: refined panel-integrated Ping LED finish at the approved
-  device positions, implemented and pushed to main (latest section below).
+- Current work: external CDU focused inspection and Switch face-overlap fixes.
+  Functional commit `8414923ee647aa9c75f2d064c439eaa21ab495b1` is pushed to main
+  and verified against `git ls-remote`; no deployment or hardware actions performed.
 - Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
 - Functional commit `d40dea953e30507cd03d701330b9a82c17aacf30` was pushed to
   `main` and verified against `git ls-remote` on 2026-09-24. Follow-up LED geometry
@@ -24,7 +25,36 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - No deployment or production service restart was performed. Pushed does not mean live.
 - Instruction/skill consolidation was published as `4e29682`.
 
-## Panel-integrated LED finish (2026-09-24; current)
+## External CDU inspection and Switch face corrections (2026-09-24; current)
+
+- Reproduced the focus defect: the adjacent rack remained rendered and occluded the
+  external CDU on side rotation. The orbit pivot also used the scene origin in depth
+  instead of the external cabinet center.
+- External CDU focus now renders only the cabinet and pivots at its geometric center.
+  Camera fitting uses the same centered bounds; picking ignores the hidden rack.
+  Resetting the view or selecting rack-mounted hardware restores rack context and wiring.
+  No inventory, saved routes, LED materials or device actions changed.
+- Validation: `qa/cdu-focus.cjs` passed four groups using actual WebGL draw calls and
+  projected bounds across four orbit quadrants at 1600/390px. It also verifies picking,
+  rack restoration and all 69 saved routes. Core-scene passed 11/11; CDU visual QA passed
+  all six groups, including visible blue animation, reduced motion, context recovery,
+  mobile layout and external/internal detail conversion. No browser errors or external
+  requests. Focused front/side/mobile-rear screenshots were visually reviewed.
+- Switch ports now form symmetric eight-column banks around the full centered grille,
+  leaving .0265 clearance at each side of the mesh. Removed the legacy gray service-lamp
+  housing that was physically in front of the shared Ping lens's upper-left edge.
+  Approved Ping LED centers and refined optics remain unchanged.
+- Re-ran rack-network QA (10 groups, 554 changing status pixels), CDU-focus QA (4 groups)
+  and core-scene (11/11) after the Switch fix; all passed. Focused front and perspective
+  screenshots confirm complete grille visibility and an unobstructed red/green lens.
+  JavaScript syntax and diff whitespace checks passed.
+- Evidence: `qa/artifacts/cdu-focus/`, refreshed CDU artifacts and
+  `qa/artifacts/rack-network-led/finish-light-switch-*`.
+- User requested publication including the pending CDU fix. Functional commit
+  `8414923ee647aa9c75f2d064c439eaa21ab495b1` is pushed and remotely verified.
+  This documentation follow-up records delivery. No deployment or live-device operation.
+
+## Panel-integrated LED finish (2026-09-24; prior published baseline)
 
 - User approved the LED positions and requested a more refined integrated finish and push.
   Functional commit `d53e2166f3be020ef710020bd73cb6c8a507a471` was pushed to main
