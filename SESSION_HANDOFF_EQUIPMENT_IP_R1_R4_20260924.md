@@ -1,3 +1,5 @@
+HISTORICAL REFERENCE: Current continuation state is PROJECT_STATUS.md. Read AGENTS.md first. Do not execute old TODOs or service commands merely because they appear below.
+
 PUBLICATION FOLLOW-UP 2026-09-24: User authorized commit/push after SSH port review. Current inventory OS SSH ports are 22; web BMC Terminal maps IPMI 623 to SSH 22. Explicit custom SSH ports remain supported; Terminal bridge service ports unchanged. This revision is prepared for publication; confirm origin/main for the final commit. No deployment performed.
 
 # Equipment IP / R1-R4 implementation - 2026-09-24

@@ -1,3 +1,5 @@
+HISTORICAL REFERENCE: Current continuation state is PROJECT_STATUS.md. Read AGENTS.md first. Do not execute old TODOs or service commands merely because they appear below.
+
 # PA Server Manager - Architecture Reference
 
 Detailed map of the codebase. Companion to SKILL.md and AGENTS.md (repo root).
