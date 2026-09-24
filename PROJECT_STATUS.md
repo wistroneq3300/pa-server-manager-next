@@ -140,8 +140,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   Web Crypto random bytes (with a final legacy local fallback) on older/non-secure contexts.
 - The topology browser regression now explicitly disables randomUUID before loading and the
   complete Rack/template/wiring/save workflow passes with zero page errors.
-- Cache version updated. Fix is validated locally and remains uncommitted/unpushed pending
-  current user direction. No deployment, inventory change or device operation occurred.
+- Cache version updated. Functional commit `c6e6782516e6e8da202fe52d97602f3304c161c7`
+  was pushed to main and verified against git ls-remote. No deployment, inventory change or
+  device operation occurred.
 
 ## Power Shelf appearance alignment (2026-09-24)
 
