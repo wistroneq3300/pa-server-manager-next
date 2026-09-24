@@ -8,7 +8,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
   Prefer the current verified checkout if this project moves or runs on another host.
 - Prior verified functional commit: `132a8965a42d60a989918d2c46962171d8a184f1` on main.
-- Current workspace UX / rack-height delivery is recorded below.
+- Current workspace UX / rack-height functional commit: `30508c7fb01fb7c341817c1d3f5c74f3324257e7`.
+- Pushed to main and verified against git ls-remote on 2026-09-24.
 - Prior changes were pushed and verified on 2026-09-24.
 - User authorized the current workspace UX / rack-height implementation and push.
 - No deployment or production service restart was performed. Pushed does not mean live.
@@ -52,8 +53,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   engineering/theme/equipment-browser/CDU-visual checks passed. Source syntax and diff
   checks passed; representative desktop/light/mobile screenshots visually reviewed.
 - Current evidence: qa/artifacts/workspace-ux/; selected baseline: qa/artifacts/ui-ux-review/.
-- Delivery at documentation preparation: local and validated, commit/push authorized.
-  Publication is verified after committing. No deployment or live device operation.
+- Delivery: functional commit 30508c7 pushed to main; remote hash verified.
+  This status entry is a documentation follow-up. No deployment or live device operation.
 
 ## Completed
 
