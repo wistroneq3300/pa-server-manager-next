@@ -7,7 +7,7 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
   Prefer the current verified checkout if this project moves or runs on another host.
-- Latest verified functional commit: `b4cedcb8a12dfe1fe08d8260990d4039003b5399` on `main`.
+- Latest verified functional commit: `ab6fc8f7bb6327831c9cb58db1240c246426a4f7` on `main`.
 - That functional commit was pushed and verified using `git ls-remote` on 2026-09-24.
 - No deployment or production service restart was performed. Pushed does not mean live.
 - User authorized the CDU visual changes and push on 2026-09-24. The functional commit
@@ -18,17 +18,19 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Completed
 
-- `b4cedcb`: TC1288-inspired CDU presentation:
-  - External Rack 3D CDU now has charcoal front/side panels, recessed seams, MGCooling
-    lettering, touchscreen/bezel, red/yellow emergency stop, latch and low intake grille.
+- TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):
+  - External Rack 3D CDU now has charcoal front/side panels, recessed seams, Cooling
+    lettering (MGC branding removed), touchscreen/bezel, red/yellow emergency stop, latch and low intake grille.
     Reference proportions remain H2160 / W900 / D1350 mm; placement and rear ports are intact.
   - Continuous blue outer rails and staggered inner rails have moving tapered highlights,
     pale cores and soft glow. Decorative lighting is independent of the water-flow toggle.
     Reduced motion, hidden/offscreen canvas, rear-facing rails, context loss and disposal
     stop its animation. Rotating back toward the front resumes it.
-  - CDU single-device detail uses the existing horizontal rack-bottom CDU illustration.
-    Viewing this illustration does not convert an external device or consume U slots.
-    The external Rack inspector uses a matching TC1288 front elevation.
+  - CDU single-device detail follows its saved installation: external uses the upright
+    cabinet illustration; internal uses the horizontal rack-bottom CDU illustration.
+    Caption and installation information follow the same current inventory record.
+    Viewing either illustration does not change installation or consume U slots.
+    The external Rack inspector and device detail both display Cooling only.
   - CDU detail now shares the compact Rack navigation on mobile, avoiding sidebar/header
     overflow. Changed script/CSS URLs have new cache versions.
   - No backend, inventory, live telemetry or device-operation behavior changed.
@@ -60,7 +62,22 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Deployment/live device validation has not been requested. Do not execute historical Linux
   service commands or hardware actions from old notes.
 
-## Validation for CDU visuals (2026-09-24)
+## Validation for Cooling label and installation-aware detail (`ab6fc8f`)
+
+- `node qa/cdu-visuals.cjs` passed with synthetic fixtures: Cooling only in the external
+  inspector/detail; external upright/front/0U and internal horizontal/perspective/4U.
+- External -> internal -> external changes through the fixture installation endpoint,
+  inventory refresh and normal rendering update the drawing, caption and installation
+  information on the same detail page without reopening or reloading it.
+- Existing blue-flow, reduced-motion, offscreen/context-loss/restoration/disposal and
+  390/320px Rack/detail checks passed; zero browser errors or external requests.
+- `node qa/operations_regression.cjs` and `node qa/equipment_regression.cjs` passed.
+- Changed JS syntax and `git diff --check` passed. Updated desktop/mobile screenshots
+  were visually reviewed. Evidence remains `qa/artifacts/cdu-tc1288-*`.
+- No backend/device/deployment changes. This refines the same user-authorized CDU work
+  and push; the functional commit above was pushed and verified with `git ls-remote`.
+
+## Prior validation for CDU visuals (`b4cedcb`, 2026-09-24)
 
 - `node qa/cdu-visuals.cjs` passed against the final code with a temporary loopback fixture
   server and Chrome. Actual front/focused blue pixels move with water paused; reduced
