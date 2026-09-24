@@ -4,7 +4,10 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Repository and delivery
 
-- Current work: external CDU focused inspection and Switch face-overlap fixes.
+- Current work: comprehensive Traditional Chinese in-app user guide update.
+  Guide publication is authorized; validation completed locally, commit/push pending.
+  No deployment or device operations.
+- Previous work: external CDU focused inspection and Switch face-overlap fixes.
   Functional commit `8414923ee647aa9c75f2d064c439eaa21ab495b1` is pushed to main
   and verified against `git ls-remote`; no deployment or hardware actions performed.
 - Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
@@ -24,6 +27,25 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - User authorized the current workspace UX / rack-height implementation and push.
 - No deployment or production service restart was performed. Pushed does not mean live.
 - Instruction/skill consolidation was published as `4e29682`.
+
+## In-app user guide refresh (2026-09-24; current)
+
+- Replaced the outdated guide with 26 searchable Traditional Chinese chapters covering
+  navigation/projects, equipment, L10 promotion/U placement, OS Slots, management IPs,
+  CDU installation, 3D focus/wiring, topology drafts/nodes/batch connections, Naboo's
+  32-server example, IP checks and Rack Ping/LEDs, telemetry/sensors, SSH/broadcast,
+  power, KVM, test tasks, AI, persistence/limits, troubleshooting and shortcuts.
+- Explicitly distinguishes physical cables, logical nodes, manual confirmation, ICMP
+  reachability and power state. Documents current collector/KVM/AI limitations rather
+  than promising integrations that are not available. No inventory or credentials changed.
+- Localized guide title/search and refreshed asset versions. Fixed repeated minimize
+  restoration and search-filtered chapter navigation; constrained the guide on small screens.
+- Validation: node syntax and git diff checks; qa/userguide.cjs checks all 26 chapters,
+  anchors, search/empty results, unchanged application route, repeated minimize/restore,
+  maximize/reopen and 390/320px layouts using an isolated fixture server. No browser
+  errors or external requests. Dark/mobile and light screenshots reviewed under
+  qa/artifacts/userguide/. No live backend, device actions or deployment.
+- Delivery: local changes validated; committing and pushing next.
 
 ## External CDU inspection and Switch face corrections (2026-09-24; current)
 
