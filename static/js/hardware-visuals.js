@@ -117,14 +117,19 @@
       }
       for(const x of [23,417]) for(const y of [7,h-7]) content+=screw(x,y,1.0);
     } else if(type==='powershelf') {
+      // Match the Rack 3D face: a shared left controller and six fan modules per U.
       const cy=h/2-16;
-      content+=rect(16,cy,23,32,dark,'#667478',.5)+rj45(21,cy+8,12,13)+circle(27,cy+26,1.3,'#755a50');
-      for(let i=0;i<6;i++) {
-        const x=42+i*63;
-        content+=rect(x,cy,61,32,'#10171c','#727d7f',.6)+fan(x+25,cy+16,13)+rect(x+2,cy+2,43,28,`url(#${id}-fan-grid)`);
-        content+=rect(x+48,cy-.7,10,33.4,dark,'#8b9698',1.1)+line(x+49,cy+1,x+49,cy+30,'#b0b8b4',.8,.65)+circle(x+5,cy+5,.8,'#6d8256')+circle(x+5,cy+8,.8,'#6d8256');
+      content+=rect(16,3,23,h-6,dark,'#667478',.5)+rj45(21,cy+8,12,13)+circle(27,cy+26,1.3,'#755a50');
+      for(let row=0;row<units;row++) {
+        const y=row*UNIT_HEIGHT+(UNIT_HEIGHT-32)/2;
+        content+=`<g data-hardware-zone="powershelf-fan-row" data-row="${row+1}">`;
+        for(let i=0;i<6;i++) {
+          const x=42+i*63;
+          content+=rect(x,y,61,32,'#10171c','#727d7f',.6)+fan(x+25,y+16,13)+rect(x+2,y+2,43,28,`url(#${id}-fan-grid)`);
+          content+=rect(x+48,y-.7,10,33.4,dark,'#8b9698',1.1)+line(x+49,y+1,x+49,y+30,'#b0b8b4',.8,.65)+circle(x+5,y+5,.8,'#6d8256')+circle(x+5,y+8,.8,'#6d8256');
+        }
+        content+='</g>';
       }
-      if(units>1) {content+=grille(19,5,400,Math.max(9,cy-9))+grille(19,cy+36,400,Math.max(9,h-cy-41));}
     } else if(type==='cdu') {
       // Charcoal powder-coated cooling appliance. The black HMI is unlit:
       // reflections are material detail, never invented telemetry or readings.

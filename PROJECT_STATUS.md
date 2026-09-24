@@ -133,6 +133,22 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   Existing persistence, conflict, failure, project isolation and responsive checks passed.
 - Delivery: follow-up included in the user-authorized main publication; no deployment.
 
+## Power Shelf appearance alignment (2026-09-24)
+
+- User requested the single-device Power Shelf drawing match the Rack 3D design.
+- Shared SVG front/perspective drawings now repeat six fan modules for every saved U,
+  replacing the former single center row plus filler grilles. Shared left controller,
+  module handles and fan mesh follow the Rack face. Inspector uses the same illustration.
+- Rack 3D no longer caps fan rows at 8 for taller Power Shelves. Inventory/height values
+  and management behavior are unchanged; visual assets have updated cache versions.
+- Fixture browser verified 1/2/3/4/8/16/48U row counts, actual 3U detail rendering,
+  desktop/mobile layouts and zero page errors. Desktop screenshot visually reviewed.
+  Evidence: qa/artifacts/powershelf/. JS syntax, diff checks and core-scene 11/11 passed.
+- Existing hardware-identity unit check fails on memory summary (expected 256 GB,
+  actual duplicated 8 DIMMs). Its source and product-detail.js are identical to HEAD;
+  this unrelated pre-existing failure was not changed in this presentation patch.
+- Delivery: included in the current user-authorized main commit/push; not deployed.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):

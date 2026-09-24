@@ -229,7 +229,7 @@
       T([1.62,0,FRONT-depth],[1.62,0,FRONT-depth-.19],Math.min(.075,h*.23),C.black);B(-1.45,0,FRONT-depth-.018,.51,h*.43,.044,C.steel);
     }else if(type==='powershelf'){
       V(0,0,f,3.91,h-.01,.11,C.dark,.014);B(-1.79,0,f+.068,.19,h-.03,.035,C.black);qsfp(m,-1.79,0,f+.097,.10,.09);led(m,item,-1.79,-Math.min(.09,h*.31),f+.129);
-      const rows=Math.max(1,Math.min(8,item.size)),moduleH=(h-.022)/rows;
+      const rows=Math.max(1,item.size),moduleH=(h-.022)/rows;
       for(let row=0;row<rows;row++)for(let i=0;i<6;i++){
         const x=-1.39+i*.586,y=(row-(rows-1)/2)*moduleH,r=Math.min(.108,moduleH*.40);V(x,y,f+.077,.554,moduleH-.012,.073,C.dark,.012);B(x,y,f+.117,.454,moduleH-.032,.013,C.black,.08);
         fan(m,x-.027,y,f+.132,r);for(let col=0;col<12;col++)B(x-.215+col*.038,y,f+.157,.005,moduleH-.043,.008,C.steel);for(let q=0;q<6;q++)B(x-.009,y-moduleH*.36+q*moduleH*.144,f+.159,.44,.005,.009,C.steel);
