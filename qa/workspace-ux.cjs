@@ -17,6 +17,8 @@ fs.mkdirSync(out,{recursive:true});
   results.push('L10 detail uses the shared operation deck and exposes L11 promotion in place');
 
   await go('projects/fleet_l');
+  const listPromote=page.locator('button[onclick*="rackPromote"]').filter({hasText:'\u5347 L11'}).first();
+  assert.equal(await listPromote.isVisible(),true);assert.equal(await listPromote.evaluate(el=>el.closest('.p-row-menu')===null),true);
   await page.evaluate(()=>rackPromote('host_a'));
   await page.locator('#ux-spec-size').selectOption('4');
   await page.locator('#ux-spec-project').selectOption('proj_k');

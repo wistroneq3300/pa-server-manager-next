@@ -71,6 +71,16 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Functional commit `71117eca4bc8ebcd45dd21be15e887de3d79ac47` was pushed to main and
   verified against `git ls-remote`. No backend, live device action or deployment.
 
+## L10 promotion visibility follow-up (2026-09-24)
+
+- The product list presentation had moved every non-Terminal row action into the overflow
+  menu, which made the existing L10 promotion control appear to be missing.
+- L10 `升 L11` is visible again beside Terminal while secondary actions remain in the menu.
+- The same promotion flow still selects the L11 project and explicit 1-48U height.
+- Targeted fixture browser check passed: visible row action outside the overflow menu opens
+  the L11 specification dialog. Full workspace UX matrix also passed at 1440/768/390/320px.
+- Local changes only; not committed, pushed or deployed for this follow-up.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):
