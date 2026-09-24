@@ -11,6 +11,8 @@
 - 目前密碼以明文存在記憶體(僅運行期間)。正式上線前必須加密存放或接秘密管理。
 """
 import asyncio
+import ipaddress
+import equipment_policy
 import copy
 import tempfile
 from functools import wraps
@@ -747,6 +749,8 @@ def edit_machine(name: str, body: dict):
         m["project"] = tgt
     if "order" in body and isinstance(body["order"], (int, float)):
         m["order"] = int(body["order"])
+    if body.get("level") == "system" and (telemetry_core.kind_of(m, name) != "server" or (m.get("passive") and m.get("mgx_type") != "server")):
+        raise HTTPException(400, "Only servers can be converted to L10")
     if "level" in body and body["level"] in ("system", "rack"):
         m["level"] = body["level"]
     # Rack Manager 擴充欄位：MGX 元件類型 + 機櫃位置（U 數 & 前後排）
@@ -778,9 +782,20 @@ def edit_machine(name: str, body: dict):
             m["bmc_port"] = int(body["bmc_port"]) or 623
         except Exception:
             pass
+    bmc_changed = any(m.get(f) != machines[name].get(f) for f in ("bmc_ip", "bmc_user", "bmc_pass", "bmc_port"))
+    if bmc_changed and m.get("os"):
+        active = int(m.get("active_os") or 1) - 1
+        if not 0 <= active < len(m["os"]):
+            raise HTTPException(409, "Invalid active OS; reload equipment")
+        for f in ("bmc_ip", "bmc_user", "bmc_pass"):
+            if f in body:
+                m["os"][active][f] = m.get(f, "")
+        _sync_active_os(m)
     _validate_rack(m, name)
     machines[name] = m
     _save_data()
+    if bmc_changed:
+        _invalidate_machine_cache(name)
     return {"ok": True, "machine": _bmc_safe(m)}
 
 
@@ -822,6 +837,36 @@ def set_cdu_installation(name: str, body: dict):
     machines[name] = m
     _save_data()
     return {"ok": True, "machine": _bmc_safe(m)}
+
+
+@app.patch("/api/machines/{name}/management-ip")
+@_data_transaction
+def change_management_ip(name: str, body: dict):
+    if name not in machines:
+        raise HTTPException(404, "Machine not found")
+    m = machines[name]
+    classification = equipment_policy.classify(m, name)
+    if classification["kind"] in ("server", "blanking") and classification["status"] != "needs_confirmation":
+        raise HTTPException(400, "Use the server IP workflow; blanking has no management IP")
+    if set(body) != {"target", "ip", "expected_ip"} or body.get("target") not in ("os", "bmc"):
+        raise HTTPException(422, "Choose a management connection and IP")
+    field = body["target"] + "_ip"
+    if body["expected_ip"] != (m.get(field) or ""):
+        raise HTTPException(409, "IP changed; reload equipment")
+    try:
+        value = str(ipaddress.ip_address(str(body["ip"]).strip()))
+    except ValueError:
+        raise HTTPException(422, "Enter a valid IPv4 or IPv6 address")
+    m[field] = value
+    if m.get("os"):
+        active = int(m.get("active_os") or 1) - 1
+        if not 0 <= active < len(m["os"]):
+            raise HTTPException(409, "Invalid active OS; reload equipment")
+        m["os"][active]["ip" if body["target"] == "os" else "bmc_ip"] = value
+        _sync_active_os(m)
+    _save_data()
+    _invalidate_machine_cache(name)
+    return {"ok": True, "ip": value, "target": body["target"]}
 
 
 class ChangeOsIp(BaseModel):
@@ -1752,7 +1797,9 @@ def machine_power(name: str, body: dict):
         raise HTTPException(404, f"機台不存在: {name}")
     if type(body.get("on")) is not bool:
         raise HTTPException(422, "on must be a boolean")
-    _POWER.pop(name, None)  # 開/關機後狀態作廢
+    if not equipment_policy.can_power(machines[name], body["on"]):
+        raise HTTPException(400, "Server power control is unavailable for this equipment")
+    _POWER.pop(name, None)
     m = _operation_target(name, body)
     action = "poweron" if body.get("on") else "poweroff"
     ok, info = run_control_cmd(m, action)

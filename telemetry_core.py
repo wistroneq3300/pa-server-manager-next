@@ -6,6 +6,7 @@ import json
 import os
 import re
 import sqlite3
+import equipment_policy
 import subprocess
 import threading
 import time
@@ -144,21 +145,7 @@ RACK_METRIC_DEF = {
 # 由 mgx_type（或由名稱回退）判斷 kind，與前端 mgxTypeOf 同步
 # blanking 為擋板（passive，無監控指標），回傳 "blanking" 且不會被收集/顯示
 def kind_of(m, name=None):
-    t = m.get("mgx_type") if isinstance(m, dict) else None
-    n = (name or (m.get("name") if isinstance(m, dict) else "") or "").lower()
-    if t == "blanking":
-        return "blanking"
-    if t in RACK_METRIC_DEF:
-        return t
-    if "blank" in n or "blk" in n or "擋" in n:
-        return "blanking"
-    if "nvlink" in n or "nvswitch" in n: return "nvlink"
-    if n.startswith("sw") or n.startswith("switch"): return "switch"
-    if n.startswith("ps") or "power" in n or n.startswith("pdu"): return "powershelf"
-    if n.startswith("cdu"): return "cdu"
-    if n.startswith("stor") or "nas" in n: return "storage"
-    if "gw" in n or "fw" in n or "router" in n: return "network"
-    return "server"
+    return equipment_policy.classify(m, name)["kind"]
 
 
 def targets():

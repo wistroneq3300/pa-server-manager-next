@@ -1,4 +1,10 @@
+PUBLICATION FOLLOW-UP 2026-09-24: User authorized commit/push after SSH port review. Current inventory OS SSH ports are 22; web BMC Terminal maps IPMI 623 to SSH 22. Explicit custom SSH ports remain supported; Terminal bridge service ports unchanged. This revision is prepared for publication; confirm origin/main for the final commit. No deployment performed.
+
+LATEST 2026-09-24: Non-server management IP/SSH and R1-R4 are now implemented locally on 7a23ae6; not committed/pushed/deployed. Read SESSION_HANDOFF_EQUIPMENT_IP_R1_R4_20260924.md. Older pending-status statements below are historical; U7 remains deferred.
+
 # Next project review fixes - 2026-09-24
+
+LATEST STATUS: Functional changes in this document were committed and pushed as 7a23ae62fd9c076a453d519aa40e5423bc1a98aa after preserving dcd3f4f. Earlier LOCAL/UNCOMMITTED and permission-blocker notes below are historical. Read SESSION_HANDOFF_NEXT_ACTIONS_20260924.md for the consolidated state, R1-R4 pending findings and final CDU installation rules. No live deployment performed.
 
 User authorized B1-B14 and U1-U6/U8; explicitly deferred U7.
 All changes in this handoff are LOCAL and UNCOMMITTED. No deployment or device operation.

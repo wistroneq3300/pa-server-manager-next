@@ -65,6 +65,7 @@ async function loadProjects() {
 }
 // BMC 電源狀態 cell（System Manager 表格用）
 function powerCell(m) {
+  if (!equipmentCanPower(m)) return "&mdash;";
   const p = m.power;
   if (p === "ON")  return `<span class="badge green"><span class="dot"></span>開機 <b>ON</b></span>`;
   if (p === "OFF") return `<span class="badge" style="background:var(--bg-panel-2);color:var(--text-dim)"><span class="dot" style="background:var(--text-faint)"></span>關機 <b>OFF</b></span>`;
@@ -474,7 +475,7 @@ function rackBulkDialog(kind) {
   // 其餘 server/switch/pdu 等全部列出供勾選（即使尚未填 IP，未來填入即可批次發送）。
   // 整櫃操作需要能控制（具 OS 或 BMC IP）：過濾掉空檔板(blanking)與「沒有 IP」的元件。
   racks = racks.filter(m => (m.os_ip || m.bmc_ip) && mgxTypeOf(m) !== "blanking");
-  if (kind === "on" || kind === "off") racks = racks.filter(m => mgxTypeOf(m) !== "cdu");
+  if (kind === "on" || kind === "off") racks = racks.filter(m=>equipmentCanPower(m,kind==="on"));
   if (!racks.length) return alert("此專案沒有可控制（具 OS/BMC IP）的整櫃機台");
   const mode = kind === "on" ? "開機" : kind === "off" ? "關機" : kind === "reboot" ? "Reboot" : "AUX / AC cycle";
   const icon = kind === "on" || kind === "off" ? "⏻" : kind === "reboot" ? "⟳" : "⚡";
@@ -574,8 +575,9 @@ async function rackDoPower(name, action) {
 function machControlDialog(name) {
   const m = machines.find(x => x.name === name);
   if (!m) return;
+  if(!equipmentIsServer(m))return equipmentPowerDialog(m);
   const info = mgxInfo(m);
-  const hasPower = m.os_ip || m.bmc_ip;
+  const hasPower = equipmentCanPower(m);
   showDialog(`⚙ 元件控制 — ${info.icon} ${esc(name)}`, `
     <div class="rm-modal-body">
       <p style="margin-bottom:12px;font-size:12px;color:var(--text-faint)">
@@ -627,11 +629,7 @@ const MGX_TYPES = {
   blanking:    { icon: "⬛", label: "Blank Panel", cls: "mgx-blanking", passive: true },
 };
 
-function mgxTypeLabel(m) {
-  const t = mgxTypeOf(m);
-  const info = MGX_TYPES[t] || MGX_TYPES.server;
-  return info.label;
-}
+function mgxTypeLabel(m) { return mgxInfo(m).label; }
 function mgxTypeShort(m) {
   const t = mgxTypeOf(m);
   return MGX_TYPES[t] ? t : "server";
@@ -643,20 +641,26 @@ function inLevelFilter(m, f) {
   return f === "rack" ? isRackItem(m) : !isRackItem(m);
 }
 
-function mgxTypeOf(m) {
-  if (!m) return "server"; // 防呆：若資料缺項（undefined/null）不崩潰，回退為 server
-  if (m.mgx_type && MGX_TYPES[m.mgx_type]) return m.mgx_type;
-  const n = (m.name || "").toLowerCase();
-  if (n.includes("nvlink") || n.includes("nvswitch")) return "nvlink";
-  if (n.includes("sw")) return "switch";
-  if (n.includes("ps") || n.includes("pdu") || n.includes("power")) return "powershelf";
-  if (n.includes("cdu")) return "cdu";
-  if (n.includes("stor") || n.includes("nas")) return "storage";
-  if (n.includes("gw") || n.includes("fw") || n.includes("router")) return "network";
-  if (n.includes("blank") || n.includes("blk") || n.includes("擋板") || n.includes("擋")) return "blanking";
-  return "server";
+function equipmentClass(m) {
+  if (m?.mgx_type && Object.hasOwn(MGX_TYPES,m.mgx_type)) return {kind:m.mgx_type,status:'explicit'};
+  const hits = new Set(window.EQUIPMENT_RULES.filter(([k,p])=>new RegExp(p).test(String(m?.name||'').toLowerCase())).map(([k])=>k));
+  if(hits.has('nvlink'))hits.delete('switch');
+  return hits.size===1&&!m?.mgx_type ? {kind:[...hits][0],status:'inferred'} : {kind:'server',status:'needs_confirmation'};
 }
-function mgxInfo(m) { return MGX_TYPES[mgxTypeOf(m)] || MGX_TYPES.server; }
+function mgxTypeOf(m) { return equipmentClass(m).kind; }
+function equipmentCanPower(m, on=null) {
+  if(!m)return false;
+  const c=equipmentClass(m);
+  if(c.status==='needs_confirmation'||c.kind==='blanking')return false;
+  if(c.kind==='server')return !!(m.os_ip||m.bmc_ip);
+  return (on===null?['power_on_cmd','power_off_cmd']:[on?'power_on_cmd':'power_off_cmd']).some(f=>String(m[f]||'').trim());
+}
+function equipmentIsServer(m) { const c=equipmentClass(m);return c.kind==='server'&&c.status!=='needs_confirmation'; }
+function equipmentCanConnect(m) { return mgxTypeOf(m)!=='blanking'; }
+function mgxInfo(m) {
+  const c=equipmentClass(m),info=MGX_TYPES[c.kind]||MGX_TYPES.server;
+  return c.status==='needs_confirmation'?{...info,label:'\u985e\u578b\u5f85\u78ba\u8a8d'}:info;
+}
 async function rackAssign(machine, patch) {
   await api(`/api/machines/${encodeURIComponent(machine)}`, {
     method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch)
@@ -1225,13 +1229,14 @@ function devicesHtml(members, pinged) {
   members = members.slice().sort(byU);
   const lamp = v => v === true ? `<span class="ping-lamp on">🟢</span>` : v === false ? `<span class="ping-lamp off">🔴</span>` : `<span class="ping-lamp none">⨪</span>`;
   const body = `<div class="card"><div class="table-scroll"><table class="t rack-ping-table">
-    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>OS IP</th><th>操作</th></tr></thead>
+    <thead><tr><th>U</th><th>Node</th><th>類型</th><th>IP</th><th>\u64cd\u4f5c</th></tr></thead>
     <tbody>` + members.map(m => {
       const n = pinged.find(x => x.name === m.name);
       const osUp = n ? n.os_alive : null;
       const info = mgxInfo(m);
-      const osCell = m.os_ip
-        ? `${lamp(osUp)} <span class="ping-ip mono">${esc(m.os_ip)}</span>`
+      const displayIp = equipmentIsServer(m) ? m.os_ip : [m.os_ip,m.bmc_ip].filter(Boolean).join(" / ");
+      const osCell = displayIp
+        ? `${equipmentIsServer(m)?lamp(osUp):""} <span class="ping-ip mono">${esc(displayIp)}</span>`
         : `<span style="color:var(--text-faint)">—</span>`;
       // 只有「有 OS IP」的系統才有 Terminal + 開關機（跟 System Manager 清單同一套邏輯）
       const hasOs = !!m.os_ip;
@@ -1242,8 +1247,9 @@ function devicesHtml(members, pinged) {
         <td class="mono">${osCell}</td>
         <td style="white-space:nowrap">
           <button class="btn small" title="機櫃位置" onclick="rackMoveDialog('${esc(m.name)}')">${mgxTypeOf(m)==='cdu'?'CDU \u5b89\u88dd\u8a2d\u5b9a':'⇅'}</button>
-          ${hasOs ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
-          ${hasOs ? `<button class="btn small" onclick="machControlDialog('${esc(m.name)}')" title="開關機 / Reboot / AC cycle">⏻ 開關機</button>` : ""}
+          ${!equipmentIsServer(m) ? equipmentActionsHtml(m) : ""}
+          ${equipmentIsServer(m) && equipmentCanConnect(m) ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
+          ${equipmentCanPower(m) ? `<button class="btn small" onclick="machControlDialog('${esc(m.name)}')" title="開關機 / Reboot / AC cycle">⏻ 開關機</button>` : ""}
           ${rackIsExternal(m) ? "" : `<button class="btn small" title="從機櫃拿掉（System Manager 的 L11 不受影響）" onclick="rackUnmount('${esc(m.name)}')">刪除</button>`}
         </td>
       </tr>`;
@@ -1869,17 +1875,17 @@ function machineRowSortable(m, pi, mi, total) {
   const lvlBadge = isRackItem(m)
     ? `<span class="badge badge-rack">L11 · Rack</span>`
     : `<span class="badge badge-system">L10 · Sys</span>`;
-  const typeTag = mgxTypeOf(m) === "server"
+  const typeTag = equipmentIsServer(m)
     ? ""
     : `<span class="badge" style="font-size:9px;padding:1px 6px;margin-left:6px">${MGX_TYPES[mgxTypeOf(m)].icon} ${esc(mgxTypeLabel(m))}</span>`;
-  const srv = mgxTypeOf(m) === "server";
+  const srv = equipmentIsServer(m);
   const lvlBtn = srv
     ? (m.level !== "rack"
         ? `<button class="btn small" onclick="rackPromote('${esc(m.name)}','${esc(m.project||"")}')" title="把這台 L10 系統升為 L11，並加入該專案的 Rack。">🗄 升 L11</button>`
         : `<button class="btn small" onclick="rackDemote('${esc(m.name)}')" title="把這台 L11 降回 L10。">📉 降 L10</button>`)
     : "";
   // 除擋板(blanking)外，switch/pdu/cdu/powershelf/storage/network/server 都有 Terminal
-  const canTerm = mgxTypeOf(m) !== "blanking";
+  const canTerm = equipmentCanConnect(m);
   return `
     <tr>
       <td class="mono mach-drag" draggable="true" title="按左鍵拖曳以調整排序"><a href="#" class="mach-link mach-linkbox" onclick="event.preventDefault();openMachine('${esc(m.name)}')"><b>${esc(m.name)}</b></a>${typeTag}</td>
@@ -1899,7 +1905,7 @@ function machineRowSortable(m, pi, mi, total) {
       <td style="white-space:nowrap">
         ${lvlBtn}
         ${canTerm ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
-        <button class="btn small" onclick="changeOsIp('${esc(m.name)}')" title="變更 OS IP / BMC IP（OS 需 ping 通 + hostname 相符；BMC 需 ping 通）">⚙ 設定</button>
+        ${equipmentCanConnect(m) ? `<button class="btn small" onclick="changeOsIp('${esc(m.name)}')" title="${equipmentIsServer(m)?'OS / BMC IP':'Management IP'}">⚙ 設定</button>` : ""}
         <button class="btn small" onclick="deleteMachine('${esc(m.name)}')">刪除</button>
       </td>
     </tr>`;
@@ -1911,17 +1917,17 @@ function machineRowUnassigned(m) {
   const lvlBadge = isRackItem(m)
     ? `<span class="badge badge-rack">L11 · Rack</span>`
     : `<span class="badge badge-system">L10 · Sys</span>`;
-  const typeTag = mgxTypeOf(m) === "server"
+  const typeTag = equipmentIsServer(m)
     ? ""
     : `<span class="badge" style="font-size:9px;padding:1px 6px;margin-left:6px">${MGX_TYPES[mgxTypeOf(m)].icon} ${esc(mgxTypeLabel(m))}</span>`;
-  const srv = mgxTypeOf(m) === "server";
+  const srv = equipmentIsServer(m);
   const lvlBtn = srv
     ? (m.level !== "rack"
         ? `<button class="btn small" onclick="rackPromote('${esc(m.name)}','')" title="把這台 L10 系統升為 L11（加入未分類的 Rack）。">🗄 升 L11</button>`
         : `<button class="btn small" onclick="rackDemote('${esc(m.name)}')" title="把這台 L11 降回 L10。">📉 降 L10</button>`)
     : "";
   // 除擋板(blanking)外，switch/pdu/cdu/powershelf/storage/network/server 都有 Terminal
-  const canTerm = mgxTypeOf(m) !== "blanking";
+  const canTerm = equipmentCanConnect(m);
   return `
     <tr>
       <td class="mono mach-drag" draggable="true" title="按左鍵拖曳以調整排序"><a href="#" class="mach-link mach-linkbox" onclick="event.preventDefault();openMachine('${esc(m.name)}')"><b>${esc(m.name)}</b></a>${typeTag}</td>
@@ -1940,7 +1946,7 @@ function machineRowUnassigned(m) {
       <td style="white-space:nowrap">
         ${lvlBtn}
         ${canTerm ? `<button class="btn small" onclick="openTerm('${esc(m.name)}')">▶ Terminal</button>` : ""}
-        <button class="btn small" onclick="changeOsIp('${esc(m.name)}')" title="變更 OS IP / BMC IP（OS 需 ping 通 + hostname 相符；BMC 需 ping 通）">⚙ 設定</button>
+        ${equipmentCanConnect(m) ? `<button class="btn small" onclick="changeOsIp('${esc(m.name)}')" title="${equipmentIsServer(m)?'OS / BMC IP':'Management IP'}">⚙ 設定</button>` : ""}
         <button class="btn small" onclick="deleteMachine('${esc(m.name)}')">刪除</button>
       </td>
     </tr>`;
@@ -2090,6 +2096,7 @@ async function rackPromote(name, project) {
 
 // 把 L11 降回 L10（單機）：清除機櫃位置欄位
 async function rackDemote(name) {
+  if (!equipmentIsServer(machines.find(m=>m.name===name))) return alert("Only servers can be converted to L10");
   if (!confirm("確定要把「" + name + "」降回 L10（退出 Rack Manager）嗎？")) return;
   try {
     await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "system", rack_u: 0 }) });
@@ -3865,6 +3872,8 @@ function _termUrl(name, kind, creds) {
 }
 // 所有元件點「▶」都走這：有存量連線資訊直接開；沒有或 passive → 先請填帳密
 function openTermDialog(name) {
+  const equipment=machines.find(m=>m.name===name);
+  if (equipment && !equipmentIsServer(equipment)) return equipmentSshDialog(name);
   const m = machines.find(x => x.name === name);
   if (!m) return;
   const hasCreds = (m.os_ip && m.os_user && m.os_pass) || (m.bmc_ip && m.bmc_user && m.bmc_pass);
@@ -3983,6 +3992,8 @@ function setTermMode(mode) {
 }
 // 原本的 openTerm：使用已存帳密（有 os+bmc 連兩窗；沒有就帶 creds 為空）
 function openTerm(name) {
+  const equipment=machines.find(m=>m.name===name);
+  if (equipment && !equipmentIsServer(equipment)) return equipmentSshDialog(name);
   const m = machines.find(x => x.name === name);
   if (!m) return;
   openTermAt(name,
@@ -3992,6 +4003,8 @@ function openTerm(name) {
 // ⚙ 設定：變更 OS IP / BMC IP（各自獨立，未更動的欄位後端不會動）。
 // OS IP 需 ping 通 + hostname 相符；BMC IP 只要 ping 通即可。
 function changeOsIp(name) {
+  const equipment=machines.find(m=>m.name===name);
+  if (equipment && !equipmentIsServer(equipment)) return equipmentIpDialog(name);
   const m = machines.find(x => x.name === name);
   if (!m) return;
   const curOs = m.os_ip || "";

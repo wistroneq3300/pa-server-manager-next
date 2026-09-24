@@ -168,6 +168,14 @@
     if(path.startsWith('/api/machines/')){
       const m=machines.find(m=>m.name===path.split('/')[3]);if(!m)return fail('找不到這台系統。',404);
       if(method==='PATCH'){
+        if(path.endsWith('/management-ip')){
+          if(!['os','bmc'].includes(body.target))return fail('Choose a connection',422);
+          if(equipmentIsServer(m)||mgxTypeOf(m)==='blanking')return fail('Not a managed component',400);
+          const field=body.target+'_ip';
+          if((m[field]||'')!==body.expected_ip)return fail('IP changed; reload equipment',409);
+          if(!body.ip)return fail('IP is required',422);
+          m[field]=body.ip;return response({ok:true,ip:body.ip,target:body.target});
+        }
         if(path.endsWith('/cdu-installation')){
           if(m.level!=='rack'||m.mgx_type!=='cdu'||Object.keys(body).some(k=>!['rack_mount','rack_size','expected_project'].includes(k)))return fail('Invalid CDU installation',400);
           if(body.expected_project!==m.project)return fail('Project changed',409);

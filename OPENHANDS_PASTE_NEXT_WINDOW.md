@@ -1,4 +1,8 @@
-LATEST 2026-09-24: L11 immutable specification/placement fix and explicit external/internal CDU installation switching completed. 41 backend tests + JS regressions pass. Full-access permission restored; remote inventory commit dcd3f4f was fetched and preserved before the review-fix commit. Read the latest sections of SESSION_HANDOFF_PROJECT_REVIEW_20260924.md for validation limits and four confirmed remaining workflow findings. U7 remains deferred.
+PUBLICATION FOLLOW-UP 2026-09-24: User authorized commit/push after SSH port review. Current inventory OS SSH ports are 22; web BMC Terminal maps IPMI 623 to SSH 22. Explicit custom SSH ports remain supported; Terminal bridge service ports unchanged. This revision is prepared for publication; confirm origin/main for the final commit. No deployment performed.
+
+LATEST 2026-09-24: Non-server management IP/SSH and R1-R4 are now implemented locally on 7a23ae6; not committed/pushed/deployed. Read SESSION_HANDOFF_EQUIPMENT_IP_R1_R4_20260924.md. Older pending-status statements below are historical; U7 remains deferred.
+
+READ FIRST: SESSION_HANDOFF_NEXT_ACTIONS_20260924.md is the current handoff. Functional main 7a23ae62fd9c076a453d519aa40e5423bc1a98aa was committed and pushed; remote verified. L11 fixed specifications, explicit CDU installation conversion and first-review fixes are complete. 41 backend tests plus offline JS regressions passed. R1-R4 remain review findings, not implemented. U7 is deferred. Full-access permissions restored; prior Git write blocker is obsolete. Everything below is historical and must not override the current handoff.
 
 Latest Next handoff: SESSION_HANDOFF_PROJECT_REVIEW_20260924.md. Review fixes are LOCAL / UNCOMMITTED; U7 remains deferred. Preserve upstream private inventory; do not deploy or change Terminal ports.
 

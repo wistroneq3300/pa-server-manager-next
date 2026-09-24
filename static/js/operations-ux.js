@@ -21,7 +21,7 @@ function operationTargetHtml(name) {
 let powerBatch = null;
 async function runPowerBatch(kind, names) {
   if (powerBatch?.running) { showPowerBatch(); return; }
-  powerBatch = {kind, running:true, cancel:false, rows:[...new Set(names)].map(name => ({name,target:operationTarget(name),state:'waiting',info:''}))};
+  powerBatch = {kind, running:true, cancel:false, rows:[...new Set(names)].filter(name=>equipmentCanPower(machines.find(m=>m.name===name)||{},kind==='on')).map(name => ({name,target:operationTarget(name),state:'waiting',info:''}))};
   showPowerBatch();
   await executePowerBatch(powerBatch);
 }
@@ -138,6 +138,13 @@ document.addEventListener('click',e=>{
       const context=root.querySelector('.pd-ops-context');if(context)context.textContent=`${m.project||''} / CDU / ${placement}`;
       if(info)info.textContent=`\u7ba1\u7406 IP: ${m.bmc_ip||m.os_ip||'\u672a\u8a2d\u5b9a'} / \u76e3\u63a7\u5c1a\u672a\u6574\u5408`;
     }
+    if(!equipmentIsServer(m)){
+      root.querySelectorAll('.pd-operation-group,.pd-power-group,.equipment-actions').forEach(n=>n.remove());
+      if(ops)ops.insertAdjacentHTML('afterbegin',equipmentActionsHtml(m)+(equipmentCanPower(m)?`<button class="btn small" onclick="machControlDialog('${esc(m.name)}')">\u81ea\u8a02\u96fb\u6e90\u6307\u4ee4</button>`:''));
+    }
+    if(equipmentClass(m).status==='needs_confirmation'){
+      root.insertAdjacentHTML('afterbegin','<p role="status">\u8a2d\u5099\u985e\u578b\u5f85\u78ba\u8a8d\uff1a\u8acb\u78ba\u8a8d mgx_type\uff0c\u76ee\u524d\u4e0d\u63d0\u4f9b Server \u96fb\u6e90\u64cd\u4f5c\u3002</p>');
+    }
     return root.innerHTML;
   };
   const dialog=showDialog;
@@ -152,5 +159,5 @@ document.addEventListener('click',e=>{
   const addRefresh=rackAddRefreshU;
   rackAddRefreshU=function(...args){const result=addRefresh(...args);refreshAddPreview();return result;};
   const term=openTermDialog;
-  openTermDialog=function(name){const result=term(name);document.getElementById('rm-dialog-body')?.insertAdjacentHTML('afterbegin',operationTargetHtml(name));return result;};
+  openTermDialog=function(name){const result=term(name);if(equipmentIsServer(machines.find(m=>m.name===name)))document.getElementById('rm-dialog-body')?.insertAdjacentHTML('afterbegin',operationTargetHtml(name));return result;};
 })();
