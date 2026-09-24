@@ -115,8 +115,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   saves, reload, project/Rack isolation, XSS escaping and responsive light/dark layouts.
   Existing operations/equipment regression, equipment browser and acceptance 23/23 passed.
   Source syntax and diff whitespace checks passed. Screenshots: qa/artifacts/topology/.
-- Delivery: implementation and evidence validated locally; current user-authorized commit/push
-  is pending. No deployment, production inventory mutation or live device action performed.
+- Delivery: functional commit `cf2bc50f77dabe234d7efa34df774bbd35a80bc0` pushed to main
+  and verified against git ls-remote. This status update records that delivery. No deployment,
+  production inventory mutation or live device action performed.
 
 ## Completed
 
