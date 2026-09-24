@@ -1901,7 +1901,7 @@ def machine_power_status(name: str):
 _HW_CMD = (
     "echo '===HW==='; "
     "echo '__CPU__'; lscpu 2>/dev/null | grep -E 'Model name:|Socket\\(s\\)|Core\\(s\\) per socket|Thread\\(s\\) per core|CPU\\(s\\):' ; "
-    "echo '__DIMM__'; dmidecode -t memory 2>/dev/null | grep -E 'Size:|Type:|Speed:|Part Number:' | grep -v 'No Module' | grep -v 'Unknown' ; "
+    "echo '__DIMM__'; dmidecode -t memory 2>/dev/null | grep -E 'Size:|Type:|Speed:|Part Number:|Manufacturer:' | grep -v 'No Module' | grep -v 'Unknown' ; "
     "echo '__SOCKETDIMM__'; dmidecode -t memory 2>/dev/null | grep -c 'Size: ' ; "
     "echo '__BLK__'; lsblk -d -o NAME,MODEL,SIZE,TRAN 2>/dev/null | grep -v loop ; "
     "echo '__NIC__'; lspci 2>/dev/null | grep -Ei 'Ethernet|Network controller|InfiniBand' ; "
@@ -1930,8 +1930,8 @@ def parse_hw(text):
     cpu = cpu_line.split("Model name:")[1].strip() if "Model name:" in cpu_line else ""
     if cpu:
         hw["cpu"] = {"model": cpu, "sockets": sockets, "cores": cores_s, "threads": thr_s}
-    # DIMM：抓所有 Size + 唯一 Part Number + Type/Speed
-    sizes, parts, types, speeds = [], [], [], []
+    # DIMM：抓所有 Size + 唯一 Part Number + Manufacturer + Type/Speed
+    sizes, parts, manufacturers, types, speeds = [], [], [], [], []
     for l in text.splitlines():
         s = l.strip()
         if s.startswith("Size:"):
@@ -1942,6 +1942,10 @@ def parse_hw(text):
             v = s.split(":", 1)[1].strip()
             if v and v.upper() != "NO DIMM" and v not in parts:
                 parts.append(v)
+        elif s.startswith("Manufacturer:"):
+            v = s.split(":", 1)[1].strip()
+            if v and v.upper() != "UNKNOWN" and v not in manufacturers:
+                manufacturers.append(v)
         elif s.startswith("Type:") and "Error" not in s and s != "Type: Unknown":
             v = s.split(":", 1)[1].strip()
             if v and v not in types:
@@ -1951,7 +1955,7 @@ def parse_hw(text):
             if v and "Unknown" not in v and v not in speeds:
                 speeds.append(v)
     if parts:
-        hw["dimm"] = {"count": len(sizes), "parts": parts, "types": types, "speeds": speeds}
+        hw["dimm"] = {"count": len(sizes), "parts": parts, "manufacturers": manufacturers, "types": types, "speeds": speeds}
     def _section(start, end=None):
         """擷取 start 標記到 end（或下一個 __XX__ 標記）之間的非空行。"""
         lines = text.splitlines()

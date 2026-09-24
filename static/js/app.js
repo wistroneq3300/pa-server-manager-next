@@ -2651,13 +2651,13 @@ function hwHtml(oi) {
       specs ? `<div class="cpu-spec">${esc(specs)}</div>` : "",
     ]);
   }
-  const d = hw.dimm;
+      const d = hw.dimm;
   if (d) {
     const size = `${d.count||""} 條記憶體`;
-    const parts = (d.parts||[]).map(p=>`<span class="hw-part">${esc(p)}</span>`).join("");
+    const mfg = (d.manufacturers||[]).map(p=>`<span class="hw-part">${esc(p)}</span>`).join("");
     out += hwItem("DIMM", [
       `<b>${size}</b> <span class="mono">${(d.types||[]).join(" · ")} ${(d.speeds||[]).join(" · ")}</span>`,
-      parts ? `<span class="hw-parts">${parts}</span>` : "",
+      mfg ? `<span class="hw-parts">${mfg}</span>` : "",
     ]);
   }
   const ssd = hw.ssd;
@@ -2720,11 +2720,15 @@ function hwHtml(oi) {
   // OS 摘要（distro/uptime/cpu/mem）在最上面
   const os = (oi && oi.os) || null;
   if (os && (os.distro || os.uptime)) {
+    const _dimm = hw && hw.dimm;
+    const _memStat = _dimm && _dimm.count != null
+      ? `記憶體 ${_dimm.count} 條` + ((( _dimm.manufacturers || [] ).join(' / ')) ? ` · ${(_dimm.manufacturers||[]).join(' / ')}` : '')
+      : (os.mem ? esc(os.mem) : "");
     const osStats = [
       os.distro ? `<b>${esc(os.distro)}</b>` : "",
       os.uptime ? `已開機 ${esc(os.uptime)}` : "",
       os.cpu ? `CPU ${esc(os.cpu)} 執行緒` : "",
-      os.mem ? esc(os.mem) : "",
+      _memStat,
     ].filter(v => v).map(v => `<span class="os-stat">${v}</span>`).join("");
     out = `<div class="os-summary">${osStats}</div>` + out;
   }
