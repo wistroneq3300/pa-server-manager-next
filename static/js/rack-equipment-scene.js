@@ -78,7 +78,7 @@
     function disc(x,y,z,r,color,metal=.5,segments=18){
       for(let i=0;i<segments;i++){vertex([x,y,z],[0,0,1],color,metal);for(const a of [i/segments*TAU,(i+1)/segments*TAU])vertex([x+Math.cos(a)*r,y+Math.sin(a)*r,z],[0,0,1],color,metal);}
     }
-    function face(x,y,z,w,h,color,metal=.2,front=1){quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],[0,0,front],color,metal);}
+    function face(x,y,z,w,h,color,metal=.2,front=1,emission=0){quad([x-w/2,y-h/2,z],[x+w/2,y-h/2,z],[x+w/2,y+h/2,z],[x-w/2,y+h/2,z],[0,0,front],color,metal,emission);}
     function polygon(points,z,color,metal=.2){for(let i=1;i<points.length-1;i++)for(const p of [points[0],points[i],points[i+1]])vertex([p[0],p[1],z],[0,0,1],color,metal);}
     return {data,box,bevel,tube,ring,disc,face,polygon};
   }
@@ -250,36 +250,120 @@
     return {mesh:m,depth,min:[-2.07,-h/2,FRONT-depth-.33],max:[2.07,h/2,FRONT+.28]};
   }
 
-  // TC1288 exterior proportions are a visual reference, not a selected SKU.
+  // TC1288 reference: https://mg-cooling.com/en/portfolio-item/in-row-cdu_tc1288/
+  // H2160 / W900 / D1350 mm. Keep this existing 0U envelope and its rear ports
+  // aligned with placement, picking, camera fitting and the secondary loop.
+  // This is an exterior illustration, not vendor CAD or a live HMI readout.
   function createExternalCdu(){
     const m=meshBuilder(),B=m.box,V=m.bevel,T=m.tube,front=3.15,rear=-5.96;
-    V(0,-.42,-1.40,6.08,14.58,9.11,C.dark,.09,.25);
-    V(0,-.37,front,5.82,14.19,.10,[.025,.033,.065],.065,.30);
-    B(0,-.35,front+.06,.023,13.86,.012,C.black);
+    const powder=[.051,.058,.068],panel=[.070,.078,.088],trim=[.024,.030,.040],seam=[.010,.014,.020],edge=[.135,.150,.165];
+    V(0,-.42,-1.40,6.08,14.58,9.11,powder,.105,-.7);
+    // Folded cabinet skin, recessed solid side service doors and fine panel
+    // gaps give the deep enclosure a readable surface from a three-quarter view.
     for(const side of [-1,1]){
-      V(side*2.96,-.4,-1.4,.12,14.30,9.1,C.steel,.025);
-      for(let i=0;i<4;i++){const y=-5.2+i*3.10;B(side*2.42,y,front+.063,.11,2.48,.035,C.black);B(side*2.42,y,front+.085,.039,2.38,.022,[.03,.40,.77],.2,.85);B(side*2.65,y+.38,front+.07,.025,1.26,.018,[.02,.24,.49],.1,.65);}
-      for(const z of [-5.5,2.7])V(side*2.47,-7.72,z,.37,.21,.50,C.black,.035);
+      V(side*3.038,-.36,-1.42,.025,13.97,8.85,trim,.010,-.7);
+      V(side*3.057,-.36,-1.43,.024,13.78,8.64,panel,.009,-.7);
+      B(side*3.074,6.49,-1.43,.008,.018,8.54,edge,.42);
+      B(side*3.073,-.34,2.74,.008,13.58,.020,seam,.1);
+      for(const y of [-5.50,.07,5.12]){
+        V(side*3.083,y,2.80,.046,.30,.095,trim,.012,.4);
+        B(side*3.109,y,2.80,.008,.20,.010,edge,.65);
+      }
+      V(side*3.082,-.55,-5.16,.043,.52,.16,trim,.014,.32);
+      B(side*3.110,-.55,-5.16,.008,.30,.045,edge,.52);
+      for(const z of [-5.5,2.7]){
+        V(side*2.47,-7.72,z,.37,.21,.50,C.black,.035);
+        T([side*2.47,-7.52,z],[side*2.47,-7.73,z],.080,C.steel,12);
+      }
+    }
+    V(0,-7.46,-1.41,5.94,.33,8.95,trim,.055,-.7);
+    // A single closed charcoal front door, bordered by faceted corner pillars.
+    // There is no invented central split through the screen and badge.
+    V(0,-.36,front+.011,5.60,14.08,.14,trim,.070,-.7);
+    V(0,-.34,front+.063,5.27,13.88,.071,powder,.040,-.7);
+    B(0,6.55,front+.105,4.86,.016,.007,edge,.42);
+    for(const side of [-1,1]){
+      V(side*2.83,-.37,front-.005,.30,14.16,.26,trim,.073,.42);
+      B(side*2.984,-.37,front-.008,.017,13.92,.15,edge,.48);
+      B(side*2.58,-.38,front+.102,.020,13.73,.014,seam,.08);
+      // Black channels, blue diffusers and a thin bright core. The shader moves
+      // long tapered light streaks along these rails independently of water.
+      const lightStrip=(x,y,h,w,phase)=>{
+        V(x,y,front+.124,w+.062,h+.07,.036,seam,.015,.18);
+        m.face(x,y,front+.148,w*3.5,h+.016,[.025,.25,.95],-4,1,phase);
+        B(x,y,front+.153,w,h,.010,[.016,.28,1.0],-3,phase);
+        B(x,y,front+.160,w*.27,h-.024,.004,[.39,.75,1.0],-3,phase);
+      };
+      lightStrip(side*2.73,-.27,13.46,.078,side<0?0:.44);
+      for(const [y,h,phase] of [[-5.55,1.78,.14],[-2.48,2.52,.28],[.96,2.30,.42],[4.30,2.22,.56]]){
+        lightStrip(side*2.43,y+(side<0?.18:0),h,.060,phase+(side<0?0:.44));
+      }
+    }
+    // Raised cyan MGCooling wordmark rendered as slim vector strokes. It is a
+    // reference badge only; inventory classification and model names stay intact.
+    const stroke=(points,x,y,w,h)=>{for(let i=1;i<points.length;i++)T([x+points[i-1][0]*w,y+points[i-1][1]*h,front+.119],[x+points[i][0]*w,y+points[i][1]*h,front+.119],.027,[.035,.46,.60],8,.15);};
+    const arc=(cx,cy,rx,ry,a,b,n=12)=>Array.from({length:n+1},(_,i)=>[cx+Math.cos(a+(b-a)*i/n)*rx,cy+Math.sin(a+(b-a)*i/n)*ry]);
+    const letters=[
+      {w:.36,paths:[[[0,0],[0,1],[.5,.34],[1,1],[1,0]]]},
+      {w:.33,paths:[arc(.5,.5,.5,.5,.21*Math.PI,1.80*Math.PI),[[.96,.36],[.96,.51],[.56,.51]]]},
+      {w:.32,paths:[arc(.5,.5,.5,.5,.22*Math.PI,1.78*Math.PI)]},
+      {w:.26,paths:[arc(.5,.35,.5,.35,0,TAU)]},
+      {w:.26,paths:[arc(.5,.35,.5,.35,0,TAU)]},
+      {w:.075,paths:[[[.5,1],[.5,.03],[1,.03]]]},
+      {w:.060,paths:[[[.5,0],[.5,.69]],[[.5,.92],[.5,.98]]]},
+      {w:.26,paths:[[[0,0],[0,.69]],arc(.5,.44,.5,.27,Math.PI,0),[[1,.44],[1,0]]]},
+      {w:.26,paths:[arc(.5,.37,.5,.32,0,TAU),[[1,.66],[1,-.14]],arc(.5,-.14,.5,.20,0,-Math.PI)]}
+    ];
+    const wordWidth=letters.reduce((sum,l)=>sum+l.w+.067,0)-.067;let letterX=-wordWidth/2;
+    for(const letter of letters){for(const points of letter.paths)stroke(points,letterX,4.97,letter.w,.54);letterX+=letter.w+.067;}
+    // Recessed touchscreen with a quiet schematic and glass reflection. No
+    // numeric temperature, pressure, health or flow claims are fabricated here.
+    V(.12,3.13,front+.155,1.71,1.43,.19,seam,.047,.20);
+    V(.12,3.14,front+.250,1.53,1.24,.036,edge,.020,.45);
+    B(.12,3.17,front+.275,1.37,1.06,.013,[.12,.20,.24],.15,.45);
+    B(.12,3.59,front+.284,1.34,.15,.005,[.028,.068,.098],.1,.55);
+    B(-.33,3.59,front+.289,.32,.026,.004,[.36,.57,.64],.1,.70);
+    for(const [x,y,w,h] of [[-.26,3.28,.33,.22],[.47,3.28,.33,.22],[-.26,2.98,.33,.19],[.47,2.98,.33,.19]]){
+      B(x,y,front+.287,w,h,.006,[.26,.37,.40],.1,.46);
+      B(x,y+.034,front+.292,w*.62,.014,.004,[.48,.62,.63],.1,.6);
+    }
+    B(.12,3.30,front+.292,.029,.34,.005,[.10,.49,.61],.1,.72);
+    B(.12,3.43,front+.292,.70,.024,.005,[.10,.49,.61],.1,.72);
+    B(.12,3.00,front+.292,.70,.020,.005,[.10,.49,.61],.1,.72);
+    m.polygon([[-.56,3.68],[-.22,3.68],[.60,2.66],[.36,2.66]],front+.296,[.21,.30,.34],.3);
+    B(.12,2.59,front+.279,.13,.011,.006,[.19,.23,.27],.3);
+    // Mushroom emergency stop: square yellow guard, cylindrical red actuator.
+    V(-1.40,3.15,front+.156,.48,.48,.16,[.63,.43,.025],.080,.26);
+    T([-1.40,3.15,front+.19],[-1.40,3.15,front+.32],.167,[.25,.045,.025],24,.25);
+    T([-1.40,3.15,front+.30],[-1.40,3.15,front+.385],.197,[.63,.046,.022],24,.25);
+    m.disc(-1.40,3.15,front+.388,.158,[.74,.065,.030],.24,24);
+    // Low recessed perforated intake, a folded lower lip and the service latch.
+    V(0,-5.92,front+.112,2.52,1.67,.057,trim,.040,-.7);
+    B(0,-5.92,front+.145,2.30,1.44,.013,[.031,.046,.070],.22);
+    for(let row=0;row<20;row++)for(let col=0;col<33;col++){
+      const x=-1.09+col*.067+(row%2)*.024,y=-6.57+row*.068;
+      m.face(x,y,front+.154,.042,.029,seam,.05);
+    }
+    B(0,-6.69,front+.165,2.25,.019,.015,[.030,.11,.21],.22,.3);
+    V(2.10,-.77,front+.140,.12,.55,.072,trim,.025,.5);
+    T([2.10,-.62,front+.18],[2.10,-.62,front+.194],.043,C.steel,14,.65);
+    B(2.10,-.62,front+.200,.006,.039,.003,seam,.1);
+    B(0,-7.17,front+.081,5.18,.025,.016,seam,.1);
+    // Rear service skin and fluid fittings retain the existing coupling centers.
+    V(0,-.18,rear-.03,5.23,12.66,.10,trim,.06,-.7);
+    B(0,-.18,rear-.087,.023,12.36,.015,seam,.1);
+    for(const side of [-1,1]){
       B(side*2.67,-.32,rear-.035,.095,13.8,.06,C.steel);
       for(let i=0;i<5;i++)B(side*2.58,-5.8+i*2.8,rear-.08,.07,.12,.06,C.edge);
+      for(let row=0;row<12;row++)B(side*1.28,3.07+row*.19,rear-.095,1.93,.060,.024,seam,.1);
     }
-    V(0,3.76,front+.12,1.71,1.08,.14,C.black,.055,.1);
-    B(0,3.78,front+.20,1.43,.80,.015,[.055,.15,.22],.1,.55);
-    for(let i=0;i<3;i++){B(-.44+i*.44,3.97,front+.22,.31,.16,.012,[.10,.39,.52],.1,.8);B(-.44+i*.44,3.65,front+.22,.31,.21,.012,C.steel,.1,.6);}
-    m.disc(-1.54,3.72,front+.17,.235,[.64,.43,.035]);m.disc(-1.54,3.72,front+.20,.14,[.61,.075,.03]);
-    // Neutral nameplate and ventilation keep the model brand-independent.
-    B(0,5.30,front+.07,1.94,.27,.024,C.steel,.4);
-    for(let i=0;i<15;i++)B(0,-6.6+i*.11,front+.074,2.51,.037,.026,C.black,.1);
-    V(2.06,-.27,front+.13,.09,.72,.09,C.edge,.025);
-    V(0,-.18,rear-.03,5.23,12.66,.10,C.black,.06,.15);
-    for(let i=0;i<26;i++)B(0,-4.52+i*.36,rear-.095,4.70,.033,.024,C.steel,.35);
     const blue=[.025,.36,.69],red=[.68,.08,.035];
     for(const [x,color] of [[-.95,blue],[.95,red]]){
       T([x,-6.50,rear],[x,-6.50,rear-.31],.23,C.edge,18);
       T([x,-6.50,rear-.24],[x,-6.50,rear-.36],.20,color,18);
       T([x,-6.50,rear-.36],[x,-6.50,rear-.39],.14,C.dark,18);
     }
-    return {mesh:m,depth:9.11,min:[-3.08,-7.84,-6.38],max:[3.08,6.94,3.39]};
+    return {mesh:m,depth:9.11,min:[-3.12,-7.84,-6.38],max:[3.12,6.94,3.55]};
   }
   function smoothPath(anchors){
     const points=[];
@@ -336,13 +420,14 @@
       if(side>0)anchors.reverse();const path=smoothPath(anchors);
       pipeMesh(water,path,cdu.external?.083:Math.min(.083,cdu.height*.14),color,true);pipeMesh(shell,path,cdu.external?.115:Math.min(.115,cdu.height*.22),[.58,.69,.74]);
     }
-    return {solid,water,shell,mode,connected:!!cdu,bounds:{min:[-2.49,-7.85,cdu?.external?-7.45:-4.62],max:[cdu?.external?9.50:2.30,7.83,3.45]}};
+    return {solid,water,shell,mode,connected:!!cdu,bounds:{min:[-2.49,-7.85,cdu?.external?-7.45:-4.62],max:[cdu?.external?9.50:2.30,7.83,cdu?.external?3.55:3.45]}};
   }
   const VERTEX=`attribute vec3 aPosition;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aMaterial;uniform mat4 uViewProjection;uniform mat4 uModel;uniform mat4 uPart;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;void main(){mat4 m=uModel*uPart;vec4 p=m*vec4(aPosition,1.0);vPosition=p.xyz;vLocal=aPosition;vNormal=mat3(m)*aNormal;vColor=aColor;vMaterial=aMaterial;gl_Position=uViewProjection*p;}`;
   const FRAGMENT=`
     precision highp float;varying vec3 vPosition;varying vec3 vLocal;varying vec3 vNormal;varying vec3 vColor;varying vec2 vMaterial;
-    uniform vec3 uEye;uniform float uLight;uniform float uSelected;uniform float uAlpha;uniform float uTime;
+    uniform vec3 uEye;uniform float uLight;uniform float uSelected;uniform float uAlpha;uniform float uTime;uniform float uLedTime;
     void main(){
+      float alpha=uAlpha;
       vec3 n=normalize(vNormal),v=normalize(uEye-vPosition),r=reflect(-v,n),key=normalize(vec3(-.58,.88,.72)),fill=normalize(vec3(.74,.40,-.35));
       float metal=max(vMaterial.x,0.0),hemisphere=.22+.17*(n.y*.5+.5),diff=max(dot(n,key),0.0),brush=.992+.008*sin(vLocal.z*440.0+vLocal.x*17.0);
       vec3 c=vColor*(hemisphere+diff*.86+max(dot(n,fill),0.0)*.20)*brush;
@@ -353,8 +438,20 @@
       c+=vec3(.83,.89,.92)*softbox*smoothstep(.10,.30,r.y)*metal*.15;c+=vec3(.35,.60,.69)*(back*.30+rim*.055)*metal;
       c+=vColor*uLight*.075;c=mix(c,vColor,clamp(vMaterial.y,0.0,1.0));c+=vec3(.015,.017,.019)*uSelected+vec3(.16,.25,.27)*rim*uSelected*.23;
       if(vMaterial.x<-.5){float grain=fract(sin(dot(floor(vLocal*380.0),vec3(127.1,311.7,74.7)))*43758.5453);c*=.965+grain*.070;}
-      if(vMaterial.x<-1.5){float band=pow(.5+.5*cos(vMaterial.y*4.5-uTime*2.4),8.0);c=vColor*(.40+.40*band)+vec3(.34,.40,.43)*band;}
-      gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),uAlpha);
+      if(vMaterial.x<-2.5){
+        // Decorative light travels up the physical rail, with a long soft tail
+        // and a compact bright head. It is unrelated to the coolant shader.
+        float phase=fract((vLocal.y+7.1)*.215-uLedTime*.45+vMaterial.y);
+        float tail=smoothstep(.20,.91,phase)*(1.0-smoothstep(.94,1.0,phase));
+        float head=smoothstep(.83,.93,phase)*(1.0-smoothstep(.94,1.0,phase));
+        c=vColor*(.76+tail*.80+head*.90);
+        if(vMaterial.x<-3.5){
+          float outer=step(2.58,abs(vLocal.x)),rail=mix(2.43,2.73,outer),radius=mix(.105,.1365,outer);
+          float glow=pow(max(0.0,1.0-abs(abs(vLocal.x)-rail)/radius),2.0);
+          c=vColor*(1.0+head*.35);alpha*=glow*.62*(.50+tail*.50+head*.45);
+        }
+      }else if(vMaterial.x<-1.5){float band=pow(.5+.5*cos(vMaterial.y*4.5-uTime*2.4),8.0);c=vColor*(.40+.40*band)+vec3(.34,.40,.43)*band;}
+      gl_FragColor=vec4(pow(max(c,vec3(0.0)),vec3(.84)),alpha);
     }`;
   function mount(canvas,options={}){
     const noop={supported:false,setComponents(){},setTheme(){},select(){},focusSelection(){},setView(){},resetOrbit(){},zoomBy(){},resize(){},getState(){return {supported:false};},destroy(){}};
@@ -370,14 +467,18 @@
     function rebuild(){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));cooling=createCooling(placement.valid);coolingBuffers=[buffer(cooling.solid),buffer(cooling.water),buffer(cooling.shell)];components.forEach(p=>gl.deleteBuffer(p.buffer));components=placement.valid.map(item=>{const part=item.external?createExternalCdu():createEquipment(item);return {...buffer(part.mesh),item,min:part.min,max:part.max};});}
     function setup(){
       maxSize=Math.min(4096,Number(gl.getParameter(gl.MAX_RENDERBUFFER_SIZE))||4096);program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,VERTEX));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,FRAGMENT));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('Rack shader linking failed');shaders.forEach(s=>gl.deleteShader(s));shaders.length=0;
-      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected','uAlpha','uTime'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
+      ['aPosition','aNormal','aColor','aMaterial'].forEach(n=>attrib[n]=gl.getAttribLocation(program,n));['uViewProjection','uModel','uPart','uEye','uLight','uSelected','uAlpha','uTime','uLedTime'].forEach(n=>uniform[n]=gl.getUniformLocation(program,n));
       frameMesh=buffer(createFrame());components=[];coolingBuffers=[];rebuild();gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);gl.disable(gl.CULL_FACE);gl.clearColor(0,0,0,0);ready=false;
     }
     function release(){if(!lost){coolingBuffers.forEach(p=>gl.deleteBuffer(p.buffer));components.forEach(p=>gl.deleteBuffer(p.buffer));if(frameMesh)gl.deleteBuffer(frameMesh.buffer);if(program)gl.deleteProgram(program);shaders.forEach(s=>gl.deleteShader(s));}components=[];coolingBuffers=[];frameMesh=null;program=null;shaders.length=0;}
     try{setup();}catch(error){release();fail(error.message);return noop;}
     function sync(){canvas.dataset.rackYaw=yaw.toFixed(4);canvas.dataset.rackPitch=pitch.toFixed(4);canvas.dataset.rackDragging=String(!!drag);canvas.dataset.rackSelected=selected;canvas.dataset.rackCount=String(placement.count);canvas.dataset.rackOccupied=String(placement.occupiedU);canvas.dataset.rackInvalid=String(placement.invalid.length);canvas.dataset.rackView=view;canvas.dataset.rackZoom=zoom.toFixed(3);canvas.dataset.rackFocus=focus;canvas.dataset.rackModel='gb300-inspired';canvas.dataset.rackVertices=String(components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0));}
     function requestDraw(){if(!disposed&&!lost&&program&&!frame)frame=requestAnimationFrame(draw);}
-    function flowAnimated(){return flowEnabled&&cooling?.connected&&!reduced.matches&&visible&&!document.hidden&&!disposed&&!lost&&!focus;}
+    function motionAllowed(){return !reduced.matches&&visible&&!document.hidden&&!disposed&&!lost;}
+    function flowAnimated(){return flowEnabled&&cooling?.connected&&motionAllowed()&&!focus;}
+    // The solid cabinet hides its front rails from the rear; avoid redrawing
+    // an invisible effect when only the static rear assembly is in view.
+    function decorativeAnimated(){return motionAllowed()&&Math.cos(yaw)>0&&components.some(p=>p.item.external&&(!focus||p.item.name===focus));}
     function draw(now=0){
       frame=0;if(disposed||lost||!program)return;const rect=canvas.getBoundingClientRect();if(rect.width<1||rect.height<1)return;const dpr=Math.min(window.devicePixelRatio||1,1.65,maxSize/Math.max(rect.width,rect.height)),w=Math.max(1,Math.round(rect.width*dpr)),h=Math.max(1,Math.round(rect.height*dpr));if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
       const centerX=focus?(placement.valid.find(p=>p.name===focus)?.x||0):(cooling.mode==='external'?3.50:0);
@@ -391,14 +492,14 @@
       const vertical=Math.max(maxY/marginY,maxX/(aspect*marginX),focused?1.10:0)/zoom,horizontal=vertical*aspect,isPlan=view==='front'||view==='rear';
       if(!isPlan)eye[2]=Math.max(5.1,required/zoom);const vp=multiply(isPlan?ortho(horizontal,vertical):perspective(.55,aspect),lookAt(eye));inverseMvp=inverse(multiply(vp,model));
       canvas.dataset.rackCameraDistance=eye[2].toFixed(3);
-      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
+      gl.viewport(0,0,w,h);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);gl.uniformMatrix4fv(uniform.uViewProjection,false,vp);gl.uniformMatrix4fv(uniform.uModel,false,model);gl.uniform3fv(uniform.uEye,new Float32Array(eye));gl.uniform1f(uniform.uLight,light);gl.uniform1f(uniform.uTime,flowAnimated()?now/1000:0);gl.uniform1f(uniform.uLedTime,decorativeAnimated()?now/1000:0);gl.uniform1f(uniform.uAlpha,1);
       function part(mesh,matrix,isSelected){gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);let offset=0;[['aPosition',3],['aNormal',3],['aColor',3],['aMaterial',2]].forEach(([name,size])=>{gl.enableVertexAttribArray(attrib[name]);gl.vertexAttribPointer(attrib[name],size,gl.FLOAT,false,44,offset);offset+=size*4;});gl.uniformMatrix4fv(uniform.uPart,false,matrix);gl.uniform1f(uniform.uSelected,isSelected?1:0);gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
+      gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
       part(frameMesh,identity(),false);for(const p of components)part(p,translation(p.item.x||0,p.item.y,p.item.name===selected&&p.item.mgx_type!=='cdu'?.22:0),p.item.name===selected);
       part(coolingBuffers[0],identity(),false);
-      gl.enable(gl.BLEND);gl.blendFuncSeparate(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA,gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
       gl.uniform1f(uniform.uAlpha,.88);part(coolingBuffers[1],identity(),false);
       gl.depthMask(false);gl.uniform1f(uniform.uAlpha,.20);part(coolingBuffers[2],identity(),false);gl.depthMask(true);gl.disable(gl.BLEND);
-      canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());if(flowAnimated())requestDraw();
+      canvas.dataset.coolingMode=cooling.mode;canvas.dataset.flowAnimated=String(flowAnimated());canvas.dataset.decorativeAnimated=String(decorativeAnimated());if(flowAnimated()||decorativeAnimated())requestDraw();
       if(!ready){const error=gl.getError();if(error!==gl.NO_ERROR){fail('Rack WebGL render error '+error);return;}ready=true;canvas.dataset.rackState='ready';delete canvas.dataset.rackError;canvas.dispatchEvent(new CustomEvent('pa-rack-ready',{bubbles:true}));}
     }
     function orbit(y,p){yaw=((y+Math.PI)%TAU+TAU)%TAU-Math.PI;pitch=clamp(p,-1.15,1.15);view='custom';sync();requestDraw();}
@@ -429,8 +530,8 @@
       setTheme(value){const next=value==='light'||value===true?1:0;if(light!==next){light=next;requestDraw();}},select,focusSelection,setView,resetOrbit,
       zoomBy(factor){const f=Number(factor);if(!Number.isFinite(f)||f<=0)return;zoom=clamp(zoom*f,.75,2.10);sync();requestDraw();},
       resize:requestDraw,
-      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size,external:!!p.external})),cooling:{mode:cooling.mode,flowEnabled,animated:flowAnimated()},geometryBuffers:components.length+coolingBuffers.length+(frameMesh?1:0),vertices:components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
-      destroy(){if(disposed)return;disposed=true;visibilityObserver?.disconnect();document.removeEventListener('visibilitychange',onVisibility);reduced.removeEventListener('change',onVisibility);if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';delete canvas.paRackScene;}
+      getState(){return {supported:true,ready,disposed,contextLost:lost,yaw,pitch,view,zoom,selected,focus,targetY,theme:light?'light':'dark',dragging:!!drag,count:placement.count,occupiedU:placement.occupiedU,invalid:placement.invalid.map(p=>({...p})),unplaced:[...placement.unplaced],placements:placement.valid.map(p=>({name:p.name,type:p.mgx_type,top:p.top,bottom:p.bottom,size:p.size,external:!!p.external})),cooling:{mode:cooling.mode,flowEnabled,animated:flowAnimated()},decorativeLighting:{present:components.some(p=>p.item.external),animated:decorativeAnimated(),style:'tc1288-blue-flow'},geometryBuffers:components.length+coolingBuffers.length+(frameMesh?1:0),vertices:components.concat(coolingBuffers).reduce((sum,p)=>sum+p.count,frameMesh?.count||0),model:'gb300-inspired'};},
+      destroy(){if(disposed)return;disposed=true;visibilityObserver?.disconnect();document.removeEventListener('visibilitychange',onVisibility);reduced.removeEventListener('change',onVisibility);if(frame)cancelAnimationFrame(frame);frame=0;drag=null;ro?.disconnect();window.removeEventListener('resize',requestDraw);listeners.forEach(([name,fn])=>canvas.removeEventListener(name,fn));canvas.style.touchAction=oldTouchAction;release();canvas.dataset.rackState='disposed';canvas.dataset.flowAnimated='false';canvas.dataset.decorativeAnimated='false';delete canvas.paRackScene;}
     };canvas.paRackScene=api;sync();requestDraw();return api;
   }
   // CPU-only geometry sharing for the homepage editorial scene. This factory

@@ -142,20 +142,20 @@
 :root[data-theme="light"] .cdu-config .cdu-conflict{color:#923819}:root[data-theme="light"] .ew-flow-blue{color:#175a99}:root[data-theme="light"] .ew-flow-red{color:#b03d34}
 #ew-rack-add{margin-left:auto}
 
-/* Keep the paired rack/CDU assembly usable on narrow rack-workspace screens. */
+/* Keep rack and CDU detail navigation usable beside the equipment drawings on mobile. */
 @media(max-width:760px){
- body[data-product-view="rack"] .layout{flex-direction:column}
- body[data-product-view="rack"] .sidebar{position:static;width:100%;height:auto;min-height:0;padding:8px 10px;border-right:0;border-bottom:1px solid var(--ew-line)}
- body[data-product-view="rack"] .sidebar .brand,body[data-product-view="rack"] .sidebar-foot,body[data-product-view="rack"] .nav-group{display:none}
- body[data-product-view="rack"] .nav{display:flex;gap:5px;padding:0;overflow:visible}
- body[data-product-view="rack"] .nav-btn{flex:1;min-width:0;min-height:43px;padding:8px 5px;gap:5px;margin:0}
- body[data-product-view="rack"] .nav-btn b{font-size:10px;white-space:normal}
- body[data-product-view="rack"] .nav-btn small,body[data-product-view="rack"] .nav-btn i,body[data-product-view="rack"] .nav-btn:before{display:none}
- body[data-product-view="rack"] .main{width:100%}
- body[data-product-view="rack"] .topbar{padding:0 12px;gap:7px;height:52px;min-height:52px}
- body[data-product-view="rack"] .p-top-label,body[data-product-view="rack"] .topbar .user{display:none}
- body[data-product-view="rack"] .page-title{flex:1;min-width:0}
- body[data-product-view="rack"] .content{padding:14px 10px 30px;max-width:100%}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .layout{flex-direction:column}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .sidebar{position:static;width:100%;height:auto;min-height:0;padding:8px 10px;border-right:0;border-bottom:1px solid var(--ew-line)}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .sidebar .brand,body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .sidebar-foot,body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-group{display:none}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav{display:flex;gap:5px;padding:0;overflow:visible}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-btn{flex:1;min-width:0;min-height:43px;padding:8px 5px;gap:5px;margin:0}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-btn b{font-size:10px;white-space:normal}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-btn small,body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-btn i,body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .nav-btn:before{display:none}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .main{width:100%}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .topbar{padding:0 12px;gap:7px;height:52px;min-height:52px}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .p-top-label,body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .topbar .user{display:none}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .page-title{flex:1;min-width:0}
+ body:is([data-product-view="rack"], [data-product-view="machine"]:has(.pd-workspace[data-component-type="cdu"])) .content{padding:14px 10px 30px;max-width:100%}
  body[data-product-view="rack"] .rack-hero{padding:16px!important}
  body[data-product-view="rack"] .rack-hero-left{min-width:0;flex-basis:100%}
  body[data-product-view="rack"] .rack-hero .rack-sel{min-width:0;max-width:100%;flex-basis:100%}

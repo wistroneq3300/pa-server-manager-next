@@ -2,8 +2,33 @@
 (() => {
   'use strict';
   const q = value => esc(JSON.stringify(String(value ?? '')));
+  let cduVisualSequence = 0;
   function externalCduVisual() {
-    return `<svg class="pa-hardware-visual ew-cdu-cabinet" data-hardware-type="cdu" data-hardware-view="front" data-hardware-units="0" viewBox="0 0 240 290" role="img" aria-label="\u5916\u7f6e CDU \u5916\u89c0\u793a\u610f" xmlns="http://www.w3.org/2000/svg"><title>\u5916\u7f6e CDU</title><rect x="58" y="10" width="124" height="264" rx="3" fill="#b6bec2" stroke="#71818a" stroke-width="3"/><rect x="65" y="18" width="110" height="65" rx="2" fill="#e4e8e9"/><rect x="108" y="33" width="29" height="20" rx="2" fill="#203440"/><rect x="112" y="37" width="21" height="12" fill="#6ea3b8"/><circle cx="156" cy="58" r="4" fill="#a64139"/><rect x="65" y="88" width="110" height="177" fill="#263841"/><rect x="72" y="96" width="96" height="159" fill="#374b55"/>${Array.from({length:22},(_,i)=>`<path d="M77 ${101+i*7}h86" stroke="#172a35" stroke-width="2"/>`).join('')}<path d="M120 89v174" stroke="#829399" stroke-width="2"/><path d="M110 165v25m20-25v25" stroke="#b9c5c9" stroke-width="3"/><rect x="68" y="275" width="16" height="7" fill="#1e3039"/><rect x="156" y="275" width="16" height="7" fill="#1e3039"/></svg>`;
+    const id=`ew-tc1288-${++cduVisualSequence}`;
+    // Front elevation follows the same TC1288 reference as the rack's 3D shell.
+    // The HMI pattern and blue accent lights are appearance, not live telemetry.
+    const rails=[60,180].map(x=>`<path d="M${x} 22V306" stroke="#073781" stroke-width="5"/><path d="M${x} 22V306" stroke="#1684ff" stroke-width="2.6"/><path d="M${x} 22V306" stroke="#87deff" stroke-width=".7"/>`).join('');
+    const segments=[67,173].map((x,i)=>[50,125,200].map(y=>`<path d="M${x} ${y+i*20}v48" stroke="#0862c5" stroke-width="3.5"/><path d="M${x} ${y+i*20}v48" stroke="#57cfff" stroke-width="1.2"/>`).join('')).join('');
+    return `<svg class="pa-hardware-visual ew-cdu-cabinet" data-hardware-type="cdu" data-hardware-view="front" data-hardware-units="0" viewBox="0 0 240 330" role="img" aria-label="TC1288 \u5916\u7f6e CDU \u5916\u89c0\u53c3\u8003" xmlns="http://www.w3.org/2000/svg">
+      <title>TC1288 \u5916\u7f6e CDU \u5916\u89c0\u53c3\u8003</title>
+      <defs><linearGradient id="${id}-shell" x2="1" y2=".3"><stop stop-color="#343940"/><stop offset=".18" stop-color="#1e2329"/><stop offset=".8" stop-color="#15191f"/><stop offset="1" stop-color="#30353b"/></linearGradient><linearGradient id="${id}-door" x2=".7" y2="1"><stop stop-color="#292e35"/><stop offset=".45" stop-color="#181c22"/><stop offset="1" stop-color="#101419"/></linearGradient><pattern id="${id}-mesh" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r=".65" fill="#03070c"/></pattern></defs>
+      <ellipse cx="120" cy="319" rx="69" ry="5" fill="#000" opacity=".15"/>
+      <rect x="56" y="8" width="128" height="307" rx="4" fill="url(#${id}-shell)" stroke="#080d14" stroke-width="1.6"/>
+      <path d="M61 11H179M57 15V310" fill="none" stroke="#5b626a" stroke-width=".8"/>
+      <rect x="72" y="13" width="96" height="297" rx="2" fill="url(#${id}-door)" stroke="#090e15" stroke-width="1.1"/>
+      <path d="M74 15H166M74 16V307" fill="none" stroke="#434b54" stroke-width=".45"/>
+      <g stroke-linecap="round">${rails}${segments}</g>
+      <text x="120" y="61" text-anchor="middle" fill="#2797b7" font-family="Arial,sans-serif" font-size="12" letter-spacing="-.5">MGCooling</text>
+      <rect x="103" y="79" width="36" height="29" rx="1.4" fill="#0a0d13" stroke="#3f4850" stroke-width="1.4"/>
+      <rect x="107" y="83" width="28" height="21" fill="#203d51" stroke="#617a89" stroke-width=".6"/>
+      <path d="M110 86h22M119 88v12M110 94h21M126 88v12" stroke="#45768c" stroke-width=".6"/>
+      <g fill="#73949e"><rect x="110" y="89" width="6" height="3"/><rect x="122" y="96" width="9" height="4"/></g>
+      <circle cx="87" cy="94" r="6.5" fill="#dab334" stroke="#5d4910" stroke-width="1.2"/><circle cx="87" cy="94" r="4.3" fill="#ac2825" stroke="#e25844" stroke-width=".8"/>
+      <rect x="161" y="188" width="3.2" height="17" rx="1.4" fill="#0b0e12" stroke="#5e6870" stroke-width=".5"/><circle cx="163" cy="186" r="1.6" fill="#7b8589"/>
+      <rect x="89" y="267" width="62" height="29" rx="1" fill="#14263a" stroke="#080c11" stroke-width="2"/><rect x="90" y="268" width="60" height="27" fill="url(#${id}-mesh)"/>
+      <path d="M91 269H149M91 294H149" stroke="#225182" stroke-width=".7"/>
+      <rect x="68" y="316" width="15" height="3" fill="#11171c"/><rect x="157" y="316" width="15" height="3" fill="#11171c"/>
+    </svg>`;
   }
   const baseMachine = RENDERERS.machine;
   RENDERERS.machine = function() {
@@ -14,7 +39,9 @@
     const stage = root.querySelector('.pd-hardware-stage');
     if (stage) {
       stage.dataset.componentType = type;
-      stage.innerHTML = (rackIsExternal(machine)?externalCduVisual():PAHardwareVisuals.render(machine)) + `<span class="pd-stage-caption">${esc(PAHardwareVisuals.caption(type))}</span>`;
+      // Detail uses the same horizontal CDU illustration as the rack-bottom unit.
+      // Rendering never converts an external device or changes its stored 0U placement.
+      stage.innerHTML = PAHardwareVisuals.render(machine) + `<span class="pd-stage-caption">${esc(PAHardwareVisuals.caption(type))}</span>`;
     }
     root.querySelector('.pd-workspace').dataset.componentType = type;
     const hw = machineDetailCache[_activeMachine]?.os_info?.hw || {};
@@ -100,7 +127,7 @@
     const sizeLabel=external?'\u5916\u7f6e':`${size}U`;
     const placed=PAWorkspaceReliability.validatePlacements(rackMembers()).valid.some(item=>item.name===m.name);
     const range=external?'\u6a5f\u6ac3\u6b63\u9762\u53f3\u5074':top>0?(size===1?`U${top}`:`U${top} \u2014 U${top-size+1}`):'\u5c1a\u672a\u653e\u7f6e';
-    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${sizeLabel}</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${external?externalCduVisual():PAHardwareVisuals.render(m,{view:'front'})}<span>\u6b63\u9762\u8996\u5716\uff0f ${sizeLabel}</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>\u805a\u7126 3D \u5143\u4ef6</button><p class="ew-illustration-note">${esc(PAHardwareVisuals.caption(type))}</p><dl><div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}<small>${external?'\u4e0d\u5360\u6a5f\u6ac3 U \u4f4d':placed?'\u5df2\u5132\u5b58\u7684\u6a5f\u6ac3\u4f4d\u7f6e':top?'\u8acb\u6aa2\u67e5\u4f4d\u7f6e\u885d\u7a81':'\u5c1a\u672a\u5b89\u88dd\u65bc\u6a5f\u6ac3'}</small></dd></div><div><dt>OS\uff0f\u7ba1\u7406\u4ecb\u9762</dt><dd>${esc(m.os_ip || '\u672a\u8a2d\u5b9a')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || '\u672a\u8a2d\u5b9a')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">\u958b\u555f\u5143\u4ef6\u8a73\u60c5</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">${type==='cdu'?'CDU \u5b89\u88dd\u8a2d\u5b9a':'\u6a5f\u6ac3\u4f4d\u7f6e'}</button></div>`;
+    target.innerHTML = `<div class="ew-identity-top"><span class="pd-eyebrow">${esc(PAHardwareVisuals.label(type))}</span><span class="ew-size-badge">${sizeLabel}</span></div><h2>${esc(m.name)}</h2><div class="ew-device-elevation">${external?externalCduVisual():PAHardwareVisuals.render(m,{view:'front'})}<span>\u6b63\u9762\u8996\u5716\uff0f ${sizeLabel}</span></div><button class="btn small ew-focus" onclick="equipmentRackFocus()" ${placed?'':'disabled'}>\u805a\u7126 3D \u5143\u4ef6</button><p class="ew-illustration-note">${esc(external?'TC1288 \u5916\u89c0\u53c3\u8003 \u00b7 \u975e\u672c\u6a5f\u5be6\u969b\u5916\u89c0':PAHardwareVisuals.caption(type))}</p><dl><div><dt>\u5b89\u88dd\u4f4d\u7f6e</dt><dd>${range}<small>${external?'\u4e0d\u5360\u6a5f\u6ac3 U \u4f4d':placed?'\u5df2\u5132\u5b58\u7684\u6a5f\u6ac3\u4f4d\u7f6e':top?'\u8acb\u6aa2\u67e5\u4f4d\u7f6e\u885d\u7a81':'\u5c1a\u672a\u5b89\u88dd\u65bc\u6a5f\u6ac3'}</small></dd></div><div><dt>OS\uff0f\u7ba1\u7406\u4ecb\u9762</dt><dd>${esc(m.os_ip || '\u672a\u8a2d\u5b9a')}</dd></div><div><dt>BMC</dt><dd>${esc(m.bmc_ip || '\u672a\u8a2d\u5b9a')}</dd></div></dl><div class="ew-inspector-actions"><button class="btn primary" onclick="openMachine(${q(m.name)})">\u958b\u555f\u5143\u4ef6\u8a73\u60c5</button><button class="btn" onclick="rackMoveDialog(${q(m.name)})">${type==='cdu'?'CDU \u5b89\u88dd\u8a2d\u5b9a':'\u6a5f\u6ac3\u4f4d\u7f6e'}</button></div>`;
     const status=value=>value===true?'Ping \u53ef\u9054':value===false?'Ping \u672a\u56de\u61c9':'\u5c1a\u672a\u89c0\u6e2c';
     const powerLabel=value=>{const raw=String(value??'').trim();return ({on:'\u5df2\u958b\u6a5f',off:'\u5df2\u95dc\u6a5f',true:'\u5df2\u958b\u6a5f',false:'\u5df2\u95dc\u6a5f','1':'\u5df2\u958b\u6a5f','0':'\u5df2\u95dc\u6a5f',unknown:'\u672a\u77e5',unavailable:'\u7121\u6cd5\u53d6\u5f97','n/a':'\u4e0d\u9069\u7528','not available':'\u7121\u6cd5\u53d6\u5f97',powering_on:'\u958b\u6a5f\u4e2d',powering_off:'\u95dc\u6a5f\u4e2d'})[raw.toLowerCase()]||raw||'\u672a\u77e5';};
     target.querySelector('.ew-inspector-actions .btn:not(.primary)').onclick=()=>equipmentRackPlacement(m.name);
