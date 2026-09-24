@@ -6,8 +6,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 - Latest completed feature: saved topology in Rack 3D and Rack Ping LEDs (section below).
 - Starting main for this work was `d6b77f88bec65ddcb7d974682f58a5d5454c8fe4`.
-- Current implementation and fixture validation are complete locally; user explicitly
-  authorized commit/push to main. Publication is recorded after remote verification.
+- Implementation and fixture validation are complete. Functional commit
+  `8024c454c87ac22966ffce8b5aef25392c8c2d1d` was pushed to main and verified against
+  `git ls-remote` on 2026-09-24. This documentation follow-up records that delivery.
 - No deployment, production-data change or live hardware test was performed for this work.
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
 - Known checkout: C:/Users/kobei/Documents/Codex/2026-09-24/pa-server-manager-next-https-github
