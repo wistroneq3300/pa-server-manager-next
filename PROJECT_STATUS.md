@@ -4,8 +4,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Repository and delivery
 
-- Current authorized work: Rack topology IP policy, Power Shelf/CDU cabling and
-  device-mounted Ping LED refinements (latest section below).
+- Current authorized work: refined panel-integrated Ping LED finish at the approved
+  device positions, implemented and pushed to main (latest section below).
 - Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
 - Functional commit `d40dea953e30507cd03d701330b9a82c17aacf30` was pushed to
   `main` and verified against `git ls-remote` on 2026-09-24. Follow-up LED geometry
@@ -24,7 +24,28 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - No deployment or production service restart was performed. Pushed does not mean live.
 - Instruction/skill consolidation was published as `4e29682`.
 
-## Rack topology/IP/LED refinement (2026-09-24; current)
+## Panel-integrated LED finish (2026-09-24; current)
+
+- User approved the LED positions and requested a more refined integrated finish and push.
+  Functional commit `d53e2166f3be020ef710020bd73cb6c8a507a471` was pushed to main
+  and verified against `git ls-remote`. This documentation follow-up records delivery.
+- Retained every approved x/y location. Removed the floating rectangular Switch/Power
+  Shelf pods and aligned each lamp with its actual equipment face depth. The shallow
+  mount projects only .0075 scene units beyond its panel, with a fine metal chamfer,
+  dark inner seat and smooth 32-segment lens. Champagne equipment uses matching trim.
+- The lens has radial brightness, curved normals and a restrained glass reflection.
+  Red/green Ping blinking, gray unchecked state and animation lifecycle are preserved.
+  Blank Panel rendering, inventory, cabling, Ping policy and decorative CDU rails did
+  not change. No deployment or live hardware operations were performed.
+- Validation: rack-network browser QA passed 10 groups, including 788 changing status
+  pixels, saved wiring visibility, failure summary, small screens, reduced motion,
+  context recovery and stale-response handling. Core-scene passed 11/11 checks;
+  changed JS syntax and whitespace checks passed. Browser errors/external requests: 0.
+- Visually reviewed whole-rack and focused front/perspective images in light/dark.
+  Switch and Power Shelf red/green/gray lenses remain visible without covering ports,
+  fan cartridges or cable endpoints. Evidence: `qa/artifacts/rack-network-led/finish-*`.
+
+## Rack topology/IP/LED refinement (2026-09-24; prior baseline)
 
 - The user authorized implementation and publication. Functional commits
   `d40dea953e30507cd03d701330b9a82c17aacf30` and
