@@ -68,7 +68,8 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Verified fixture layout at 1440/390/320px without page overflow, adjacent desktop buttons,
   planning dialog and Escape. L10/L11 operation-deck browser checks, workspace UX matrix,
   equipment browser, operations/equipment regressions and clean desktop acceptance 23/23 passed.
-- User authorized commit/push for this follow-up. No backend, live device action or deployment.
+- Functional commit `71117eca4bc8ebcd45dd21be15e887de3d79ac47` was pushed to main and
+  verified against `git ls-remote`. No backend, live device action or deployment.
 
 ## Completed
 
