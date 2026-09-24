@@ -60,7 +60,7 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 - List and Telemetry now sit directly beside 48U configuration; removed auto left margin.
 - Added Networking Topology entry to shared Rack view controls with a planning dialog.
-- Topology scope, data sources and interactions remain pending user discussion.
+- Initial planning placeholder is superseded by the self-service topology editor below.
 - L10 and L11 server details now share the same right-side system-operation deck. L10 shows
   an in-place L11 promotion/height action; L11 shows height correction in the same group.
 - Detail rendering takes current level/project/rack fields from the live inventory list, so a
@@ -93,6 +93,30 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - The committed production inventory contains no OS or BMC password values.
 - Python regression 56/56, operations/equipment regressions, equipment browser and desktop
   acceptance 23/23 passed after the merge. No deployment or live equipment action occurred.
+
+## Self-service network topology (2026-09-24)
+
+- User authorized reusable project/Rack wiring configuration and push to main.
+- Networking Topology now opens a persistent project-scoped editor with multiple named
+  topology racks, inventory snapshots/custom devices, editable nodes/DPU pairs, physical
+  ports and many-node management mappings. Existing inventory/placement is unchanged.
+- Optional 4 Node + 4 BF4 / 2 RJ45 template; Host and DPU batch wiring to selected switches,
+  manual port pairing/interconnects, connection editing/deletion and network filters.
+- Diagram/card selection highlights paths; connection list identifies both physical ports.
+  Planned/confirmed lines are manual cabling records; live carrier status remains unknown.
+- Atomic validated storage, revision-conflict protection, failed-save draft retention, export,
+  discard confirmations, physical port exclusivity and dependent-link cleanup. Project rename
+  preserves topology and all existing project metadata. No new device operations or DPU Ping.
+- Legacy /api/links remains separate. Imported equipment is a topology snapshot; inventory
+  rename/deletion does not silently alter saved wiring. Node IPs are annotations only.
+- Guide: docs/NETWORK_TOPOLOGY.md. Limits, snapshot behavior and storage contract documented.
+- Validation: 63 isolated Python regressions; new topology browser test covers 32 trays /
+  128 Node-DPU pairs / 64 management cables, editing, manual/batch connections, failed/stale
+  saves, reload, project/Rack isolation, XSS escaping and responsive light/dark layouts.
+  Existing operations/equipment regression, equipment browser and acceptance 23/23 passed.
+  Source syntax and diff whitespace checks passed. Screenshots: qa/artifacts/topology/.
+- Delivery: implementation and evidence validated locally; current user-authorized commit/push
+  is pending. No deployment, production inventory mutation or live device action performed.
 
 ## Completed
 
@@ -133,8 +157,10 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 - No remaining implementation from the current workspace UX / rack-height request.
   Real device validation and deployment are separate from the completed fixture checks.
-- U7: Rack Reboot, AUX and some topology entry workflows remain deferred.
-- 32 machines x 4 nodes architecture remains undecided; do not implement it yet.
+- U7: Rack Reboot and AUX remain deferred.
+- User clarified 32 trays x 4 Host nodes with one BF4 per node and two shared management
+  RJ45 ports per tray. This is now an optional editable topology template; operational
+  inventory/OS target behavior remains unchanged. Exact switch interconnect is unverified.
 - Do not add DPU OS/BMC Ping to single-machine detail.
 - Non-server real telemetry collectors still need device-specific integration; do not claim
   CDU water flow/temperature/pressure visuals are live measurements.

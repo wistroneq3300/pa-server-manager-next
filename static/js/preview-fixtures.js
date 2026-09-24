@@ -101,6 +101,7 @@
   }
 
   const defs={server:{cpu_used:{label:'CPU',unit:'%',color:'#007b9e'},mem_used_pct:{label:'Memory',unit:'%',color:'#889f30'},gpu_power:{label:'GPU power',unit:'W',color:'#4893ac'}},switch:{port_rx:{label:'Port RX',unit:'MB/s'},port_tx:{label:'Port TX',unit:'MB/s'},temp:{label:'Temperature',unit:'°C'}},powershelf:{power_w:{label:'Power',unit:'W'},voltage:{label:'Voltage',unit:'V'},current_a:{label:'Current',unit:'A'}},pdu:{power_w:{label:'Power',unit:'W'},current_a:{label:'Current',unit:'A'}},cdu:{flow_lpm:{label:'Flow',unit:'L/min'},inlet_temp:{label:'Inlet',unit:'°C'},outlet_temp:{label:'Outlet',unit:'°C'},pressure:{label:'Pressure',unit:'bar'}}};
+  const topologyDocs = new Map();
   window.fetch=async (input,options={})=>{
     const url=new URL(typeof input==='string'?input:input.url,location.href),path=decodeURIComponent(url.pathname),method=(options.method||'GET').toUpperCase();
     if(!path.startsWith('/api/'))return nativeFetch(input,options);
@@ -108,6 +109,17 @@
     const minutes=Math.min(1440,Math.max(1,Number(url.searchParams.get('minutes'))||60));
     const sampleNow=Math.floor(Date.now()/1000),ts=Array.from({length:25},(_,i)=>sampleNow-minutes*60+i*minutes*60/24),wave=(base,amp)=>ts.map((_,i)=>Math.round((base+Math.sin(i*.65)*amp+Math.cos(i*.19)*amp*.3)*10)/10);
     let body={};try{body=JSON.parse(options.body||'{}');}catch{}
+    const topologyMatch=path.match(/^\/api\/projects\/(.+)\/topology$/);
+    if(topologyMatch){
+      const name=topologyMatch[1];if(!projects.some(p=>p.name===name))return fail('Project not found',404);
+      const current=topologyDocs.get(name)||{revision:0,racks:[]};
+      if(method==='GET')return response(current);
+      if(method==='PUT'){
+        if(body.revision!==current.revision)return fail('Topology changed in another session',409);
+        const updated={...body,revision:current.revision+1};topologyDocs.set(name,updated);return response(updated);
+      }
+      return fail('Method not allowed',405);
+    }
     if(path==='/api/machines'&&method==='GET'){if(url.searchParams.has('force_scan')){await pause(350);lastScan=Math.max(lastScan+1,Math.floor(Date.now()/1000));}return response({machines:machineList(),last_scan:lastScan});}
     if(path==='/api/projects'&&method==='GET')return response({projects:projectList()});
     if((path==='/api/projects/reorder'||path==='/api/machines/reorder')&&method==='POST'){

@@ -13,6 +13,7 @@
 import asyncio
 import ipaddress
 import equipment_policy
+import topology_policy
 import copy
 import tempfile
 from functools import wraps
@@ -1779,6 +1780,33 @@ def rack_ping(project: str = "", name: str = ""):
 
 
 # ---- 機櫃拓樸 / 連線圖 ----
+@app.get("/api/projects/{name}/topology")
+def get_project_topology(name: str):
+    with _DATA_LOCK:
+        if name not in projects:
+            raise HTTPException(404, "Project not found")
+        return copy.deepcopy(projects[name].get("topology", {"revision": 0, "racks": []}))
+
+
+@app.put("/api/projects/{name}/topology")
+@_data_transaction
+def put_project_topology(name: str, body: dict):
+    if name not in projects:
+        raise HTTPException(404, "Project not found")
+    current = projects[name].get("topology", {"revision": 0, "racks": []})
+    revision = body.get("revision")
+    if type(revision) is not int or revision != current["revision"]:
+        raise HTTPException(409, "Topology changed in another session. Export your draft, reload and retry.")
+    try:
+        document = topology_policy.validate(body)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    document["revision"] = revision + 1
+    projects[name]["topology"] = document
+    _save_data()
+    return copy.deepcopy(document)
+
+
 @app.get("/api/links")
 def list_links():
     """回傳所有連線。"""
@@ -2445,6 +2473,7 @@ def edit_project(name: str, body: AddProject):
             if m.get("project") == name:
                 m["project"] = new_name
         projects[new_name] = {
+            **projects[name],
             "name": new_name,
             "desc": body.desc or projects[name].get("desc", ""),
             "order": projects[name].get("order", 0),

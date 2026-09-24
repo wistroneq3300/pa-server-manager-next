@@ -1,0 +1,83 @@
+const cp=require('node:child_process'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require('C:/Users/kobei/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const root=path.resolve(__dirname,'..'),py='C:/Users/kobei/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe';
+(async()=>{
+ const server=cp.spawn(py,['-u','-c',"from serve import PreviewHandler,ThreadingHTTPServer; s=ThreadingHTTPServer(('127.0.0.1',0),PreviewHandler); print(s.server_port,flush=True); s.serve_forever()"],{cwd:root,windowsHide:true});let browser;
+ try{
+  const port=await new Promise((res,rej)=>{server.stdout.once('data',d=>res(Number(d.toString().trim())));server.once('error',rej);});
+  browser=await chromium.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});
+  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(`http://127.0.0.1:${port}/#/rack/proj_k`);await page.waitForSelector('#ew-rack-add');
+  const act=(name)=>page.locator(`.nt-overlay [data-action="${name}"]`).first().click();
+  const apply=()=>page.locator('.nt-form button[type="submit"]').click();
+  const confirm=()=>page.locator('#rm-dialog-foot .primary').click();
+  await page.getByRole('button',{name:'Networking Topology',exact:true}).click();
+  await act('rack');await page.locator('#nt-name').fill('Rack Alpha');await apply();
+  await act('import');
+  for(const name of ['SW-01','SW-02','SERVER-04U','SERVER-03U'])await page.locator(`input[name="inventory"][value="${name}"]`).check();
+  await page.locator('#nt-template').selectOption('vera');await apply();
+  assert.equal(await page.locator('.nt-device').count(),4);
+  assert.match(await page.locator('.nt-toolbar').last().innerText(),/8 nodes/);
+  await act('batch');await page.locator('#nt-role').selectOption('host');await apply();
+  assert.equal(await page.locator('.nt-link').count(),2);
+  await act('batch');await page.locator('#nt-role').selectOption('host');await apply();
+  assert.match(await page.locator('#nt-message').innerText(),/already connected/);
+  await act('cancel');await confirm();
+  await act('batch');await page.locator('#nt-switch').selectOption({label:'SW-02'});await page.locator('#nt-role').selectOption('dpu');await apply();
+  assert.equal(await page.locator('.nt-link').count(),4);
+  const serverCard=page.locator('.nt-device').filter({has:page.locator('.nt-card-head strong',{hasText:'SERVER-04U'})});
+  await serverCard.locator('[data-action="focus"]').click();assert.equal(await page.locator('.nt-node').count(),4);
+  assert.match(await page.locator('.nt-port').first().innerText(),/Node 1, Node 2, Node 3, Node 4/);
+  await page.locator('.nt-node [data-action="edit-node"]').first().click();await page.locator('#nt-host_os').fill('192.0.2.77');await page.locator('#nt-dpu_os').fill('192.0.2.78');await apply();
+  await act('link');
+  await page.locator('#nt-a-device').selectOption({label:'SW-01'});await page.locator('#nt-a-port').selectOption({label:'48'});
+  await page.locator('#nt-b-device').selectOption({label:'SW-02'});await page.locator('#nt-b-port').selectOption({label:'48'});
+  await page.locator('#nt-network').selectOption('uplink');await page.locator('#nt-note').fill('Pending cabling confirmation');await apply();
+  assert.equal(await page.locator('.nt-link').count(),5);
+  await page.evaluate(()=>{const original=window.fetch;window.fetch=async (url,opts={})=>{if(String(url).endsWith('/topology')&&opts.method==='PUT'){window.fetch=original;return new Response(JSON.stringify({detail:'Data could not be saved'}),{status:503,headers:{'Content-Type':'application/json'}});}return original(url,opts);};});
+  await act('save');await page.waitForFunction(()=>document.querySelector('#nt-message').textContent.includes('could not be saved'));
+  assert.equal(await page.locator('.nt-link').count(),5);
+  await act('save');await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 1'));
+  await act('close');await page.evaluate(()=>PATopology.open('proj_k'));await page.waitForSelector('.nt-link');
+  assert.equal(await page.locator('.nt-link').count(),5);
+  await act('rack');await page.locator('#nt-name').fill('Rack Beta');await apply();assert.equal(await page.locator('.nt-device').count(),0);
+  await act('device');await page.locator('#nt-name').fill('<img src=x onerror=alert(1)>');await page.locator('#nt-kind').selectOption('other');await apply();assert.equal(await page.locator('.nt-device img').count(),0);
+  await act('save');await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 2'));
+  await page.locator('#nt-rack').selectOption({label:'Rack Alpha'});assert.equal(await page.locator('.nt-link').count(),5);
+  // A second writer advances the revision. The UI must retain its draft on 409.
+  await page.evaluate(async()=>{const d=await api('/api/projects/proj_k/topology');await api('/api/projects/proj_k/topology',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});});
+  await act('rename-rack');await page.locator('#nt-name').fill('Local draft');await apply();await act('save');
+  await page.waitForFunction(()=>document.querySelector('#nt-message').textContent.includes('another session'));
+  assert.equal(await page.locator('#nt-rack option:checked').innerText(),'Local draft');
+  await act('reload');await confirm();await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 3'));
+  const artifact=path.join(root,'qa/artifacts/topology');fs.mkdirSync(artifact,{recursive:true});
+  for(const theme of ['light','dark']){
+   await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+   for(const width of [1440,390,320]){
+    await page.setViewportSize({width,height:1000});
+    assert.ok(await page.locator('.nt-window').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
+    await page.screenshot({path:path.join(artifact,`${theme}-${width}.png`)});
+   }
+  }
+  await page.setViewportSize({width:1440,height:1000});
+  // Port deletion removes only its dependent cable and can be persisted.
+  await page.locator('.nt-device').filter({hasText:'SERVER-04U'}).locator('[data-action="focus"]').click();
+  await page.locator('.nt-port [data-action="delete-port"]').first().click();await confirm();assert.equal(await page.locator('.nt-link').count(),4);
+  await act('save');await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 4'));
+  await act('close');await page.evaluate(()=>PATopology.open('fleet_l'));await page.waitForSelector('.nt-empty');assert.equal(await page.locator('.nt-device').count(),0);
+  // The user's full rack size: 32 trays, 128 node/DPU pairs, 64 management cables.
+  await page.evaluate(()=>{for(let i=1;i<=32;i++)machines.push({name:'TOPO-S'+i,project:'fleet_l',level:'rack',mgx_type:'server'});for(let i=1;i<=2;i++)machines.push({name:'TOPO-SW'+i,project:'fleet_l',level:'rack',mgx_type:'switch'});});
+  await act('rack');await page.locator('#nt-name').fill('32-tray fixture');await apply();
+  await act('import');await page.locator('#nt-template').selectOption('vera');
+  for(const input of await page.locator('input[name="inventory"][value^="TOPO-"]').all())await input.check();
+  await apply();assert.match(await page.locator('.nt-toolbar').last().innerText(),/128 nodes/);
+  for(const [role,sw] of [['host','TOPO-SW1'],['dpu','TOPO-SW2']]){await act('batch');await page.locator('#nt-switch').selectOption({label:sw});await page.locator('#nt-role').selectOption(role);await apply();}
+  assert.equal(await page.locator('.nt-link').count(),64);
+  await page.locator('.nt-map g[role="button"]').filter({hasText:'TOPO-S1'}).first().click();assert.equal(await page.locator('.nt-node').count(),4);
+  await page.screenshot({path:path.join(artifact,'32-tray-rack.png')});
+  await act('save');await page.waitForFunction(()=>document.querySelector('.nt-save-state')?.textContent.includes('Revision 1'));
+  await act('close');assert.deepEqual(errors,[]);
+  console.log('PASS topology browser: inventory/template, nodes, batch/manual wiring, occupied ports, persistence, multi-rack/project isolation, stale-save draft, deletion, XSS escaping, 6 responsive/theme screenshots; zero page errors');
+ }finally{if(browser)await browser.close();server.kill();}
+})().catch(e=>{console.error(e);process.exitCode=1});
