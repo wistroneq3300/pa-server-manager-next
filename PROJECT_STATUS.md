@@ -7,8 +7,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 - Current authorized work: Rack topology IP policy, Power Shelf/CDU cabling and
   device-mounted Ping LED refinements (latest section below).
 - Starting main for this work was `a62889ceeddfa9bed189069c209e54116b6897c6`.
-- Implementation and fixture validation are complete locally. The authorized main push
-  and remote hash verification are the remaining delivery steps.
+- Functional commit `d40dea953e30507cd03d701330b9a82c17aacf30` was pushed to
+  `main` and verified against `git ls-remote` on 2026-09-24. This documentation
+  follow-up records that completed delivery.
 - No deployment or live hardware test was performed. The tracked Naboo production-data
   topology changed from 65 to 69 confirmed links; inventory and credentials are unchanged.
 - Repository: https://github.com/wistroneq3300/pa-server-manager-next
@@ -24,9 +25,9 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
 
 ## Rack topology/IP/LED refinement (2026-09-24; current)
 
-- The user authorized implementation and publication. Work is complete locally; the final
-  delivery commit and remote verification will be recorded after the authorized push. No
-  deployment or live hardware Ping was performed.
+- The user authorized implementation and publication. Functional commit
+  `d40dea953e30507cd03d701330b9a82c17aacf30` is published and remotely verified.
+  No deployment or live hardware Ping was performed.
 - `網路拓樸` is now the single Rack wiring workspace. The old separate empty `機櫃拓樸`
   Rack UI was removed so saved wiring and IP checks no longer appear split between two views.
 - Inventory import defaults to per-server OS Slot inference from the machine `os` array.
