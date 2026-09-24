@@ -16,6 +16,21 @@ Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation rec
   Check HEAD and origin/main for the current documentation revision.
 - Instruction/skill consolidation was published as `4e29682`.
 
+## KVM solo presentation (2026-09-24)
+
+- Applied to the original Next checkout; user authorized commit/push for this work.
+- Single-device KVM popup now shares equipment workspace surfaces, colors, connection
+  badge and responsive layout. It inherits and synchronizes the opener's light/dark theme.
+- Existing noVNC transport, reconnect and input behavior are unchanged; title shows hostname.
+- Browser fixture passed: actual detail popup, dark/light synchronization, connect/disconnect
+  UI, dark framebuffer, and 320px long-hostname layout. Zero browser errors or WebSockets.
+- Desktop and mobile screenshots visually reviewed; evidence: qa/artifacts/kvm-solo-*.png.
+- Inline JavaScript syntax and git diff whitespace checks passed.
+- Earlier theme-contract check has an existing CSS-order failure at line 178, reproduced
+  against the unchanged baseline; unrelated to this KVM presentation change.
+- Publication: included in this user-authorized commit/push; verify HEAD against origin/main.
+  No deployment, live backend or hardware connection was performed.
+
 ## Completed
 
 - TC1288-inspired CDU presentation (`b4cedcb`, refined by `ab6fc8f`):
