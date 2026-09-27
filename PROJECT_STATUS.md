@@ -13,7 +13,8 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
   comparing it with the original and distinguishing design from shipped implementation.
 - Publication scope: these design documents and the isolated preview only. Production
   static files, backend, inventory and databases remain unchanged. No deployment.
-- Commit/push is authorized for this publication; remote verification is pending.
+- Design publication committed and pushed as `483cd75` to origin/main; verified with
+  git ls-remote on 2026-09-28. This status follow-up records that completed publication.
 - Validation: proposal JS/CSS match the user-reviewed outputs copy byte-for-byte;
   JS syntax, Python AST and whitespace checks pass. An ephemeral loopback HTTP check
   verified portable startup, fixture/overlay injection, static serving and rejection
