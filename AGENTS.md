@@ -12,6 +12,40 @@ Fetch and compare the remote when beginning code work if network/Git permissions
 reset, clean, force-push or overwrite another checkout to make it match. A blocked fetch does
 not block independent local reading or safe work; report what could not be verified.
 
+## Web design review reference
+
+Design is currently in proposal/review mode (user-confirmed 2026-09-26), not approved
+for production implementation. When the user mentions Wistron colors, UI enhancements,
+the design proposal or the earlier review, read [design direction](docs/design-direction.md)
+and [design review](docs/design-review.md) first. Preserve the Wistron blue/green identity,
+both themes and existing 3D equipment materials. Priorities include clear primary/selected/
+warning hierarchy, consistent Ping states with legends, readable contrast, subdued
+secondary accents, the home exception workflow and easier Rack operations. Build isolated
+previews for design discussion; apply to production UI only when the user requests it.
+Proposed UI tokens are not a verified official Wistron CI specification.
+
+The user-visible current design proposal is versioned under `docs/design-preview/`.
+For UX/UI review, run `python docs/design-preview/server.py --port 8886` and assess
+the proposal as well as the original/proposal comparison. Reading only `static/`
+reviews the original implementation, not the latest design. The proposal homepage is
+named "系統架構總覽". Separate proposal improvements from production implementation
+findings; the preview uses synthetic fixtures and does not prove live integrations.
+See `docs/design-preview/README.md` for the portable preview entry point.
+
+When the user mentions "網頁設計評估", "impeccable 評估", "設計優化報告",
+or asks to continue the previous UI review, immediately read
+[the web design review](docs/design-review.md) before planning or editing.
+Do not ask the user to paste or upload this report again.
+
+The report assessed commit `0bb60acc` on 2026-09-26 and scored 28/40.
+Its five priorities are accessible add-device labels, narrow-screen search layout,
+consistent Ping wording, a complete exception-list entry, and readable functional text.
+Treat these as review findings, not completed fixes or authorization to implement all
+recommendations. Recheck relevant current code before changing it; preserve the existing
+3D/rack material identity unless the user requests a redesign.
+The report includes fixture and viewport limitations; do not present it as a full
+accessibility certification or a live-device validation.
+
 ## Scope and standing constraints
 
 - Work in Next. Do not modify the original `pa-server-manager` repository.

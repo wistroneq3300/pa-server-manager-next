@@ -1,6 +1,56 @@
 # PA Server Manager Next - Current Status
 
-Updated: 2026-09-24. PROJECT_STATUS.md is the single maintained continuation record.
+Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation record.
+
+## Design proposal publication (2026-09-28)
+
+- User paused the full repository review and explicitly requested publishing the prior
+  design work first so UX/UI review includes the current proposal.
+- The portable proposal is now in docs/design-preview/ (server.py, proposal.js/CSS and
+  README). It matches the prior outputs preview; only the server's default repository
+  path changed to work from any clone. Homepage title: "系統架構總覽".
+- AGENTS.md and docs/design-direction.md direct future UX/UI reviews to this preview,
+  comparing it with the original and distinguishing design from shipped implementation.
+- Publication scope: these design documents and the isolated preview only. Production
+  static files, backend, inventory and databases remain unchanged. No deployment.
+- Commit/push is authorized for this publication; remote verification is pending.
+- Validation: proposal JS/CSS match the user-reviewed outputs copy byte-for-byte;
+  JS syntax, Python AST and whitespace checks pass. An ephemeral loopback HTTP check
+  verified portable startup, fixture/overlay injection, static serving and rejection
+  of API/WebSocket/inventory paths. The temporary verification server was stopped.
+  Existing browser evidence is reused because the proposal assets did not change.
+- Earlier critique and preview evidence below are historical. Full repository review
+  remains paused; revisit UX/UI against the proposal before completing that report.
+
+## Design critique (2026-09-26; local review only)
+
+- User clarified design-only scope. Recorded confirmed Wistron visual priorities and
+  home/Rack enhancement directions in docs/design-direction.md and AGENTS.md.
+- Created a separate outputs/design-preview overlay with original/proposal comparison,
+  dark/light themes, complete searchable exception queue and Rack interaction hierarchy.
+  It uses current static assets and isolated browser fixtures; production UI is unchanged.
+- At the time of that critique, no production implementation, commit, push, deployment
+  or device operation was authorized. Design publication is now authorized above.
+- Preview verified in-browser: original/proposal switch, both themes, searchable exception
+  queue, empty state, device-detail link, Rack and preserved 3D materials. At ~394 CSS px
+  the page did not horizontally overflow; the data table scrolls locally. Sampled new
+  control/status text contrast exceeds 4.5:1 (primary 5.89:1), not a full-site certification.
+  JS syntax and documentation diff checks passed. Preview kept running on loopback 8886
+  for the user's requested visual review; runtime session 41434 can be stopped afterward.
+
+- Reviewed commit 0bb60acc with independent design and detector assessments using the
+  isolated serve.py fixture preview. No UI/backend/inventory edits, device operations,
+  commit, push or deployment. Existing dated delivery records below remain historical.
+- Priorities: associate add-device form labels; repair narrow search/pill layout;
+  unify Ping wording; add complete exception drill-through; increase functional microtext.
+- Detector: 21 records (14 warnings, 7 advisories), manually triaged; gradient contrast
+  false positives excluded. Browser checked dashboard/list/form/detail/rack with synthetic
+  data. Exact 390px reflow, full screen-reader behavior and live failures not verified.
+- Saved the full review as docs/design-review.md and added a direct retrieval rule in
+  AGENTS.md for future mentions of the web design / Impeccable review. The report is
+  also archived through Impeccable under static/index.html and exported in outputs.
+- Pending: user choice of production implementation scope. The original critique did
+  not publish changes; the current design publication is recorded above.
 
 ## Repository and delivery
 
