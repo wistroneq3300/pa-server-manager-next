@@ -9,7 +9,10 @@
 > `http://127.0.0.1:8769/#/rack/proj_k`; this does not connect to production equipment.
 > Production FastAPI still serves `static/index.html` without the fixture script.
 
-A centralized **web management console** for **servers and racks**, including GPU-equipped systems. It unifies **L10 (System Level / single node)** and **L11 (Rack Level / whole rack)** monitoring and control in a single view.
+A centralized **server management and validation platform** for heterogeneous server,
+node and rack projects, including GPU-equipped systems. It brings **L10 (system-level)**
+and **L11 (rack-level)** inventory, monitoring, control and validation into one view
+without tying either level to a fixed hardware topology.
 
 - Backend: **FastAPI (Python 3.12)**; Frontend: **vanilla JavaScript** (no framework, no build step).
 - No agent required on managed hosts — everything works over **SSH** (OS) and **IPMI / BMC**.
@@ -18,6 +21,83 @@ A centralized **web management console** for **servers and racks**, including GP
 
 > This README is both the **deployment guide** and the **handover doc for OpenHands / AI agents**.
 > If you have a clean clone, follow "Deployment Guide" to bring the whole site up.
+
+---
+
+## Product Vision: AI-Driven Server Validation Platform
+
+PA Manager is not only a server management UI. Its long-term goal is to become an
+**AI-driven Server Validation Platform** that turns test intent into controlled execution,
+evidence collection, diagnosis and retest.
+
+```text
+PA Manager
+    |
+    v
+Test Orchestrator
+    |
+    v
+Test Library
+    |
+    +--> deterministic test --> Test Engine --------+
+    |                                               |
+    +--> complex test -------> OpenHands            |
+                               |                    |
+                               v                    |
+                         Skills / Memory / Tools    |
+                               |                    |
+                               +--------------------+
+                                                    |
+                                                    v
+                                         Target Scope (L10 / L11)
+                                                    |
+                                                    v
+                                               Node Runner
+                                                    |
+                                                    v
+                                                Evidence
+                                                    |
+                                                    v
+                                  End-user decision: PASS / FAIL / BLOCKED
+                                                    |
+                                                    v
+                                  Auto Debug / Root Cause / Retest
+```
+
+### Platform scope
+
+L10 and L11 describe validation and management scopes, not one mandatory machine design:
+
+- **L10** targets an individual managed system and its project-defined nodes, processors,
+  accelerators, DPUs, BMCs and other components.
+- **L11** coordinates rack-level or multi-system validation across the equipment and
+  topology defined by that project.
+- Node counts, server counts, CPU/GPU/DPU composition, rack layout and management paths
+  are configuration-driven and may differ between projects.
+
+A Vera platform can, for example, define four nodes per server with two Vera CPUs per
+node, and one rack project can contain 32 such servers (128 nodes / 256 Vera CPUs). This
+is a supported project topology example, **not** a global L10/L11 constraint. Other
+projects may define entirely different system and rack structures.
+
+### AI execution philosophy
+
+Deterministic operations should not require LLM reasoning:
+
+- Normal, repeatable tests run directly through **Test Engine -> Node Runner**.
+- Complex or context-dependent tests use **OpenHands -> Skill -> Node Runner**.
+- Failures can invoke OpenHands debug skills for evidence analysis, root-cause guidance
+  and controlled retesting.
+- The platform records evidence and execution facts; the end user makes the final
+  **PASS / FAIL / BLOCKED** decision.
+
+### Test Library evolution
+
+The source library contains **3,112 testcase rows**. DeepSeek completed the first review,
+and GPT performs an independent second review of each testcase. The purpose is not merely
+to summarize the cases, but to convert every testcase into an executable specification
+for PA Manager, the Test Engine and OpenHands, including its execution path, prerequisites,
+safety gates, expected evidence and blocked conditions.
 
 ---
 
@@ -59,7 +139,7 @@ in added regions. Pre-existing CJK in the workbook `procedure`/`criteria` is fin
 ### 1.1 Unified Overview Dashboard
 - Aggregate view of all managed systems: KPI cards (managed / Rack / System / online rate / power ON·OFF / offline), a SUT Health big-number panel, and a donut chart of the 4 machine states (OS-online / BMC-only / offline / unknown), plus project cards.
 
-### 1.2 L10 System Level (single node)
+### 1.2 L10 System Level (individual managed system)
 - Add / manage individual servers over OS SSH (IP / user / password / port); hostname auto-probed on add.
 - BMC support: BMC IP can be auto-probed from the OS via `ipmitool` (`use_c17` maps to newer OpenBMC cipher 17).
 - View OS info, hardware inventory (CPU / DIMM / SSD / **GPU** / NIC), sensors, **sensor AI diagnosis**, and BMC power on/off/AUX/reboot.
@@ -68,7 +148,7 @@ in added regions. Pre-existing CJK in the workbook `procedure`/`criteria` is fin
 - **Telemetry viewer**: SQLite history + charts (CPU / Load / DIMM / SSD / NIC / GPU) + **Telemetry AI analysis** (2–3 line 繁中 readability of the selected window, local Ollama).
 - **BMC power badge**: live chassis power state with color coding.
 
-### 1.3 L11 Rack Level (rack view)
+### 1.3 L11 Rack Level (rack or multi-system view)
 - Rack floor plan (U slots, **numbered bottom-up**) for servers / switches / power shelves / PDUs / CDUs / storage.
 - Empty-slot **"+"** adds a system (only shows **existing L11 systems of the same project, placed outside the rack**; U count is locked to that system's `rack_size`, not editable).
 - Occupancy checks: avoids occupied U ranges; multi-U devices need contiguous free slots.

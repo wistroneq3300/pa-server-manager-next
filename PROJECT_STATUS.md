@@ -2,6 +2,21 @@
 
 Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation record.
 
+## Product vision documentation (2026-09-28; local)
+
+- README now defines PA Manager's long-term direction as a multi-project, AI-driven
+  Server Validation Platform spanning orchestration, executable test specifications,
+  deterministic execution, OpenHands-assisted complex tests, evidence, diagnosis and retest.
+- L10 and L11 are explicitly management/validation scopes rather than fixed hardware
+  layouts. The four-node/two-Vera-CPU server and 32-server rack are documented only as
+  one supported project example; each project may define different node, processor,
+  accelerator, DPU, equipment and rack topology.
+- The vision preserves deterministic Test Engine -> Node Runner execution for normal tests,
+  uses OpenHands/skills for complex tests and failures, and leaves the final PASS / FAIL /
+  BLOCKED decision to the end user.
+- Documentation-only local change. No application behavior, test-library source, inventory,
+  device operation, deployment, commit or push.
+
 ## Design proposal publication (2026-09-28)
 
 - User paused the full repository review and explicitly requested publishing the prior
