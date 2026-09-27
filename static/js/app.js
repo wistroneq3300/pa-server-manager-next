@@ -4169,11 +4169,13 @@ const bcState = { ws: null, order: [], terms: {}, stat: {}, active: null, broadc
 // key = "name#slot"（slot=0 主 OS）；單 OS 機台就只有 "name#0"（主 OS=自己）。
 function bcNodes(m) {
   const arr = (Array.isArray(m.os) && m.os.length > 1) ? m.os : null;
+  // 主 OS（slot 1）若標籤是佔位「OS 1」或空，則以機台名稱顯示（與 product-detail.js dispLabel 一致）
+  const dispLabel = (e) => (e && e.slot === 1 && (!e.label || e.label === 'OS 1') && m.name) ? m.name : ((e && e.label) || ('OS ' + (e ? e.slot : 1)));
   if (arr) {
     return arr.map((e, i) => {
       const slot = e.slot || (i + 1);
       return { key: `${m.name}#${slot}`, nm: m.name, slot,
-               label: e.label || ('OS ' + slot), ip: e.ip, node: true };
+               label: dispLabel(e), ip: e.ip, node: true };
     });
   }
   return [{ key: `${m.name}#0`, nm: m.name, slot: 0, label: m.name, ip: m.os_ip, node: false }];
@@ -4204,7 +4206,8 @@ function bcRootLabel(key) {
   if (!m) return key;
   const arr = m.os || [];
   const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
-  const lbl = e ? (e.label || ('OS ' + slot)) : ('OS ' + slot);
+  // 主 OS（slot 1）若標籤是佔位「OS 1」或空，則以機台名稱顯示
+  const lbl = e ? ((e.slot === 1 && (!e.label || e.label === 'OS 1')) ? nm : (e.label || ('OS ' + slot))) : ('OS ' + slot);
   return `${nm} / ${lbl}`;
 }
 
