@@ -669,6 +669,22 @@ input#f-bmc-pass:autofill{
 .mach-grid .card:has(> .mach-info) .mach-power-actions{margin-top:14px;margin-bottom:0}
 .mach-pre{background:var(--bg-panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.65;white-space:pre-wrap;word-break:break-word;max-height:380px;overflow:auto;color:var(--text-dim)}
 .diag-report .mach-pre{max-height:640px;font-size:13px;line-height:1.7;color:var(--text-normal)}
+/* AI 診斷報告：以格式化 Markdown 呈現（取代原本的 raw <pre>） */
+.md-report{background:var(--bg-panel-2);border:1px solid var(--border-soft);border-radius:10px;padding:16px 18px;font-size:13px;line-height:1.75;color:var(--text);max-height:640px;overflow:auto}
+.md-report>*:first-child{margin-top:0}
+.md-report>*:last-child{margin-bottom:0}
+.md-report p{margin:8px 0}
+.md-report h1,.md-report h2,.md-report h3,.md-report h4,.md-report h5,.md-report h6{margin:16px 0 8px;line-height:1.35;color:var(--text);font-weight:700}
+.md-report h1{font-size:18px}.md-report h2{font-size:16px}.md-report h3{font-size:14.5px}
+.md-report h4,.md-report h5,.md-report h6{font-size:13px}
+.md-report h1,.md-report h2{padding-bottom:6px;border-bottom:1px solid var(--border-soft)}
+.md-report ul,.md-report ol{margin:8px 0;padding-left:22px}
+.md-report li{margin:4px 0}
+.md-report li::marker{color:var(--text-faint)}
+.md-report code{background:var(--bg-hover);border:1px solid var(--border-soft);border-radius:4px;padding:1px 5px;font-family:var(--mono,ui-monospace,monospace);font-size:12px;color:var(--accent-blue)}
+.md-report strong{color:var(--text);font-weight:700}
+.md-report a{color:var(--accent-blue);text-decoration:underline;text-underline-offset:2px}
+.md-report hr{border:0;border-top:1px solid var(--border-soft);margin:14px 0}
 .diag-raw{margin-top:10px}
 .diag-raw summary{cursor:pointer;font-size:12px;color:var(--text-faint)}
 .diag-raw .mach-pre{margin-top:8px}

@@ -2967,6 +2967,45 @@ function pageMachine() {
 // 系統診斷結果暫存（key=機台名），避免頁面 async 更新時被清掉
 const diagStore = {};   // { name: {state:'loading'|'done'|'error', html:'...'} }
 
+// 輕量、XSS-safe 的 Markdown→HTML（先 esc 再套格式，AI 報告用的子集即可）
+function mdToHtml(md) {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s) => {
+    s = esc(s);
+    s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
+    s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return s;
+  };
+  const out = [];
+  let inUl = false, inOl = false;
+  const closeLists = () => { if (inUl) { out.push("</ul>"); inUl = false; } if (inOl) { out.push("</ol>"); inOl = false; } };
+  for (const raw of String(md).split("\n")) {
+    const line = raw;
+    let m;
+    if (/^\s*$/.test(line)) { closeLists(); continue; }
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+      closeLists(); const lv = m[1].length; out.push(`<h${lv}>${inline(m[2])}</h${lv}>`); continue;
+    }
+    if (/^\s*([-*+])\s+/.test(line)) {
+      if (inOl) { out.push("</ol>"); inOl = false; }
+      if (!inUl) { out.push("<ul>"); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*[-*+]\s+/, ""))}</li>`); continue;
+    }
+    if ((m = line.match(/^\s*(\d+)[.)]\s+(.*)$/))) {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      if (!inOl) { out.push("<ol>"); inOl = true; }
+      out.push(`<li>${inline(m[2])}</li>`); continue;
+    }
+    if (/^\s*(\*{3,}|-{3,}|_{3,})\s*$/.test(line)) { closeLists(); out.push("<hr>"); continue; }
+    closeLists();
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeLists();
+  return out.join("\n");
+}
+
 function diagBodyFill(name) {
   const s = diagStore[name];
   if (!s) return `<div class="empty">點上方「🩺 系統診斷」按鈕，收集 dmesg / journalctl / GPU / BMC event log，並由 AI 分析問題與建議處理。</div>`;
@@ -2989,7 +3028,7 @@ function runDiagnose(name) {
       ? "本機 ipmitool（SSH 進 OS 執行）"
       : d.collect && d.collect.bmc ? "OOB lanplus" : "—";
     diagStore[name] = { state: "done", html: `
-      <div class="diag-report"><pre class="mach-pre mono">${esc(md)}</pre></div>
+      <div class="diag-report md-report">${mdToHtml(md)}</div>
       <details class="diag-raw"><summary>診斷原始資料（收集時間 ${esc(d.collected_at||"—")} · IPMI：${esc(bmcMode)}）</summary>
         <pre class="mach-pre mono">${esc((d.collect&&d.collect.os)||"(無 OS 資料)")}</pre>
         ${d.collect && d.collect.bmc ? `<pre class="mach-pre mono">===== BMC SEL =====\n${esc(d.collect.bmc)}</pre>` : ""}
