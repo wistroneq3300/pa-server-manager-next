@@ -2,7 +2,7 @@
 
 Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation record.
 
-## Product vision documentation (2026-09-28; local)
+## Product vision documentation (2026-09-28; published)
 
 - README now defines PA Manager's long-term direction as a multi-project, AI-driven
   Server Validation Platform spanning orchestration, executable test specifications,
@@ -14,8 +14,8 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
 - The vision preserves deterministic Test Engine -> Node Runner execution for normal tests,
   uses OpenHands/skills for complex tests and failures, and leaves the final PASS / FAIL /
   BLOCKED decision to the end user.
-- Documentation-only local change. No application behavior, test-library source, inventory,
-  device operation, deployment, commit or push.
+- Documentation commit `77478b7` was pushed to `origin/main`. No application behavior,
+  test-library source, inventory, device operation or deployment was changed.
 
 ## Design proposal publication (2026-09-28)
 
