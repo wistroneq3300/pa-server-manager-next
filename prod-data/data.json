@@ -1113,6 +1113,26 @@
       "passive": true,
       "order": 66,
       "created": "2026-09-24T14:51:01"
+    },
+    "neutrino-n3": {
+      "id": 109,
+      "name": "neutrino-n3",
+      "os_ip": "10.35.228.150",
+      "os_user": "root",
+      "os_pass": "",
+      "bmc_ip": "10.35.228.151",
+      "bmc_user": "root",
+      "bmc_pass": "",
+      "os_port": 22,
+      "bmc_port": 22,
+      "project": "Neutrino",
+      "level": "rack",
+      "rack_size": 1,
+      "rack_u": 48,
+      "use_c17": true,
+      "order": 67,
+      "created": "2026-09-27T21:58:48",
+      "mgx_type": "server"
     }
   },
   "projects": {
@@ -1141,7 +1161,7 @@
     "Naboo": {
       "name": "Naboo",
       "desc": "",
-      "order": 6,
+      "order": 7,
       "topology": {
         "racks": [
           {
@@ -4960,22 +4980,22 @@
     "Darkstar": {
       "name": "Darkstar",
       "desc": "kds",
-      "order": 7
+      "order": 8
     },
     "L11 Test": {
       "name": "L11 Test",
       "desc": "test",
-      "order": 5
+      "order": 6
     },
     "Vader-OTS": {
       "name": "Vader-OTS",
       "desc": "",
-      "order": 8
+      "order": 9
     },
     "Neutrino": {
       "name": "Neutrino",
       "desc": "",
-      "order": 9
+      "order": 5
     }
   },
   "links": [
@@ -4994,5 +5014,5 @@
       "b_port": "cool-lo"
     }
   ],
-  "seq": 109
+  "seq": 110
 }

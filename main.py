@@ -587,6 +587,9 @@ def add_machine(body: AddMachine):
         "bmc_port": body.bmc_port,
         "project": body.project,
         "level": body.level if body.level in ("system", "rack") else "system",
+        # 新增系統（SSH 流程）一律是有 OS/BMC 的計算機台，自動定義為 server，
+        # 避免 L11 機櫃顯示「設備類型待確認」而鎖住 Server 電源操作
+        "mgx_type": "server",
         "rack_size": body.rack_size if body.level == "rack" else 1,
         "rack_u": 0,   # L11 新增時一律不指定 U（0=未放上機櫃），由 Rack Manager 的＋手動放置
         "use_c17": True,
