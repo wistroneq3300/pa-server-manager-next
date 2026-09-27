@@ -20,6 +20,9 @@ __pycache__/
 node_modules/
 terminal_bridge/node_modules/
 
+# Python virtual env
+.venv/
+
 # 執行期資料目錄（含機台帳密 / 大型 db，不進版本控制）
 prod-data/
 

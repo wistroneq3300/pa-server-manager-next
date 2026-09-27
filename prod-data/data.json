@@ -1117,14 +1117,14 @@
     "neutrino-n3": {
       "id": 109,
       "name": "neutrino-n3",
-      "os_ip": "10.35.228.150",
+      "os_ip": "10.35.228.152",
       "os_user": "root",
-      "os_pass": "",
-      "bmc_ip": "10.35.228.151",
+      "os_pass": "password",
+      "bmc_ip": "10.35.228.153",
       "bmc_user": "root",
-      "bmc_pass": "",
+      "bmc_pass": "0penBmc",
       "os_port": 22,
-      "bmc_port": 22,
+      "bmc_port": 623,
       "project": "Neutrino",
       "level": "rack",
       "rack_size": 1,
@@ -1132,7 +1132,43 @@
       "use_c17": true,
       "order": 67,
       "created": "2026-09-27T21:58:48",
-      "mgx_type": "server"
+      "mgx_type": "server",
+      "os": [
+        {
+          "slot": 1,
+          "ip": "10.35.228.150",
+          "user": "root",
+          "pass": "password",
+          "port": 22,
+          "label": "OS 1",
+          "bmc_ip": "10.35.228.151",
+          "bmc_user": "root",
+          "bmc_pass": "0penBmc"
+        },
+        {
+          "slot": 2,
+          "ip": "10.35.228.146",
+          "user": "root",
+          "pass": "password",
+          "port": 22,
+          "label": "neutrino-n1",
+          "bmc_ip": "10.35.228.147",
+          "bmc_user": "root",
+          "bmc_pass": "0penBmc"
+        },
+        {
+          "slot": 3,
+          "ip": "10.35.228.152",
+          "user": "root",
+          "pass": "password",
+          "port": 22,
+          "label": "neutrino-n4",
+          "bmc_ip": "10.35.228.153",
+          "bmc_user": "root",
+          "bmc_pass": "0penBmc"
+        }
+      ],
+      "active_os": 3
     }
   },
   "projects": {
