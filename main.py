@@ -2900,8 +2900,9 @@ async def rack_broadcast(websocket: WebSocket):
 
 
 # ---- AI（串本機 vLLM / OpenAI-compatible）----
-VLLM_URL = "http://127.0.0.1:18002"
-VLLM_MODEL = "qwen3-coder"
+# 一般 AI 分析（copilot / 診斷 / testlib）：本機 vllm-27b（Qwen3.8-27B, GPU4, 256K）
+VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:18003")
+VLLM_MODEL = os.environ.get("VLLM_MODEL", "qwen3.8-27b")
 
 
 def _llm_chat(system: str, user: str, temperature: float = 0.3,
@@ -3573,7 +3574,7 @@ def machine_diagnose(name: str, body: DiagReq = None):
             time.sleep(2)
         if not report:
             return {"ok": False,
-                    "error": "AI 未產生分析結果。請確認本機 vLLM（qwen3-coder）可用。",
+                    "error": "AI 未產生分析結果。請確認本機 vLLM（qwen3.8-27b）可用。",
                     "collect": collect}
     except Exception as e:
         return {"ok": False, "error": f"AI 分析失敗: {e}", "collect": collect}
