@@ -315,7 +315,7 @@ def store_gpu(ts, name, rows):
 
 
 # ==================== GPU 熱度快訊（AI 主動告警） ====================
-_ALERT_LLM_URL = os.environ.get("ALERT_LLM_URL", "http://127.0.0.1:18003")
+_ALERT_LLM_URL = os.environ.get("ALERT_LLM_URL", "http://127.0.0.1:8001")
 _ALERT_LLM_MODEL = os.environ.get("ALERT_LLM_MODEL", "qwen3.8-27b")
 GPU_UTIL_ALERT = int(os.environ.get("GPU_UTIL_ALERT", "50"))   # 全機 GPU 平均 util(%) 高載門檻
 GPU_TEMP_ALERT = int(os.environ.get("GPU_TEMP_ALERT", "88"))   # temp °C 警報門檻

@@ -2901,7 +2901,7 @@ async def rack_broadcast(websocket: WebSocket):
 
 # ---- AI（串本機 vLLM / OpenAI-compatible）----
 # 一般 AI 分析（copilot / 診斷 / testlib）：本機 vllm-27b（Qwen3.8-27B, GPU4, 256K）
-VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:18003")
+VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:8001")
 VLLM_MODEL = os.environ.get("VLLM_MODEL", "qwen3.8-27b")
 
 
