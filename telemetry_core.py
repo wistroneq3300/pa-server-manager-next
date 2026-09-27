@@ -334,6 +334,7 @@ def _alert_llm(machine, gpu, kind, value, threshold):
             "model": _ALERT_LLM_MODEL,
             "messages": [{"role": "system", "content": sysp}, {"role": "user", "content": usr}],
             "temperature": 0.2, "max_tokens": 80,
+            "chat_template_kwargs": {"enable_thinking": False},
         }, timeout=30)
         r.raise_for_status()
         t = (r.json()["choices"][0]["message"]["content"] or "").strip()

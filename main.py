@@ -2917,6 +2917,8 @@ def _llm_chat(system: str, user: str, temperature: float = 0.3,
         ],
         "temperature": temperature,
         "max_tokens": max_tokens,
+        # qwen3.8-27b 是推理型模型；關掉 thinking，避免把推理過程混進 content
+        "chat_template_kwargs": {"enable_thinking": False},
     }
     r = requests.post(VLLM_URL + "/v1/chat/completions", json=payload, timeout=timeout)
     r.raise_for_status()
@@ -3105,7 +3107,8 @@ def _llm_chat_tools(system: str, user: str, max_steps: int = _MAX_DIAG_STEPS,
     for _ in range(max_steps):
         r = requests.post(VLLM_URL + "/v1/chat/completions", json={
             "model": VLLM_MODEL, "messages": messages, "tools": tools,
-            "temperature": 0.3, "max_tokens": 700}, timeout=timeout)
+            "temperature": 0.3, "max_tokens": 700,
+            "chat_template_kwargs": {"enable_thinking": False}}, timeout=timeout)
         r.raise_for_status()
         msg = r.json()["choices"][0]["message"]
         tcs = msg.get("tool_calls") or []
@@ -3131,7 +3134,8 @@ def _llm_chat_tools(system: str, user: str, max_steps: int = _MAX_DIAG_STEPS,
     # 步數用盡：請 LLM 收尾
     messages.append({"role": "user", "content": "請根據以上工具結果，直接給最終簡短結論（繁體中文）。"})
     r = requests.post(VLLM_URL + "/v1/chat/completions", json={
-        "model": VLLM_MODEL, "messages": messages, "temperature": 0.3, "max_tokens": 700}, timeout=timeout)
+        "model": VLLM_MODEL, "messages": messages, "temperature": 0.3, "max_tokens": 700,
+        "chat_template_kwargs": {"enable_thinking": False}}, timeout=timeout)
     r.raise_for_status()
     return (r.json()["choices"][0]["message"].get("content") or "").strip()
 
