@@ -60,7 +60,7 @@ class Operations(unittest.TestCase):
 
     def test_ip_changes_survive_resync_and_never_return_passwords(self):
         for fn,field,value in [('change_os_ip','new_os_ip','new2'),('change_bmc_ip','new_bmc_ip','newB')]:
-            result=self.s[fn]('node',SimpleNamespace(**{field:value}))
+            result=self.s[fn]('node',SimpleNamespace(**{field:value},os_user='user2',os_pass='secret2',os_port=22))
             self.assertTrue(result['ok'])
             self.assertNotIn('secret',json.dumps(result))
         self.s['_sync_active_os'](self.m)
@@ -69,9 +69,62 @@ class Operations(unittest.TestCase):
 
     def test_probe_resolves_credentials_on_server(self):
         self.s['_probe_bmc_ip']=Mock(return_value=('paired',True,''))
-        body=SimpleNamespace(machine_name='node',os_ip='new2',os_user='',os_pass='****',os_port=22,expected_hostname='')
+        body=SimpleNamespace(machine_name='node',os_ip='old2',os_user='',os_pass='****',os_port=22,expected_hostname='')
         self.assertTrue(self.s['probe_bmc'](body)['ok'])
         self.assertEqual(self.s['ssh_run'].call_args.args[2],'secret2')
+
+    def test_probe_rejects_changed_target_before_ssh(self):
+        self.s['_probe_bmc_ip']=Mock()
+        for target in ['new2', 'old1', '']:
+            body=SimpleNamespace(machine_name='node',os_ip=target,os_user='',os_pass='****',os_port=22,expected_hostname='')
+            with self.assertRaises(ApiError) as error:
+                self.s['probe_bmc'](body)
+            self.assertEqual(error.exception.status_code,409)
+        self.s['ssh_run'].assert_not_called()
+        self.s['_probe_bmc_ip'].assert_not_called()
+
+    def test_manual_probe_uses_only_supplied_credentials(self):
+        self.s['_probe_bmc_ip']=Mock(return_value=('paired',True,''))
+        body=SimpleNamespace(machine_name='',os_ip='new2',os_user='manual',os_pass='explicit',os_port=2222,expected_hostname='node')
+        self.assertTrue(self.s['probe_bmc'](body)['ok'])
+        self.assertEqual(self.s['ssh_run'].call_args.args[:4],('new2','manual','explicit',2222))
+        self.assertEqual(self.s['_probe_bmc_ip'].call_args.args,('new2','manual','explicit',2222))
+
+    def test_probe_missing_machine_masked_manual_and_invalid_port_are_rejected(self):
+        for name,password,port in [('missing','explicit',22),('', '****',22),('', 'explicit',0),('', 'explicit',65536)]:
+            with self.assertRaises(ApiError):
+                self.s['probe_bmc'](SimpleNamespace(machine_name=name,os_ip='new2',os_user='manual',os_pass=password,os_port=port,expected_hostname=''))
+        self.s['ssh_run'].assert_not_called()
+
+    def test_changed_ip_requires_explicit_credentials_before_network(self):
+        self.s['ping_check']=Mock()
+        before=copy.deepcopy(self.m)
+        for password in ['', '****']:
+            with self.assertRaises(ApiError):
+                self.s['change_os_ip']('node',SimpleNamespace(new_os_ip='new2',os_user='user2',os_pass=password))
+        self.s['ping_check'].assert_not_called()
+        self.s['ssh_run'].assert_not_called()
+        self.s['_save_data'].assert_not_called()
+        self.assertEqual(self.m,before)
+
+    def test_changed_ip_saves_explicit_connection_to_active_slot(self):
+        body=SimpleNamespace(new_os_ip='new2',os_user='manual',os_pass='explicit',os_port=2222)
+        self.assertTrue(self.s['change_os_ip']('node',body)['ok'])
+        self.assertEqual(self.s['ssh_run'].call_args.args[:4],('new2','manual','explicit',2222))
+        self.s['_sync_active_os'](self.m)
+        self.assertEqual((self.m['os_ip'],self.m['os_user'],self.m['os_pass'],self.m['os_port']),('new2','manual','explicit',2222))
+        self.assertEqual(self.m['os'][0]['pass'],'secret1')
+
+    def test_changed_ip_hostname_failure_preserves_connection(self):
+        before=copy.deepcopy(self.m)
+        self.s['ssh_run'].return_value=('other',0,'')
+        self.assertFalse(self.s['change_os_ip']('node',SimpleNamespace(new_os_ip='new2',os_user='manual',os_pass='explicit',os_port=22))['ok'])
+        self.assertEqual(self.m,before)
+        self.s['_save_data'].assert_not_called()
+
+    def test_unchanged_ip_needs_no_credentials_or_network(self):
+        self.assertFalse(self.s['change_os_ip']('node',SimpleNamespace(new_os_ip='old2'))['changed'])
+        self.s['ssh_run'].assert_not_called()
 
     def test_refused_reboot_is_not_success(self):
         self.s['ssh_run'].return_value=('',255,'Connection refused')

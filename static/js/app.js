@@ -4064,7 +4064,14 @@ function changeOsIp(name) {
       </p>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">OS IP</label>
       <input class="input" id="new-os-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curOs)}" placeholder="例如 INTERNAL_IP_10">
-      <button class="btn small" id="osip-probe-btn" style="margin-top:8px" onclick="probeChangeOsBmc('${esc(name)}')" title="依新 OS IP + 原 SSH 帳密，先確認 hostname 再用 ipmitool lan print 抓取 BMC IP 自動帶入">🔍 依新 OS 抓取 BMC IP</button>
+      <p class="hint">${'\u8b8a\u66f4 OS IP \u6642\uff0c\u8acb\u660e\u78ba\u8f38\u5165\u65b0 IP \u7684 SSH \u5e33\u5bc6\uff1b\u9a57\u8b49\u6210\u529f\u5f8c\u6703\u5132\u5b58\u6b64\u7d44\u9023\u7dda\u8a2d\u5b9a\u3002'}</p>
+      <label for="new-os-user-input">${'SSH \u5e33\u865f'}</label>
+      <input class="input" id="new-os-user-input" autocomplete="off" style="width:100%">
+      <label for="new-os-pass-input">${'SSH \u5bc6\u78bc'}</label>
+      <input class="input" id="new-os-pass-input" type="password" autocomplete="new-password" style="width:100%">
+      <label for="new-os-port-input">SSH Port</label>
+      <input class="input" id="new-os-port-input" type="number" min="1" max="65535" value="${Number(m.os_port) || 22}" style="width:100%">
+      <button class="btn small" id="osip-probe-btn" style="margin-top:8px" onclick="probeChangeOsBmc('${esc(name)}')">🔍 依新 OS 抓取 BMC IP</button>
       <label style="display:block;font-size:12px;color:var(--text-faint);margin:8px 0 4px">BMC IP</label>
       <input class="input" id="new-bmc-ip-input" style="width:100%;padding:8px;font-family:monospace" value="${esc(curBmc)}" placeholder="例如 INTERNAL_IP_11">
       <div id="osip-msg" style="margin-top:10px;font-size:12px;white-space:pre-line"></div>
@@ -4074,7 +4081,7 @@ function changeOsIp(name) {
       { txt: "變更 IP", cls: "primary", id: "ip-submit-btn", fn: () => submitChangeOsIp(name) },
     ]);
 }
-// 變更 IP 彈窗：依「新 OS IP + 原機台 SSH 帳密」先確認 hostname，再抓 BMC IP 自動帶入
+// New targets use explicit credentials; stored credentials stay bound to the saved IP.
 async function probeChangeOsBmc(name) {
   const ipEl = $("new-os-ip-input"), msgEl = $("osip-msg"), btn = $("osip-probe-btn");
   const ip = ipEl ? ipEl.value.trim() : "";
@@ -4088,7 +4095,11 @@ async function probeChangeOsBmc(name) {
     const d = await api("/api/machines/probe-bmc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ os_ip: ip, machine_name: m.name }),
+      body: JSON.stringify(ip === m.os_ip
+        ? { os_ip: ip, machine_name: m.name }
+        : { os_ip: ip, expected_hostname: m.name,
+            os_user: $("new-os-user-input").value.trim(), os_pass: $("new-os-pass-input").value,
+            os_port: Number($("new-os-port-input").value) }),
     });
     if (d.ok) {
       $("new-bmc-ip-input").value = d.bmc_ip;
@@ -4131,7 +4142,9 @@ async function submitChangeOsIp(name) {
   _ipSetBusy(true);
   try {
     if (ip) {
-      const d = await api(`/api/machines/${encodeURIComponent(name)}/change-os-ip`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ new_os_ip: ip }) });
+      const d = await api(`/api/machines/${encodeURIComponent(name)}/change-os-ip`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ new_os_ip: ip,
+        os_user: $("new-os-user-input").value.trim(), os_pass: $("new-os-pass-input").value,
+        os_port: Number($("new-os-port-input").value) }) });
       results.push(`OS IP：${d.msg || (d.changed === false ? "與原本相同，未變更。" : "變更成功。")}`);
       if (d.ok === false) failed.push("OS IP");
     }

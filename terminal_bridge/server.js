@@ -15,13 +15,13 @@ const HOST = process.env.TERM_BRIDGE_HOST || '0.0.0.0';
 
 // 機台真實帳密來源：與 pa-manager 同一個 data.json。
 // 前端 API 會把 os_pass/bmc_pass 遮蔽成 ****，bridge 不可信任前端傳的密碼，
-// 一律以「name + kind」從 data.json 取真實帳密；前端 query 僅用於 passive 手動填寫覆寫。
+// Stored mode binds name + kind (+ slot) to one snapshot. Manual mode supplies all credentials.
 const DATA_DIR = process.env.PA_DATA_DIR || '/srv/pa-manager-prod/data';
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
-let CREDS = {}; // name -> { os:{host,user,pass,port}, bmc:{host,user,pass,port} }
+let CREDS = Object.create(null); // name -> connection snapshots
 
 function loadCreds() {
-  CREDS = {};
+  CREDS = Object.create(null);
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     const d = JSON.parse(raw);
@@ -77,35 +77,43 @@ function handleTerminal(ws, url) {
   const kind = m[2];
   if (kind !== 'os' && kind !== 'bmc') { sendErr(ws, 'kind 必須是 os 或 bmc'); return; }
 
-  // 真實帳密優先取自 data.json（name + kind）；前端 query 只在前端 API 未遮蔽時覆寫。
+  // A masked/absent password selects stored mode; an explicit password selects manual mode.
   // kind==='os' 且帶 ?slot=N → 用多 OS 機框的第 N 個 OS（osSlots[N-1]）帳密。
   let host = url.searchParams.get('host') || '';
   let user = url.searchParams.get('user') || '';
   let pass = url.searchParams.get('pass') || '';
   const qPort = Number(url.searchParams.get('port') || 0);
+  if (url.searchParams.get('port') && (!Number.isInteger(qPort) || qPort < 1 || qPort > 65535)) {
+    sendErr(ws, 'Invalid SSH port'); return;
+  }
   const qSlot = Number(url.searchParams.get('slot') || 0);
   let port;
   const entry = CREDS[name] || {};
   // 決定真實帳密來源：os + slot → osSlots[slot-1]；否則 os/bmc 主帳密
   let real = entry[kind];
-  if (kind === 'os' && qSlot >= 1 && Array.isArray(entry.osSlots) && entry.osSlots[qSlot - 1]) {
+  if (url.searchParams.has('slot')) {
+    if (kind !== 'os' || !Number.isInteger(qSlot) || qSlot < 1 || !entry.osSlots?.[qSlot - 1]) {
+      sendErr(ws, 'Invalid OS slot; reload equipment'); return;
+    }
     real = entry.osSlots[qSlot - 1];
   }
   const realHost = real && real.host;
 
-  if (realHost) {
-    // data.json 有該機台（或該 slot）→ 用真實帳密；query 只在「有值且非遮蔽」時覆寫
-    if (!host)                      host = real.host || '';
-    if (!user)                      user = real.user || '';
-    if (!pass || pass.indexOf('**') >= 0 || pass === '') pass = real.pass || '';
-    host = host || real.host || '';
-    if (qPort)                      port = qPort;
-    else                            port = real.port || 22;
+  const manual = !!pass && !pass.includes('**');
+  if (realHost && !manual) {
+    // Stored secrets may only use their own endpoint/user/SSH-port snapshot.
+    const storedPort = kind === 'bmc' && Number(real.port) === 623 ? 22 : Number(real.port || 22);
+    if ((host && host !== real.host) || (user && user !== real.user) ||
+        (url.searchParams.has('port') && url.searchParams.get('port') !== '' && qPort !== storedPort)) {
+      sendErr(ws, 'Connection target changed; reload equipment or enter complete manual credentials'); return;
+    }
+    host = real.host; user = real.user; pass = real.pass; port = storedPort;
   } else {
-    // data.json 沒有該機台（passive 手動填寫）→ 用 query
-    if (!host || !user || !pass) { sendErr(ws, `${kind} 未設定連線資訊`); return; }
+    // Manual connections never borrow missing fields from inventory.
+    if (!host || !user || !manual) { sendErr(ws, `${kind} 未設定連線資訊`); return; }
     port = qPort || 22;
   }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) { sendErr(ws, 'Invalid SSH port'); return; }
   if (!host || !user || !pass) { sendErr(ws, `${kind} 未設定連線資訊`); return; }
 
   let conn = null;

@@ -660,15 +660,20 @@ def probe_bmc(body: ProbeBMC):
     自動取得 BMC IP Address（填入表單自動帶入）。若 OS 內無 ipmitool 則回傳
     ipmitool_ok=False，由前端提示需下載/安裝 ipmitool。"""
     if body.machine_name:
-        stored = machines.get(body.machine_name)
+        with _DATA_LOCK:
+            stored = dict(machines.get(body.machine_name) or {})
         if not stored:
             raise HTTPException(404, "Machine not found")
+        if body.os_ip != stored.get("os_ip"):
+            raise HTTPException(409, "Target changed; enter explicit SSH credentials for the new IP")
         body.os_user = stored.get("os_user", "")
         body.os_pass = stored.get("os_pass", "")
         body.os_port = stored.get("os_port") or 22
         body.expected_hostname = stored["name"]
-    if not body.os_ip or not body.os_user or not body.os_pass:
+    if not body.os_ip or not body.os_user or not body.os_pass or "**" in body.os_pass:
         raise HTTPException(400, "請填 OS IP / SSH 帳號 / 密碼")
+    if not 1 <= body.os_port <= 65535:
+        raise HTTPException(422, "Invalid SSH port")
     hostname, rc, err = ssh_run(body.os_ip, body.os_user, body.os_pass, body.os_port, "hostname", timeout=12)
     if rc != 0 or not hostname:
         return {"ok": False, "error": f"OS 連線失敗（SSH）：{err or '無法登入'}"}
@@ -914,6 +919,9 @@ def change_management_ip(name: str, body: dict):
 
 class ChangeOsIp(BaseModel):
     new_os_ip: str
+    os_user: str = ""
+    os_pass: str = ""
+    os_port: int = 22
 
 
 @app.post("/api/machines/{name}/change-os-ip")
@@ -923,7 +931,7 @@ def change_os_ip(name: str, body: ChangeOsIp):
 
     只允許改 OS IP（BMC IP 不給改）。改之前必須「驗證該新 IP 確實是同一台」：
       1) ping 得到（線上）
-      2) 用原本的 OS 帳密 SSH 過去抓 hostname，且 **與機台名稱（即原 hostname）相同**
+      2) Use explicitly supplied credentials for the new IP, then check hostname.
     → 符合才更新 os_ip 並存檔。避免把 IP 誤配到別的機器。
     """
     if name not in machines:
@@ -934,8 +942,13 @@ def change_os_ip(name: str, body: ChangeOsIp):
         raise HTTPException(400, "請輸入新的 OS IP")
     if new_ip == m.get("os_ip"):
         return {"ok": True, "changed": False, "msg": "IP 與原本相同，未變更。"}
-    if not m.get("os_user") or not m.get("os_pass"):
-        raise HTTPException(400, "此機台沒有存 OS 帳密，無法驗證 hostname")
+    user = getattr(body, "os_user", "")
+    password = getattr(body, "os_pass", "")
+    port = getattr(body, "os_port", 22)
+    if not user or not password or "**" in password:
+        raise HTTPException(400, "Enter explicit SSH credentials for the new IP")
+    if not isinstance(port, int) or not 1 <= port <= 65535:
+        raise HTTPException(422, "Invalid SSH port")
 
     # 1) ping 新 IP
     if not ping_check(new_ip, timeout=3):
@@ -943,8 +956,7 @@ def change_os_ip(name: str, body: ChangeOsIp):
                 "msg": f"Ping 不到新 OS IP {new_ip}，未變更。請確認該 IP 現在是線上。"}
 
     # 2) SSH 新 IP 抓 hostname
-    hostname, rc, err = ssh_run(new_ip, m.get("os_user",""), m.get("os_pass",""),
-                                m.get("os_port", 22), "hostname", timeout=12)
+    hostname, rc, err = ssh_run(new_ip, user, password, port, "hostname", timeout=12)
     if rc != 0 or not hostname:
         return {"ok": False, "changed": False,
                 "msg": f"無法以 SSH 連上新 IP {new_ip}（rc={rc}，{err or '連線失敗'}）"}
@@ -957,9 +969,11 @@ def change_os_ip(name: str, body: ChangeOsIp):
 
     old_ip = m.get("os_ip")
     m["os_ip"] = new_ip
+    m.update(os_user=user, os_pass=password, os_port=port)
     slots = m.get("os") or []
     if slots:
         slots[int(m.get("active_os") or 1) - 1]["ip"] = new_ip
+        slots[int(m.get("active_os") or 1) - 1].update(user=user, **{"pass": password}, port=port)
         _sync_active_os(m)
     _save_data()
     _invalidate_machine_cache(name)

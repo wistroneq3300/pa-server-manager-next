@@ -2,6 +2,26 @@
 
 Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation record.
 
+## F01 credential target binding (2026-09-28; first implementation batch)
+
+- User authorized implementation, regression testing and push. This batch addresses F01.
+  Work started from remote main c68301a in an isolated worktree, preserving the original
+  checkout's uncommitted review and skill documents. Other findings remain open.
+- Terminal stored secrets now bind to the saved host/user/SSH port and selected OS slot.
+  Changed targets and invalid slots fail before SSH; complete manual credentials remain
+  supported without inventory fallback. BMC IPMI port 623 maps to SSH 22; custom SSH ports remain.
+- Stored probe-bmc credentials only connect to the saved OS IP. A new-IP probe requires
+  explicit credentials. The related change-os-ip path now requires explicit credentials,
+  checks hostname and saves the successful connection to the active OS slot and top-level fields.
+  The IP dialog supplies the new credentials; unchanged-IP and BMC-only edits remain supported.
+- Validation: 88 isolated Python regressions; Node Terminal handler security, operations and
+  equipment suites; Chrome credential-binding and equipment fixture workflows; JS syntax,
+  Python AST and whitespace checks. Tests use synthetic credentials and no real SSH/BMC.
+- Limits: this does not implement F02 authentication/authorization or F03b host-key enrollment.
+  Hostname checks are not cryptographic identity checks. No deployment or live-device test.
+- The baseline review and current review-state are included for continuation. Implementation
+  is local pending the requested commit/push; publication confirmation will follow verification.
+
 ## Product vision documentation (2026-09-28; published)
 
 - README now defines PA Manager's long-term direction as a multi-project, AI-driven
