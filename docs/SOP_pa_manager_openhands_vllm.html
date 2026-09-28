@@ -279,11 +279,11 @@ RestartSec=3</code></pre>
     <p>PA Manager 的「AI 功能」<b>已從舊版 Ollama 遷移到本機 vLLM</b>（Ollama 服務已停用）。端點寫死在 <code>main.py</code>：</p>
     <table>
       <tr><th>用途</th><th>URL / Model</th><th>對應 vLLM 服務</th></tr>
-      <tr><td>一般 AI 分析（sensor/telemetry/rack/copilot/testlib）</td><td><code>VLLM_URL = http://127.0.0.1:18002</code> · <code>qwen3-coder</code></td><td>vllm-coder (GPU6)</td></tr>
+      <tr><td>一般 AI 分析（sensor/telemetry/rack/copilot/testlib）</td><td><code>VLLM_URL = http://127.0.0.1:18003</code> · <code>qwen3.8-27b</code></td><td>vllm-27b (GPU4)</td></tr>
       <tr><td>視覺 AI 會診（BMC KVM 截圖 / 機櫃照片）</td><td><code>VISION_URL = http://127.0.0.1:18004</code> · <code>qwen3-vl-32b</code></td><td>vllm-vl (GPU5)</td></tr>
       <tr><td>DeepSeek 相關(進階)</td><td><code>DEEPSEEK_URL = http://127.0.0.1:18011</code> · <code>deepseek-v4-flash</code></td><td>vllm-flash (GPU0-3)</td></tr>
     </table>
-    <div class="callout warn"><b>也就是說：</b>PA 的 AI 分析依賴 <code>vllm-coder</code>(18002) 活著；影像功能依賴 <code>vllm-vl</code>(18004)。vLLM 掛就沒有 AI 分析(UI 顯示空字串)，但網站其他功能仍正常。</div>
+    <div class="callout warn"><b>也就是說：</b>PA 的 AI 分析依賴 <code>vllm-27b</code>(18003) 活著；影像功能依賴 <code>vllm-vl</code>(18004)。vLLM 掛就沒有 AI 分析(UI 顯示空字串)，但網站其他功能仍正常。</div>
     <h3>常見操作 / 更新指令</h3>
     <pre><code># 更新（程式碼從 GitHub 拉新）
 cd /root/sheng/manager/pa_manager
@@ -311,7 +311,7 @@ sudo systemctl restart pa-manager pa-terminal-bridge</code></pre>
       <tr><td>6969 完全連不上</td><td><code>systemctl status pa-manager</code>；<code>ss -tlnp | grep 6969</code>；journalctl log</td></tr>
       <tr><td>改了程式碼沒生效</td><td>正式版無 --reload，改完要 <code>restart pa-manager</code></td></tr>
       <tr><td>Web terminal 連不上</td><td><code>systemctl status pa-terminal-bridge</code>(6968)；確認它能讀 <code>$PA_DATA_DIR/data.json</code> 帳密</td></tr>
-      <tr><td>AI 分析一片空白</td><td>vLLM 掛了。查 <code>curl http://127.0.0.1:18002/v1/models</code> → 見③ vLLM 章節</td></tr>
+      <tr><td>AI 分析一片空白</td><td>vLLM 掛了。查 <code>curl http://127.0.0.1:18003/v1/models</code> → 見③ vLLM 章節</td></tr>
       <tr><td>起不來但路徑對</td><td>檢查 pyvenv python 路徑：實裝用系統 <code>/usr/bin/python3.12</code> 而非 .venv(可省)，依賴用 <code>pip install -r requirements.txt</code> 裝到系統即可</td></tr>
     </table>
   </section>
@@ -661,9 +661,9 @@ export VLLM_ALLREDUCE_USE_SYMM_MEM=0 # 關 torch symmetric memory
       <tr><td>MoE</td><td><code>--moe-backend auto</code>(本機偵測到 TrtLlmBf16ExpertsMoE)</td></tr>
     </table>
     <h4>測並發</h4>
-    <pre><code>seq 8 | xargs -P8 -I{} curl -s http://127.0.0.1:18002/v1/chat/completions \
+    <pre><code>seq 8 | xargs -P8 -I{} curl -s http://127.0.0.1:18003/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model":"qwen3-coder","messages":[{"role":"user","content":"hi"}],"max_tokens":256}' \
+  -d '{"model":"qwen3.8-27b","messages":[{"role":"user","content":"hi"}],"max_tokens":256}' \
   -o /dev/null -w "%{http_code} %{time_total}s\n"</code></pre>
   </section>
 
@@ -743,7 +743,7 @@ nvidia-smi --query-gpu=index,memory.used --format=csv,noheader</code></pre>
       <li><b>service 的 unit 檔是「實作真相」</b> — vLLM 全部參數、環境變數都以 /etc/systemd/system/ 為準；repo 內的 pa-manager.service 樣本路徑是舊的。</li>
       <li><b>Ollama 已全面停用</b>(ol-* 皆 inactive)，PA 與 OpenHands 都改用 vLLM。舊 Ollama profile 保留為 .bak-ollama。</li>
       <li><b>Port 18001</b> 被 openhands-automation 佔用 → vLLM flash 才用 18011（歷史原因）。</li>
-      <li>PA Manager 的 AI 一律走 <code>http://127.0.0.1:18002</code>(qwen3-coder)，影像走 <code>18004</code>，進階走 <code>18011</code>。</li>
+      <li>PA Manager 的 AI 一律走 <code>http://127.0.0.1:18003</code>(qwen3.8-27b)，影像走 <code>18004</code>，進階走 <code>18011</code>。</li>
       <li>OpenHands 預設 LLM = <b>deepseek-v4-flash</b>（active profile），agent server 版本 1.47.0。</li>
       <li>這台沒有 GPU7；B200 NVLS/SYMM_MEM 有 hang 問題，flash 的 TP4 環境變數一行都不能少。</li>
     </ul>

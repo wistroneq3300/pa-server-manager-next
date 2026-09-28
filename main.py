@@ -587,6 +587,9 @@ def add_machine(body: AddMachine):
         "bmc_port": body.bmc_port,
         "project": body.project,
         "level": body.level if body.level in ("system", "rack") else "system",
+        # 新增系統（SSH 流程）一律是有 OS/BMC 的計算機台，自動定義為 server，
+        # 避免 L11 機櫃顯示「設備類型待確認」而鎖住 Server 電源操作
+        "mgx_type": "server",
         "rack_size": body.rack_size if body.level == "rack" else 1,
         "rack_u": 0,   # L11 新增時一律不指定 U（0=未放上機櫃），由 Rack Manager 的＋手動放置
         "use_c17": True,
@@ -2897,8 +2900,9 @@ async def rack_broadcast(websocket: WebSocket):
 
 
 # ---- AI（串本機 vLLM / OpenAI-compatible）----
-VLLM_URL = "http://127.0.0.1:18002"
-VLLM_MODEL = "qwen3-coder"
+# 一般 AI 分析（copilot / 診斷 / testlib）：本機 vllm-27b（Qwen3.8-27B, GPU4, 256K）
+VLLM_URL = os.environ.get("VLLM_URL", "http://127.0.0.1:8001")
+VLLM_MODEL = os.environ.get("VLLM_MODEL", "qwen3.8-27b")
 
 
 def _llm_chat(system: str, user: str, temperature: float = 0.3,
@@ -2913,6 +2917,8 @@ def _llm_chat(system: str, user: str, temperature: float = 0.3,
         ],
         "temperature": temperature,
         "max_tokens": max_tokens,
+        # qwen3.8-27b 是推理型模型；關掉 thinking，避免把推理過程混進 content
+        "chat_template_kwargs": {"enable_thinking": False},
     }
     r = requests.post(VLLM_URL + "/v1/chat/completions", json=payload, timeout=timeout)
     r.raise_for_status()
@@ -3101,7 +3107,8 @@ def _llm_chat_tools(system: str, user: str, max_steps: int = _MAX_DIAG_STEPS,
     for _ in range(max_steps):
         r = requests.post(VLLM_URL + "/v1/chat/completions", json={
             "model": VLLM_MODEL, "messages": messages, "tools": tools,
-            "temperature": 0.3, "max_tokens": 700}, timeout=timeout)
+            "temperature": 0.3, "max_tokens": 700,
+            "chat_template_kwargs": {"enable_thinking": False}}, timeout=timeout)
         r.raise_for_status()
         msg = r.json()["choices"][0]["message"]
         tcs = msg.get("tool_calls") or []
@@ -3127,7 +3134,8 @@ def _llm_chat_tools(system: str, user: str, max_steps: int = _MAX_DIAG_STEPS,
     # 步數用盡：請 LLM 收尾
     messages.append({"role": "user", "content": "請根據以上工具結果，直接給最終簡短結論（繁體中文）。"})
     r = requests.post(VLLM_URL + "/v1/chat/completions", json={
-        "model": VLLM_MODEL, "messages": messages, "temperature": 0.3, "max_tokens": 700}, timeout=timeout)
+        "model": VLLM_MODEL, "messages": messages, "temperature": 0.3, "max_tokens": 700,
+        "chat_template_kwargs": {"enable_thinking": False}}, timeout=timeout)
     r.raise_for_status()
     return (r.json()["choices"][0]["message"].get("content") or "").strip()
 
@@ -3570,7 +3578,7 @@ def machine_diagnose(name: str, body: DiagReq = None):
             time.sleep(2)
         if not report:
             return {"ok": False,
-                    "error": "AI 未產生分析結果。請確認本機 vLLM（qwen3-coder）可用。",
+                    "error": "AI 未產生分析結果。請確認本機 vLLM（qwen3.8-27b）可用。",
                     "collect": collect}
     except Exception as e:
         return {"ok": False, "error": f"AI 分析失敗: {e}", "collect": collect}

@@ -145,7 +145,7 @@ in added regions. Pre-existing CJK in the workbook `procedure`/`criteria` is fin
 - View OS info, hardware inventory (CPU / DIMM / SSD / **GPU** / NIC), sensors, **sensor AI diagnosis**, and BMC power on/off/AUX/reboot.
 - **GPU (NVIDIA + AMD)**: hardware inventory shows GPU count, model and VRAM, plus per-card **GPU FW / VBIOS**. Telemetry plots per-card util / temp / power / VRAM.
   - NVIDIA via `nvidia-smi`; AMD Instinct (e.g. MI300X OAM) via `rocm-smi` + `amd-smi` (`telemetry_core.parse_amdgpu`).
-- **Telemetry viewer**: SQLite history + charts (CPU / Load / DIMM / SSD / NIC / GPU) + **Telemetry AI analysis** (2–3 line 繁中 readability of the selected window, local Ollama).
+- **Telemetry viewer**: SQLite history + charts (CPU / Load / DIMM / SSD / NIC / GPU) + **Telemetry AI analysis** (2–3 line 繁中 readability of the selected window, local vLLM).
 - **BMC power badge**: live chassis power state with color coding.
 
 ### 1.3 L11 Rack Level (rack or multi-system view)
@@ -158,7 +158,7 @@ in added regions. Pre-existing CJK in the workbook `procedure`/`criteria` is fin
 - **Rack Telemetry** (whole-rack, per component type — the rack view's *Telemetry* sub-tab):
   - Grouped by kind — **Server** (CPU / 記憶體 / GPU 功耗) · **Switch** (port 流量 / 溫度 / fan) · **Power Shelf / PDU** (功耗 / 電壓 / 電流) · **CDU** (水流量 / 水溫 / 水壓).
   - Each type block is collapsible (per-block toggle + "全部收合/展開"); a per-machine latest-value table (機台 × 指標) plus whole-rack line charts over a selectable window (10 分鐘 → 24 小時).
-  - **Rack AI analysis**: 2–3 line 繁中 read of the whole-rack summary (same local-Ollama pattern as L10).
+  - **Rack AI analysis**: 2–3 line 繁中 read of the whole-rack summary (same local-vLLM pattern as L10).
   - Data path: backend SSH-collects per machine (`telemetry_core.get_rack_series`); project-name match is case-insensitive (e.g. `MyRack` and `myrack` resolve to the same rack).
 
 ### 1.4 Projects
@@ -175,8 +175,8 @@ in added regions. Pre-existing CJK in the workbook `procedure`/`criteria` is fin
 - Command history `bcLog` records only **time + command**, **not** the target host list.
 
 ### 1.7 AI Copilot & AI Analysis
-- **AI Copilot** (`/api/copilot`): natural-language assistant wired to a **local Ollama** (`qwen3.8:27b`).
-- **AI analysis** is reused across several surfaces (all local Ollama, 繁中):
+- **AI Copilot** (`/api/copilot`): natural-language assistant wired to a **local vLLM** (`qwen3.8-27b`).
+- **AI analysis** is reused across several surfaces (all local vLLM, 繁中):
   - **Sensor AI diagnosis** (`/api/machine/{name}/sensors/analyze`) — L10 detail.
   - **Telemetry AI analysis** (`/api/machine/{name}/telemetry/analyze`) — L10, the selected time window.
   - **Rack AI analysis** (`/api/rack/{project}/telemetry/analyze`) — the whole-rack telemetry summary.
@@ -216,7 +216,7 @@ Browser (index.html + app.js + xterm.js + noVNC)
    v
 pa-manager  ----(FastAPI, uvicorn)----  port 6969 (prod) / 8788 (trial)
    |  * REST API + telemetry collection; reads/writes data.json & telemetry.db
-   |  * AI: local Ollama (qwen3.8:27b) — copilot + every AI-analysis endpoint
+   |  * AI: local vLLM (qwen3.8-27b) — copilot + every AI-analysis endpoint
    |  * proxies /ws/terminal/*, /ws/rack-broadcast → bridge; /ws/kvm/* → BMC RFB
    v
 pa-terminal-bridge  ----(node + ssh2)----  port 6968
@@ -227,10 +227,10 @@ pa-terminal-bridge  ----(node + ssh2)----  port 6968
 Managed hosts  (OS over SSH, BMC over IPMI/Redfish, KVM over RFB)
 ```
 
-- `pa-manager`: Python backend — data, REST, telemetry, AI (local Ollama), and proxies WebSockets.
+- `pa-manager`: Python backend — data, REST, telemetry, AI (local vLLM), and proxies WebSockets.
 - `pa-terminal-bridge`: Node (ssh2) service that opens the real SSH channels; **without it the web terminal is unavailable** (everything else still works).
 - `spx_kvm_broker`: separate uvicorn process (port 18992) for SP-X / IVTP KVM auto-login + dedicated-subdomain KVM. **Optional** — only needed for SP-X machines.
-- Ollama (local LLM, `qwen3.8:27b`): needed for the AI Copilot and all AI-analysis endpoints; if down, those lines show empty text while the rest of the console works.
+- vLLM (local LLM, `qwen3.8-27b` @ `http://127.0.0.1:18003`): needed for the AI Copilot and all AI-analysis endpoints; if down, those lines show empty text while the rest of the console works.
 - Data: the machine list lives in `data.json`, telemetry history in SQLite `telemetry.db`.
 
 ---
@@ -299,15 +299,19 @@ cd ..
 
 > If `npm ci` is not available, `npm install` works too.
 
-### Step 3b — Local Ollama (for the AI features — optional)
+### Step 3b — Local vLLM (for the AI features — optional)
 
 > Optional, but without it the AI Copilot and every AI-analysis box (sensor / telemetry / rack)
 > just show empty text; everything else works fine.
+>
+> The AI endpoints call the local vLLM `qwen3.8-27b` service (`VLLM_URL` / `VLLM_MODEL` in
+> `main.py`, default `http://127.0.0.1:18003` / `qwen3.8-27b`). See
+> `docs/SOP_pa_manager_openhands_vllm.html` for the full vLLM setup and systemd units.
 
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh        # install Ollama once
-ollama pull qwen3.8:27b                                # model the code expects (main.py OLLAMA_MODEL)
-ollama serve &                                         # or run as a systemd service
+# vLLM serving Qwen3.8-27B (see docs/SOP_pa_manager_openhands_vllm.html for the full unit)
+systemctl enable --now vllm-27b
+curl -s http://127.0.0.1:18003/v1/models      # sanity check
 ```
 
 ### Step 4 — Prepare a data directory
@@ -371,7 +375,7 @@ sudo systemctl enable --now spx-broker            # uvicorn on port 18992
 - Open http://<host>:6969/ — the UI should load.
 - In "System Manager", add a system (OS IP/user/password), then open its web
   terminal to confirm SSH works.
-- If Ollama is running, open a machine's / rack's Telemetry view and confirm the
+- If vLLM is running, open a machine's / rack's Telemetry view and confirm the
   AI-analysis line fills in with a 繁中 summary.
 - (SP-X only) confirm the broker: `sudo systemctl status spx-broker` and a KVM sync test.
 
@@ -420,7 +424,7 @@ sudo systemctl restart pa-manager pa-terminal-bridge
 | `IPMI_CIPHER_NO17` | 3 | cipher used when a machine has `use_c17=false` |
 | `TELEMETRY_MAX_MIN` | 43200 | hard cap (minutes) on how far back telemetry series are fetched |
 
-> Note: the AI model/endpoint are hard-coded in `main.py` — `OLLAMA_URL` (default `http://127.0.0.1:11434`) and `OLLAMA_MODEL` (default `qwen3.8:27b`).
+> Note: the AI model/endpoint are set in `main.py` — `VLLM_URL` (default `http://127.0.0.1:18003`) and `VLLM_MODEL` (default `qwen3.8-27b`). Both can be overridden via environment variables of the same name.
 
 ---
 
@@ -439,11 +443,11 @@ sudo systemctl restart pa-manager pa-terminal-bridge
 | GET/POST | `/api/machine/{name}/power` | Read / control BMC power |
 | POST | `/api/machine/{name}/aux`, `/reboot` | AUX power / reboot (BMC) |
 | GET | `/api/machine/{name}/telemetry` | Telemetry history (SQLite) |
-| GET | `/api/machine/{name}/telemetry/analyze` | Telemetry AI analysis (local Ollama) |
+| GET | `/api/machine/{name}/telemetry/analyze` | Telemetry AI analysis (local vLLM) |
 | GET/POST | `/api/machine/{name}/diagnose` | Diagnostics / AI analysis |
 | GET | `/api/rack/ping` | Rack-level ping sweep |
 | GET | `/api/rack/{project}/telemetry` | Whole-rack telemetry (by component type) |
-| GET | `/api/rack/{project}/telemetry/analyze` | Rack AI analysis (local Ollama) |
+| GET | `/api/rack/{project}/telemetry/analyze` | Rack AI analysis (local vLLM) |
 | POST/GET/DELETE | `/api/rack/passive`, `/api/links` | Rack elements & links |
 | GET/POST/DELETE | `/api/projects` | Project management (+ `/api/projects/reorder`, `/api/machines/reorder`) |
 | POST | `/api/copilot` | AI Copilot |

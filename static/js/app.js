@@ -1812,8 +1812,10 @@ function setProjectLevelFilter(v) {
   projectLevelFilter.val = v;
   document.querySelectorAll(".lvl-tab").forEach(b => b.classList.toggle("active", b.dataset.lvl === v));
   const bb = document.getElementById("sys-btn-broadcast");
+  const bbRack = document.getElementById("sys-btn-broadcast-rack");
   const bc = document.getElementById("sys-btn-addcomp");
   if (bb) bb.style.display = (v === "system") ? "" : "none";   // 📡 系統廣播 只在 L10
+  if (bbRack) bbRack.style.display = (v === "rack") ? "" : "none";   // 📡 系統廣播（L11）只在 L11
   if (bc) bc.style.display = (v === "rack") ? "" : "none";     // ＋ 新增元件 只在 L11
   const holder = $("proj-sort-list");
   if (holder) { holder.outerHTML = renderProjectsList(); initProjectDrag(); }
@@ -1901,6 +1903,7 @@ function pageProjects() {
       <button class="btn primary" onclick="openAdd()">＋ 新增系統</button>
       <button class="btn" id="sys-btn-addcomp" style="display:${projectLevelFilter.val==="rack"?"":"none"}" onclick="addRackComponentDialog()" title="新增可放入機櫃的元件（switch / power shelf / CDU / PDU 等），會加入選定的整櫃專案">＋ 新增至機櫃</button>
       <button class="btn" id="sys-btn-broadcast" style="display:${projectLevelFilter.val==="system"?"":"none"}" onclick="systemBroadcastDialog()" title="對多台 L10 系統同時下指令（廣播終端）">📡 系統廣播</button>
+      <button class="btn" id="sys-btn-broadcast-rack" style="display:${projectLevelFilter.val==="rack"?"":"none"}" onclick="systemRackBroadcastDialog()" title="對多台 L11 系統/節點同時下指令（廣播終端）">📡 系統廣播</button>
     </div>
     ${renderProjectsList()}
   `;
@@ -2964,6 +2967,45 @@ function pageMachine() {
 // 系統診斷結果暫存（key=機台名），避免頁面 async 更新時被清掉
 const diagStore = {};   // { name: {state:'loading'|'done'|'error', html:'...'} }
 
+// 輕量、XSS-safe 的 Markdown→HTML（先 esc 再套格式，AI 報告用的子集即可）
+function mdToHtml(md) {
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const inline = (s) => {
+    s = esc(s);
+    s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
+    s = s.replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return s;
+  };
+  const out = [];
+  let inUl = false, inOl = false;
+  const closeLists = () => { if (inUl) { out.push("</ul>"); inUl = false; } if (inOl) { out.push("</ol>"); inOl = false; } };
+  for (const raw of String(md).split("\n")) {
+    const line = raw;
+    let m;
+    if (/^\s*$/.test(line)) { closeLists(); continue; }
+    if ((m = line.match(/^(#{1,6})\s+(.*)$/))) {
+      closeLists(); const lv = m[1].length; out.push(`<h${lv}>${inline(m[2])}</h${lv}>`); continue;
+    }
+    if (/^\s*([-*+])\s+/.test(line)) {
+      if (inOl) { out.push("</ol>"); inOl = false; }
+      if (!inUl) { out.push("<ul>"); inUl = true; }
+      out.push(`<li>${inline(line.replace(/^\s*[-*+]\s+/, ""))}</li>`); continue;
+    }
+    if ((m = line.match(/^\s*(\d+)[.)]\s+(.*)$/))) {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      if (!inOl) { out.push("<ol>"); inOl = true; }
+      out.push(`<li>${inline(m[2])}</li>`); continue;
+    }
+    if (/^\s*(\*{3,}|-{3,}|_{3,})\s*$/.test(line)) { closeLists(); out.push("<hr>"); continue; }
+    closeLists();
+    out.push(`<p>${inline(line)}</p>`);
+  }
+  closeLists();
+  return out.join("\n");
+}
+
 function diagBodyFill(name) {
   const s = diagStore[name];
   if (!s) return `<div class="empty">點上方「🩺 系統診斷」按鈕，收集 dmesg / journalctl / GPU / BMC event log，並由 AI 分析問題與建議處理。</div>`;
@@ -2986,7 +3028,7 @@ function runDiagnose(name) {
       ? "本機 ipmitool（SSH 進 OS 執行）"
       : d.collect && d.collect.bmc ? "OOB lanplus" : "—";
     diagStore[name] = { state: "done", html: `
-      <div class="diag-report"><pre class="mach-pre mono">${esc(md)}</pre></div>
+      <div class="diag-report md-report">${mdToHtml(md)}</div>
       <details class="diag-raw"><summary>診斷原始資料（收集時間 ${esc(d.collected_at||"—")} · IPMI：${esc(bmcMode)}）</summary>
         <pre class="mach-pre mono">${esc((d.collect&&d.collect.os)||"(無 OS 資料)")}</pre>
         ${d.collect && d.collect.bmc ? `<pre class="mach-pre mono">===== BMC SEL =====\n${esc(d.collect.bmc)}</pre>` : ""}
@@ -4169,11 +4211,13 @@ const bcState = { ws: null, order: [], terms: {}, stat: {}, active: null, broadc
 // key = "name#slot"（slot=0 主 OS）；單 OS 機台就只有 "name#0"（主 OS=自己）。
 function bcNodes(m) {
   const arr = (Array.isArray(m.os) && m.os.length > 1) ? m.os : null;
+  // 主 OS（slot 1）若標籤是佔位「OS 1」或空，則以機台名稱顯示（與 product-detail.js dispLabel 一致）
+  const dispLabel = (e) => (e && e.slot === 1 && (!e.label || e.label === 'OS 1') && m.name) ? m.name : ((e && e.label) || ('OS ' + (e ? e.slot : 1)));
   if (arr) {
     return arr.map((e, i) => {
       const slot = e.slot || (i + 1);
       return { key: `${m.name}#${slot}`, nm: m.name, slot,
-               label: e.label || ('OS ' + slot), ip: e.ip, node: true };
+               label: dispLabel(e), ip: e.ip, node: true };
     });
   }
   return [{ key: `${m.name}#0`, nm: m.name, slot: 0, label: m.name, ip: m.os_ip, node: false }];
@@ -4204,7 +4248,8 @@ function bcRootLabel(key) {
   if (!m) return key;
   const arr = m.os || [];
   const e = arr.find(o => String(o.slot) === slot) || arr[Number(slot) - 1];
-  const lbl = e ? (e.label || ('OS ' + slot)) : ('OS ' + slot);
+  // 主 OS（slot 1）若標籤是佔位「OS 1」或空，則以機台名稱顯示
+  const lbl = e ? ((e.slot === 1 && (!e.label || e.label === 'OS 1')) ? nm : (e.label || ('OS ' + slot))) : ('OS ' + slot);
   return `${nm} / ${lbl}`;
 }
 
@@ -4331,6 +4376,93 @@ function systemBroadcastDialog() {
 function systemBroadcastSetGroup(proj, on) {
   document.querySelectorAll(".bc-chk").forEach(c => { if (c.dataset.proj === proj) c.checked = on; });
   const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length;
+}
+
+// L11 系統廣播輔助：整框勾選（依機框名，含其全部節點）
+function systemRackSetMachine(machineName, on) {
+  document.querySelectorAll(".bc-chk").forEach(c => {
+    if (String(c.value).split("#")[0] === machineName) c.checked = !!on;
+  });
+  const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length;
+}
+// L11 系統廣播輔助：依專案整組勾選
+function systemRackSetGroup(proj, on) {
+  document.querySelectorAll(".bc-chk").forEach(c => { if (c.dataset.proj === proj) c.checked = !!on; });
+  const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length;
+}
+
+// L11 系統廣播（System Manager）：依專案把「有 OS 的 L11 機框」分組列出，
+// 多 OS 機框展開成每個節點（與 L10 系統廣播共用 openBroadcast / bcNodes）。
+function systemRackBroadcastDialog() {
+  const cands = machines.filter(m => isRackItem(m) && m.os_ip);
+  if (!cands.length) {
+    const anyCands = machines.filter(m => m.os_ip);
+    if (anyCands.length) {
+      showDialog("📡 系統廣播（L11）", `<div class="empty">目前沒有帶 OS 連線資訊的 L11 機框可廣播。\n有 OS 的機台：<br>${esc(anyCands.map(m=>m.name).join("、"))}</div>`);
+    } else {
+      showDialog("📡 系統廣播（L11）", `<div class="empty">目前沒有任何帶 OS 連線資訊的 L11 機框可用。</div>`);
+    }
+    return;
+  }
+  const groups = {};
+  cands.forEach(m => { const p = m.project || "(未分類)"; (groups[p] = groups[p] || []).push(m); });
+  const totalNodes = cands.reduce((s, m) => s + bcNodes(m).length, 0);
+  const html = Object.entries(groups).map(([proj, list]) => {
+    const projNodes = list.reduce((s, m) => s + bcNodes(m).length, 0);
+    const rows = list.map(m => {
+      const nodes = bcNodes(m);
+      const multi = nodes.length > 1;
+      if (multi) {
+        const nodeRows = nodes.map(n =>
+          `<label class="bc-check" style="display:flex;gap:6px;padding:4px 8px;margin-left:14px;border:1px solid var(--border);border-radius:6px;margin-bottom:3px;cursor:pointer;align-items:center">
+             <input type="checkbox" class="bc-chk" value="${esc(n.key)}" data-proj="${esc(proj)}" checked>
+             <b>${esc(n.label)}</b><span class="mono" style="color:var(--text-dim)">${esc(n.ip)}</span>
+           </label>`).join("");
+        return `<div style="margin-bottom:4px">
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 6px">
+            <button class="btn small" onclick="systemRackSetMachine(${bcQuote(m.name)}, true)">☑ 整框</button>
+            <button class="btn small" onclick="systemRackSetMachine(${bcQuote(m.name)}, false)">☐ 整框</button>
+            <b>${esc(m.name)}</b><span class="hint">${nodes.length} 節點</span>
+          </div>
+          <div style="border-left:2px solid var(--border);padding-left:6px">${nodeRows}</div>
+        </div>`;
+      }
+      return `<label class="bc-check" style="display:flex;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:4px;cursor:pointer;align-items:center">
+         <input type="checkbox" class="bc-chk" value="${esc(m.name + "#0")}" data-proj="${esc(proj)}" checked>
+         <b>${esc(m.name)}</b> <span class="mono" style="color:var(--text-dim)">${esc(m.os_ip)}</span>
+       </label>`;
+    }).join("");
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <b>${esc(proj)}</b><span class="hint">${list.length} 機框 · ${projNodes} 節點</span>
+        <span style="margin-left:auto"><button class="btn small" onclick="systemRackSetGroup('${esc(proj)}', true)">☑</button>
+        <button class="btn small" onclick="systemRackSetGroup('${esc(proj)}', false)">☐</button></span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join("");
+
+  showDialog("📡 系統廣播（L11）— 依專案選擇要同時控制的機框 / 節點", `
+    <label style="display:block;font-size:12px;color:var(--text-faint);margin-bottom:10px">
+      勾選要同步下指令的「節點」（多 OS 機框每顆 OS 各一節點；單 OS 機框整台一節點）。一次指令同時送到所有勾選節點的 OS shell。
+    </label>
+    <div class="table-scroll" style="max-height:52vh;overflow:auto;margin-bottom:12px;scrollbar-gutter:stable;padding-right:10px;box-sizing:border-box">${html}</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn small" onclick="bcSetAll(true)">☑ 全選</button>
+      <button class="btn small" onclick="bcSetAll(false)">☐ 全不選</button>
+      <span class="spacer"></span><span class="hint">已選 <span id="bc-sel-count">${totalNodes}</span> 節點</span>
+    </div>`,
+    [
+      { txt: "取消", cls: "", fn: () => closeDialog() },
+      { txt: "開啟廣播", cls: "primary", fn: () => {
+        const sel = [...document.querySelectorAll(".bc-chk:checked")].map(x => x.value);
+        closeDialog();
+        if (!sel.length) { notifyUser("請至少勾選一個節點。"); return; }
+        openBroadcast(sel);
+      } },
+    ]);
+  const upd = () => { const el = $("bc-sel-count"); if (el) el.textContent = document.querySelectorAll(".bc-chk:checked").length; };
+  document.querySelectorAll(".bc-chk").forEach(c => c.addEventListener("change", upd));
 }
 
 function bcSetAll(v) {
