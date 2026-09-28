@@ -35,7 +35,24 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
   SSH clients/streams are cleaned up on early close and delayed ready/shell callbacks.
 - Validation: 95 Python regressions, including a second database writer during a blocked LLM;
   Node Terminal security/lifecycle suites and syntax/diff checks passed. Synthetic fixtures only.
-  This second batch is locally verified pending its requested publication; no deployment.
+  Published as 80b4423144e357785ff4aefaabfd47b0d4cf9efc; remote main verified. No deployment.
+
+## F07/F07b broker lifecycle and F07c partial KVM cleanup (2026-09-28)
+
+- Registry excludes expired sessions. Broker serializes per-BMC reuse/login and enforces
+  max_broker_sessions across users and browser sessions without evicting another active user.
+  Idle/expired cleanup runs in app lifespan and shuts down before registry close.
+- Synchronous BMC login and secret access run through a four-worker capacity limiter;
+  per-BMC async locks prevent same-target waiters from consuming all workers.
+- SP-X and Redfish KVM sessions now have owned cleanup after detection, failed WS connection
+  and socket close. Redfish retains the session Location server-side and refuses off-host logout.
+  Protocol reference: https://github.com/openbmc/openbmc-test-automation/blob/master/redfish/service_root/test_service_root.robot
+- OneTree logout remains unsupported until firmware-specific behavior is confirmed; F07c is
+  partial, not closed. No real KVM or logout was attempted.
+- Validation: 40 pytest tests passed (broker core/API/lifecycle/RBAC and KVM session mocks),
+  including actual ASGI contracts, cross-browser cap, concurrent login, slow BMC isolation and
+  lifespan cleanup. Two dependency deprecation warnings remain. Test environment is local .venv;
+  API test storage/credentials are now explicitly temporary/synthetic. This batch awaits push.
 
 ## Product vision documentation (2026-09-28; published)
 
