@@ -30,10 +30,13 @@ class PlacementContract(unittest.TestCase):
 
     def test_level_roundtrip_preserves_height_and_type(self):
         self.machine(mgx_type='server',rack_size=8,rack_u=8)
-        for level in ['system','rack']:
-            self.s['edit_machine']('node',dict(level=level,rack_u=0))
-            self.assertEqual(self.s['machines']['node']['rack_size'],8)
-            self.assertEqual(self.s['machines']['node']['mgx_type'],'server')
+        self.s['edit_machine']('node',dict(level='system',rack_u=0))
+        self.s['projects']['rack']['level']='rack'
+        base.extract('main.py',['set_rack_specification'],self.s)
+        self.s['set_rack_specification']('node',dict(rack_size=8,project='rack',expected_level='system',
+            expected_project='rack',expected_size=8,expected_u=0))
+        self.assertEqual(self.s['machines']['node']['rack_size'],8)
+        self.assertEqual(self.s['machines']['node']['mgx_type'],'server')
         self.s['place_machine']('node',dict(rack_u=8,expected_project='rack'))
 
     def test_collision_uses_stored_height(self):

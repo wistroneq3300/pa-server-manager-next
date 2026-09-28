@@ -5,7 +5,7 @@
 ## 基準與目前範圍
 
 - Review 基準：`9f3ac044f4aed0fcccc906e712dd4defd4e77657`。接續時先檢查目前 HEAD／工作目錄。
-- 12 個面向已分析。2026-09-28 使用者授權開始修正、回歸測試及推送；第一批處理 F01，其餘列維持原狀。
+- 12 個面向已分析。2026-09-28 使用者授權開始修正、回歸測試及推送；依序處理整份改善清單，分批測試與推送；需外部資訊的項目明列限制。
 - 最新設計在 `docs/design-preview/`，首頁「系統架構總覽」；保留 Wistron 藍綠、深淺主題、GPU／非 GPU 範圍與 3D 材質。
 - 設計提案已推送，正式 UI 尚未套入。完整 review 作歷史基準隨 F01 修正納入版本管理；發布狀態見 PROJECT_STATUS.md。
 - 接續先讀 AGENTS.md、PROJECT_STATUS.md、本檔，再依需求讀報告的 F-ID／面向，無需重做全部審查。
@@ -21,14 +21,14 @@
 | 3 | F03 | Git／inventory 憑證分離 | 待處理；現役有效性未驗證 |
 | 4 | F04、F05 | 告警誤解除、LLM 在 DB 交易內 | 已修正並推送 80b4423；telemetry_core.py；保留告警時間與 stale、交易提交後有界 AI 工作。95 項 Python regression 通過，含慢 LLM 期間另一連線寫入；未驗實機。 |
 | 5 | F06 | Terminal URL／SSH cleanup | 已修正並推送 80b4423；terminal_bridge/server.js；Node 真實 handler mock 驗證 malformed URL、ready/shell 前後斷線與廣播清理通過；未驗實機。 |
-| 6 | F07、F07b、F07c | Broker expiry/cap/async、KVM logout | F07/F07b 已修正待推送；expiry/idle/cap/序列化/有界 worker/lifespan。40 項 broker/KVM pytest 通過。F07c 部分完成：SP-X/Redfish cleanup 已補，OneTree 需確認 firmware logout；未驗實機。 |
-| 7 | F08、F09 | L10/L11 mutation、link identity | 待處理；隔離重現 |
-| 8 | F10 | Test variant／AI advice | 待處理；原始碼與資料統計 |
+| 6 | F07、F07b、F07c | Broker expiry/cap/async、KVM logout | F07/F07b 已修正並推送 1ede7e13；expiry/idle/cap/序列化/有界 worker/lifespan。40 項 broker/KVM pytest 通過。F07c 部分完成：SP-X/Redfish cleanup 已補，OneTree 需確認 firmware logout；未驗實機。 |
+| 7 | F08、F09 | L10/L11 mutation、link identity | 已修正；專用 L11 snapshot、link ID 與歧義拒絕、刪設備清理 links；104 項 Python regression 與工作區 Chrome 回歸通過。 |
+| 8 | F10 | Test variant／AI advice | 已修正；variant ID、精確 AI advice 與選取、版本 cache、UNRESOLVED；Python 與重複代碼 Chrome fixture 通過。 |
 | 9 | F03b | SSH／BMC identity enrollment | 待處理；需分批驗相容性 |
 | 10 | F11、F15 | inventory 鎖、探測併發 | 待處理；未做容量 benchmark |
 | 11 | F18、F19 | 新提案互動／語意、表單 labels | 待處理；完整清單搜尋保留已在 Chrome 重現 |
 | 12 | F14 | Rack Ping 保留場景／視角 | 待處理；原始碼路徑確認 |
-| 13 | F16、F17 | 建置版本、測試環境／CI | 待處理 |
+| 13 | F16、F17 | 建置版本、測試環境／CI | F16 已修正：本地 build 輸出、source checksum／version／variant IDs，3,112 列原欄位逐列一致；F17 待處理。 |
 | 14 | F12、F13 | 模組化、domain model | 待處理；需漸進遷移 |
 | 15 | F15b | Static cache／按需載入 | 待處理；未量測收益 |
 | 16 | 功能方向 | Collectors、operation jobs、證據追蹤 | 構想；未選定實作範圍 |

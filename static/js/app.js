@@ -1682,7 +1682,7 @@ async function rackClearTopo() {
   let done = 0;
   for (const lk of rel) {
     try {
-      const d = await api("/api/links", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: lk.a, b: lk.b }) });
+      const d = await api("/api/links", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: lk.id, a: lk.a, b: lk.b, type: lk.type, a_port: lk.a_port, b_port: lk.b_port }) });
       linksCache = d.links || linksCache; done++;
     } catch (e) {}
   }
@@ -2123,13 +2123,7 @@ async function moveMachineTo(name, project) {
 
 // 把 L10 系統升為 L11（整櫃）：只改層級 + 指派一個可用 U 槽，之後可在 Rack Manager 自由搬移。
 async function rackPromote(name, project) {
-  if (!await confirmUser("確定要把「" + name + "」升為 L11（加入 Rack Manager）嗎？")) return;
-  try {
-    await api("/api/machines/" + encodeURIComponent(name), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level: "rack", rack_u: 0 }) });
-    await Promise.all([loadMachines(), loadProjects()]);
-    setView("projects");
-    notifyUser("L11: \u5df2\u4fdd\u7559\u5143\u4ef6\u898f\u683c\uff0c\u8acb\u81f3 Rack Manager \u9078\u64c7 U \u69fd\u3002");
-  } catch (e) { notifyUser("❌ 升 L11 失敗：" + (e && e.message || e)); }
+  return window.uxRackSpecification(name);
 }
 
 // 把 L11 降回 L10（單機）：清除機櫃位置欄位
@@ -3060,6 +3054,10 @@ async function openAssignTask(name) {
   _assignTask.page = 0;
   try {
     const meta = await api("/api/testlibrary/meta");
+    if (_assignTask.libraryVersion !== meta.version) {
+      Object.keys(assignSheetCache).forEach(key => delete assignSheetCache[key]);
+      _assignTask.libraryVersion = meta.version;
+    }
     _assignTask.meta = meta.sheets || [];
   } catch (e) {
     _assignTask.meta = [];
@@ -3127,6 +3125,7 @@ async function assignTaskOpenSheet(sheetName) {
             { sheet: sheetName, label: sheetName, count: (s.items || []).length };
   _assignTask.sheet = m;
   _assignTask.items = (s && s.items) || [];
+  _assignTask.sel = new Set();
   _assignTask.page = 0;
   _assignTask.q = "";
   const dlg = dialogBackdrop();
@@ -3184,8 +3183,12 @@ function dupCodeSet() {
   return s;
 }
 
+function assignTaskKey(row) {
+  return row.case_variant_id || 'legacy-ui-' + _assignTask.items.indexOf(row);
+}
+
 function assignTaskRow(r, dup) {
-  const checked = _assignTask.sel.has(r.code) ? "checked" : "";
+  const checked = _assignTask.sel.has(assignTaskKey(r)) ? "checked" : "";
   const can = String(r.ai_can_execute || "NO").toUpperCase();
   const badge = can === "YES" ? `<span class="badge green">YES</span>`
     : can === "PARTIAL" ? `<span class="badge" style="color:var(--w-green)">PARTIAL</span>`
@@ -3193,7 +3196,7 @@ function assignTaskRow(r, dup) {
   const pkg = r.ai_packages_needed ? `<span class="hint">\ud83d\udce6 ${esc(r.ai_packages_needed)}</span>` : "";
   return `
     <label class="assign-row">
-      <input type="checkbox" ${checked} onchange="assignTaskToggle('${esc(r.code)}', this.checked)" />
+      <input type="checkbox" ${checked} onchange="assignTaskToggle('${esc(assignTaskKey(r))}', this.checked)" />
       <div class="assign-row-body">
         <div class="assign-row-title">${badge} <span class="mono">${esc(r.code)}</span>
           <span class="assign-items">${esc(r.items)}${dup && dup.has(r.code) ? ` [${esc(r.test_set||"")}]` : ""}</span></div>
@@ -3240,7 +3243,7 @@ function assignTaskSelAll() {
       String(r.items||"").toLowerCase().includes(q) || String(r.test_set||"").toLowerCase().includes(q)) : rows;
   const pg = _assignTask.page;
   const slice = filt.slice(pg * _assignTask.perPage, (pg + 1) * _assignTask.perPage);
-  slice.forEach(r => _assignTask.sel.add(r.code));
+  slice.forEach(r => _assignTask.sel.add(assignTaskKey(r)));
   assignTaskReRender();
 }
 function assignTaskSelClear() {
@@ -3269,7 +3272,7 @@ async function assignTaskCopy() {
   const sname = mm.sheet || "";
   const items = _assignTask.items;
   const dupSet = dupCodeSet();
-  const chosen = items.filter(r => sel.has(r.code));
+  const chosen = items.filter(r => sel.has(assignTaskKey(r)));
   if (!chosen.length) { notifyUser("\u6e2c\u9805\u6e05\u55ae\u5df2\u5207\u63db\uff0c\u8acb\u91cd\u65b0\u52fe\u9078"); return; }
 
   // \u6e05\u7406\u539f\u59cb\u8cc4\u6599\u91cc\u591a\u990a\u7684\u7a7a\u884c\uff082 \u500b\u4ee5\u4e0a\u9023\u7e8c blank line \u5168\u7e2e\u6210 1 \u500b\uff09\uff0c\u7559\u4e0b\u6b63\u5e38\u6bb5\u843d\u9593\u8ddd
@@ -3294,6 +3297,7 @@ async function assignTaskCopy() {
     const indent = (s, n) => s.split('\n').map(l => " ".repeat(n) + (l || "")).join('\n');
 
     lines.push(`${i + 1}. ${can === "YES" ? "\ud83d\udfe2" : can === "PARTIAL" ? "\ud83d\udfe0" : "\u26ab"} \u6e2c\u8a66\u9805\u76ee\uff1a${tname}${dupSet.has(r.code) ? ` [${r.test_set||""}]` : ""}`);
+    lines.push(`   Variant: ${r.case_variant_id || assignTaskKey(r)}`);
     if (pkg) lines.push(`   ${pkg}`);
     const note = can === "YES"
       ? "\u53ef\u81ea\u52d5\u57f7\u884c\u3002"

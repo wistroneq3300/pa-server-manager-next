@@ -173,7 +173,7 @@
   assignTaskListHtml=function(){return '<ol class="ux-steps"><li>\u9078\u64c7\u5206\u985e</li><li aria-current="step">\u9078\u64c7\u6e2c\u9805</li><li>\u78ba\u8a8d\u76ee\u6a19</li><li>\u7522\u751f\u6307\u4ee4</li></ol><p class="ux-selection-note">\u641c\u5c0b\u8207\u63db\u9801\u6703\u4fdd\u7559\u5df2\u9078\u6e2c\u9805\uff1b\u6b64\u6d41\u7a0b\u4e0d\u6703\u81ea\u52d5\u57f7\u884c\u6e2c\u8a66\u3002</p>'+list();};
   const copy=assignTaskCopy;
   assignTaskCopy=function(){
-    const chosen=_assignTask.items.filter(r=>_assignTask.sel.has(r.code));if(!chosen.length){uxNotify('\u8acb\u5148\u9078\u64c7\u6e2c\u9805',true);return;}
+    const chosen=_assignTask.items.filter(r=>_assignTask.sel.has(assignTaskKey(r)));if(!chosen.length){uxNotify('\u8acb\u5148\u9078\u64c7\u6e2c\u9805',true);return;}
     const target=machines.find(m=>m.name===_assignTask.name),expected=JSON.stringify(operationTarget(_assignTask.name)),selection=JSON.stringify([..._assignTask.sel].sort()),counts={YES:0,PARTIAL:0,OTHER:0};chosen.forEach(r=>{const k=String(r.ai_can_execute).toUpperCase();counts[k in counts?k:'OTHER']++;});
     showDialog('\u78ba\u8a8d\u6e2c\u9805\u8207\u76ee\u6a19',operationTargetHtml(target?.name||_assignTask.name||'')+
       '<p>'+chosen.length+' \u7b46 \u00b7 \u53ef\u81ea\u52d5 '+counts.YES+' / \u90e8\u5206 '+counts.PARTIAL+' / \u4eba\u5de5\u6216\u5f85\u78ba\u8a8d '+counts.OTHER+'</p><ul class="ux-chosen">'+chosen.map(r=>'<li>'+esc(r.code)+' \u00b7 '+esc(r.items)+'</li>').join('')+'</ul><p>\u4e0b\u4e00\u6b65\u50c5\u7522\u751f\u6307\u4ee4\u6587\u5b57\uff0c\u4e0d\u9023\u7dda\u57f7\u884c\u3002</p>',[

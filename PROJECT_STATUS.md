@@ -52,7 +52,25 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
 - Validation: 40 pytest tests passed (broker core/API/lifecycle/RBAC and KVM session mocks),
   including actual ASGI contracts, cross-browser cap, concurrent login, slow BMC isolation and
   lifespan cleanup. Two dependency deprecation warnings remain. Test environment is local .venv;
-  API test storage/credentials are now explicitly temporary/synthetic. This batch awaits push.
+  API test storage/credentials are now explicitly temporary/synthetic. Published as 1ede7e13;
+  remote main verified. No deployment.
+
+## F08/F09/F10/F16 mutation and test-library contracts (2026-09-28)
+
+- Generic edits cannot bypass the L11 specification snapshot. Legacy links have stable IDs;
+  deletion rejects ambiguous endpoint-only matches and deleting equipment removes incident links.
+- Test selection and AI advice use stable case_variant_id, not duplicated case codes.
+  Ambiguous legacy advice requests fail explicitly; library versions invalidate browser caches.
+  UNRESOLVED remains distinct from NO. Source workbook and checked-in library are untouched.
+- Workbook builds default to build/tests.json and include source checksum, version and variant
+  IDs. Rebuilt 3,112 rows / 3,112 IDs / 2,977 codes; every original row field matches the
+  checked-in library. Existing shared-command warnings are retained, not silently deduplicated.
+- Validation: 104 isolated Python regressions; Node operations/equipment; Chrome variant
+  selection/cache invalidation and full workspace UX suite passed. The latter covers five
+  routes, four widths, two themes, history, dialogs, telemetry and 3D collapse/restore.
+  Synthetic fixtures only; no hardware, deployment or production-data changes.
+- Worktree: C:/Users/kobei/Documents/Codex/2026-09-28/pa-manager-continue-pa-server-manager/f01-worktree.
+  F02/F03 await login/credential context; remaining queue continues in later batches.
 
 ## Product vision documentation (2026-09-28; published)
 

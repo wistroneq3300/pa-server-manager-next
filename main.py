@@ -741,6 +741,8 @@ def edit_machine(name: str, body: dict):
     if name not in machines:
         raise HTTPException(404, f"機台不存在: {name}")
     m = copy.deepcopy(machines[name])
+    if m.get("level", "system") != "rack" and body.get("level") == "rack":
+        raise HTTPException(422, "Use rack-specification with the current equipment snapshot to promote L10")
     if m.get("level") == "rack":
         fixed = {"mgx_type": telemetry_core.kind_of(m, name), "rack_size": m.get("rack_size", 1),
                  "rack_mount": m.get("rack_mount", "internal")}
@@ -1443,6 +1445,7 @@ def list_machines(force_scan: bool = False):
 def delete_machine(name: str):
     if name in machines:
         del machines[name]
+        links[:] = [link for link in links if name not in (link.get("a"), link.get("b"))]
         _save_data()
     return {"ok": True}
 
@@ -1459,6 +1462,8 @@ def _load_testlib():
             return _testlib_cache["data"]
         with open(_TESTLIB_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
+        from test_library_contract import prepare_library
+        prepare_library(data)
         _testlib_cache["mtime"] = mt
         _testlib_cache["data"] = data
         return data
@@ -1489,13 +1494,13 @@ def api_testlibrary_meta():
         raise HTTPException(404, "\u6e2c\u8a66\u5eab\u5c1a\u672a\u7522\u751f\uff08\u7f3a\u5c11 tests.json\uff09")
     out = []
     for label, s in data.get("sheets", {}).items():
-        cnt = {"YES": 0, "PARTIAL": 0, "NO": 0}
+        cnt = {"YES": 0, "PARTIAL": 0, "NO": 0, "UNRESOLVED": 0}
         for it in s.get("items", []):
-            k = (it.get("ai_can_execute") or "NO").upper()
-            cnt[k if k in cnt else "NO"] += 1
+            k = (it.get("ai_can_execute") or "UNRESOLVED").upper()
+            cnt[k if k in cnt else "UNRESOLVED"] += 1
         out.append({"label": label, "sheet": s.get("name"), "count": s.get("count"),
-                    "auto": cnt["YES"], "partial": cnt["PARTIAL"], "no": cnt["NO"]})
-    return {"total": data.get("total", 0), "sheets": out}
+                    "auto": cnt["YES"], "partial": cnt["PARTIAL"], "no": cnt["NO"], "unresolved": cnt["UNRESOLVED"]})
+    return {"total": data.get("total", 0), "sheets": out, "version": data.get("version"), "schema_version": data.get("schema_version")}
 
 
 @app.get("/api/testlibrary/export")
@@ -1593,7 +1598,8 @@ def ai_testlib_search(req: TestlibSearchReq):
 
 
 class TestlibAdviceReq(BaseModel):
-    code: str = Field(..., description="測試代碼，例如 Wistron-HW-00001-V006")
+    code: str = Field("", description="測試代碼，例如 Wistron-HW-00001-V006")
+    case_variant_id: str = ""
     log: str = Field(..., description="失敗 / 異常 log 內容")
     machine: str = Field("", description="機台名稱（可選）")
 
@@ -1605,14 +1611,11 @@ def ai_testlib_advice(req: TestlibAdviceReq):
     data = _load_testlib()
     if data is None:
         return {"ok": False, "error": "測試庫尚未產生（缺少 tests.json）"}
-    target = None
-    for label, s in data.get("sheets", {}).items():
-        for it in s.get("items", []):
-            if it.get("code") == req.code.strip():
-                target = {**it, "sheet": label}
-                break
-        if target:
-            break
+    from test_library_contract import select_variant
+    try:
+        target = select_variant(data, req.code.strip(), req.case_variant_id.strip())
+    except ValueError as error:
+        raise HTTPException(409, str(error))
     if not target:
         return {"ok": False, "error": f"找不到測試代碼: {req.code}"}
     proc = str(target.get("procedure", "") or "")[:3000]
@@ -1635,7 +1638,7 @@ def ai_testlib_advice(req: TestlibAdviceReq):
         txt = _llm_chat(sysp, usr, temperature=0.2, max_tokens=700)
     except Exception as e:
         return {"ok": False, "error": f"AI 分析失敗: {e}"}
-    return {"ok": True, "code": req.code.strip(), "sheet": target["sheet"],
+    return {"ok": True, "code": target["code"], "case_variant_id": target["case_variant_id"], "sheet": target["sheet"],
             "analysis": txt, "criteria": cri[:500]}
 
 
@@ -2029,6 +2032,9 @@ def ping_project_topology(name: str, body: dict):
 @app.get("/api/links")
 def list_links():
     """回傳所有連線。"""
+    from legacy_links import ensure_ids
+    with _DATA_LOCK:
+        ensure_ids(links)
     return {"ok": True, "links": links}
 
 
@@ -2043,13 +2049,18 @@ def add_link(body: dict):
     b_port = str(body.get("b_port", "") or "").strip()
     if not a or not b or a == b:
         raise HTTPException(400, "連線需要兩個不同端點")
+    if a not in machines or b not in machines:
+        raise HTTPException(422, "Both link endpoints must exist")
+    if t not in ("eth", "ib", "power", "coolant"):
+        raise HTTPException(422, "Invalid link type")
+    from legacy_links import ensure_ids, signature
+    ensure_ids(links)
+    candidate = {"a": a, "b": b, "type": t, "a_port": a_port or None, "b_port": b_port or None}
+    if any(signature(link) == signature(candidate) for link in links):
+        return {"ok": True, "note": "Already exists", "links": links}
     # 去重（無向）：同兩端且同類型視為同一條（允許 a_port/b_port 不同→多條同類型連線）
-    if not a_port and not b_port:
-        for lk in links:
-            if {lk.get("a"), lk.get("b")} == {a, b} and lk.get("type") == t:
-                return {"ok": True, "note": "已存在", "links": links}
-    links.append({"a": a, "b": b, "type": t,
-                  "a_port": a_port or None, "b_port": b_port or None})
+    links.append(candidate)
+    ensure_ids(links)
     _save_data()
     return {"ok": True, "links": links}
 
@@ -2058,13 +2069,17 @@ def add_link(body: dict):
 @_data_transaction
 def delete_link(body: dict):
     """刪除連線 {a, b}。"""
+    from legacy_links import ensure_ids, matches
+    ensure_ids(links)
     a = str(body.get("a", "")).strip()
     b = str(body.get("b", "")).strip()
-    for i, lk in enumerate(links):
-        if {lk.get("a"), lk.get("b")} == {a, b}:
-            links.pop(i)
-            _save_data()
-            return {"ok": True, "links": links}
+    candidates = [i for i, link in enumerate(links) if matches(link, body)]
+    if len(candidates) > 1:
+        raise HTTPException(409, "Ambiguous link; reload and specify its id")
+    if candidates:
+        links.pop(candidates[0])
+        _save_data()
+        return {"ok": True, "links": links}
     return {"ok": True, "note": "未找到", "links": links}
 
 

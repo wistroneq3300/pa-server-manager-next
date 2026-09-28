@@ -18,10 +18,14 @@ via openpyxl (json dumped with ensure_ascii=False). No CJK literal here.
 Usage: python3 scripts/build_testlib_json_xlsx.py [merged.xlsx] [out.json]
 """
 import openpyxl, json, os, sys
+import hashlib
+from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT_WS = os.path.join(REPO, "data", "REVISED_commands_merged_with_raw.xlsx")
-DEFAULT_OUT = "/srv/pa-manager-prod/data/tests.json"
+DEFAULT_OUT = os.path.join(REPO, "build", "tests.json")
+sys.path.insert(0, REPO)
+from test_library_contract import prepare_library
 
 SHEET_LABELS = {
     "Functionality": "\u529f\u80fd\u6027",          # Functional
@@ -59,7 +63,11 @@ def main():
     out_path = sys.argv[2] if len(sys.argv) > 2 else DEFAULT_OUT
     wb = openpyxl.load_workbook(ws_path, read_only=True)
 
-    library = {"sheets": {}, "total": 0, "generated_at": None}
+    with open(ws_path, 'rb') as source:
+        source_hash = hashlib.sha256(source.read()).hexdigest()
+    library = {"sheets": {}, "total": 0, "generated_at": datetime.now(timezone.utc).isoformat(),
+               "source_sha256": source_hash, "source_name": os.path.basename(ws_path),
+               "review_revision": source_hash}
     for sn in wb.sheetnames:
         if sn == "Summary":
             continue
@@ -93,6 +101,9 @@ def main():
             }
             library["total"] += len(items)
 
+    wb.close()
+    prepare_library(library)
+    library['unique_codes'] = len({item['code'] for sheet in library['sheets'].values() for item in sheet['items']})
     # anti-template sanity
     import collections
     counter = collections.Counter()
@@ -107,7 +118,7 @@ def main():
         for k, v in list(dups.items())[:5]:
             print("   x%d: %r" % (v, k[:120]))
 
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(library, f, ensure_ascii=False, indent=1)
     print("wrote", out_path, "total", library["total"])

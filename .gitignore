@@ -39,3 +39,6 @@ bridge7001.log
 
 # Synthetic regression test scratch space
 qa/tmp/
+.venv/
+.pytest_cache/
+build/
