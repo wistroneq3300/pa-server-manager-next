@@ -19,8 +19,23 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
   Python AST and whitespace checks. Tests use synthetic credentials and no real SSH/BMC.
 - Limits: this does not implement F02 authentication/authorization or F03b host-key enrollment.
   Hostname checks are not cryptographic identity checks. No deployment or live-device test.
-- The baseline review and current review-state are included for continuation. Implementation
-  is local pending the requested commit/push; publication confirmation will follow verification.
+- The baseline review and current review-state are included for continuation. Functional
+  commit 2c424201f063e67b3ada37e342fb798a07738aef was pushed to main and verified with ls-remote.
+
+## F04/F05/F06 alert and Terminal lifecycle (2026-09-28; second batch)
+
+- User clarified authorization covers the full improvement queue, with tests and pushes per batch.
+  F02 login integration and F03 credential validity are awaiting user context; independent fixes continue.
+- GPU alerts preserve creation/observation/resolution timestamps. Continuing high temperature
+  refreshes the same alert; missing data retains an active alert with stale=true. Temperature
+  alerts no longer depend on utilization being available. Existing schemas migrate idempotently.
+- Deterministic alerts commit before bounded background AI enrichment (2 workers, 16 pending).
+  Slow advice holds no SQLite transaction. Database connections now close after their transaction.
+- Terminal rejects malformed URLs without throwing out of its listener; single and broadcast
+  SSH clients/streams are cleaned up on early close and delayed ready/shell callbacks.
+- Validation: 95 Python regressions, including a second database writer during a blocked LLM;
+  Node Terminal security/lifecycle suites and syntax/diff checks passed. Synthetic fixtures only.
+  This second batch is locally verified pending its requested publication; no deployment.
 
 ## Product vision documentation (2026-09-28; published)
 

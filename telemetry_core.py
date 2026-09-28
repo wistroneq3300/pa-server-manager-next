@@ -11,6 +11,8 @@ import subprocess
 import threading
 import time
 import datetime
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 資料目錄可由環境變數 PA_DATA_DIR 指定（正式版與試用版隔離用）；未設則用程式所在目錄
@@ -32,10 +34,15 @@ GPU_QUERY = ("index,name,utilization.gpu,memory.total,memory.used,temperature.gp
              "power.draw,power.limit")
 
 
+@contextmanager
 def _conn():
     c = sqlite3.connect(DB_FILE, timeout=30)
     c.row_factory = sqlite3.Row
-    return c
+    try:
+        with c:
+            yield c
+    finally:
+        c.close()
 
 
 def init_db():
@@ -70,6 +77,13 @@ def init_db():
             c.execute("ALTER TABLE os_metrics ADD COLUMN mem_used_pct REAL")
         if "cpu_temp_c" not in cols:
             c.execute("ALTER TABLE os_metrics ADD COLUMN cpu_temp_c REAL")
+        alert_cols = {r[1] for r in c.execute("PRAGMA table_info(gpu_alerts)")}
+        for field in ("created_at", "last_seen_at", "resolved_at"):
+            if field not in alert_cols:
+                c.execute(f"ALTER TABLE gpu_alerts ADD COLUMN {field} REAL")
+        c.execute("UPDATE gpu_alerts SET created_at=COALESCE(created_at,ts), "
+                  "last_seen_at=COALESCE(last_seen_at,ts), "
+                  "resolved_at=CASE WHEN status='clear' THEN COALESCE(resolved_at,ts) ELSE resolved_at END")
 
         # Rack 元件類型 telemetry：EAV 泛型表（依 kind/metric 存各類型指標）
         # server/switch/powershelf/pdu/cdu 各自收集器寫入不同的 metric
@@ -344,21 +358,45 @@ def _alert_llm(machine, gpu, kind, value, threshold):
     return f"GPU{gpu} {kind} 偏高（{value:.0f} over {threshold}），請觀察是否有密集推理或散熱異常。"
 
 
+_ALERT_ADVICE_POOL = ThreadPoolExecutor(max_workers=2, thread_name_prefix="gpu-advice")
+_ALERT_ADVICE_SLOTS = threading.BoundedSemaphore(16)
+
+
+def _enrich_gpu_alert(alert_id, machine, gpu, kind, value, threshold):
+    # Network I/O must complete before opening the short write transaction.
+    text = _alert_llm(machine, gpu, kind, value, threshold)
+    with _conn() as c:
+        c.execute("UPDATE gpu_alerts SET text=? WHERE id=? AND status='active'",
+                  (text, alert_id))
+
+
+def _queue_gpu_alert_advice(*args):
+    if not _ALERT_ADVICE_SLOTS.acquire(blocking=False):
+        return  # Deterministic alert text remains available under overload.
+    try:
+        future = _ALERT_ADVICE_POOL.submit(_enrich_gpu_alert, *args)
+        future.add_done_callback(lambda _: _ALERT_ADVICE_SLOTS.release())
+    except Exception:
+        _ALERT_ADVICE_SLOTS.release()
+
+
 def evaluate_gpu_alerts(machine):
     """掃描最近 GPU 資料，偵測全機高載 / 單顆高溫，並維持 gpu_alerts 的 active/clear 狀態。
     高載以「全機所有 GPU 的平均 util 達到門檻」判斷（vLLM 連續批處理下單顆 util 是 0↔100
     間歇性，逐顆平均易誤判）；高溫則逐顆以最新溫度判斷。狀態轉換才呼叫 AI（避免每輪重複）。"""
     try:
+        advice = []
         with _conn() as c:
+            c.execute("BEGIN IMMEDIATE")
             since = time.time() - GPU_ALERT_WINDOW * 60
             rows = c.execute(
-                "SELECT gpu, util, temp FROM gpu_metrics WHERE machine=? AND ts>=? "
-                "AND util IS NOT NULL ORDER BY ts", (machine, since)).fetchall()
+                "SELECT ts, gpu, util, temp FROM gpu_metrics WHERE machine=? AND ts>=? "
+                "ORDER BY ts", (machine, since)).fetchall()
             recent = {}
             for r in rows:
                 recent.setdefault(r["gpu"], []).append(r)
             # 高載：全機平均 util（窗內全部樣本）
-            all_util = [r["util"] or 0 for r in rows]
+            all_util = [r["util"] for r in rows if r["util"] is not None]
             agg_util = (sum(all_util) / len(all_util)) if all_util else 0.0
             kinds_all = []
             # 高溫：逐顆最新值
@@ -377,20 +415,26 @@ def evaluate_gpu_alerts(machine):
                 key = (gpu if kind == "high_temp" else -1, kind)
                 now_keys.add(key)
                 if key in active_keys:
+                    observed = max(r["ts"] for r in rows if kind == "high_util" or r["gpu"] == gpu)
+                    c.execute("UPDATE gpu_alerts SET last_seen_at=?, value=?, threshold=? WHERE id=?",
+                              (observed, val, thr, active[key]["id"]))
                     continue
                 gname = gpu if gpu is not None else "all"
-                text = _alert_llm(machine, gname, kind, val, thr)
-                c.execute(
-                    "INSERT INTO gpu_alerts(ts,machine,gpu,kind,status,value,threshold,text) "
-                    "VALUES(?,?,?,?,?,?,?,?)",
-                    (ats, machine, -1 if gpu is None else gpu, kind, "active", val, thr, text))
+                text = f"GPU {gname}: {kind} {val:.0f} >= {thr}; check workload and cooling."
+                observed = max(r["ts"] for r in rows if kind == "high_util" or r["gpu"] == gpu)
+                cursor = c.execute(
+                    "INSERT INTO gpu_alerts(ts,machine,gpu,kind,status,value,threshold,text,created_at,last_seen_at) "
+                    "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (ats, machine, -1 if gpu is None else gpu, kind, "active", val, thr, text, ats, observed))
+                advice.append((cursor.lastrowid, machine, gname, kind, val, thr))
             for key, row in active.items():
-                if key not in now_keys:
-                    c.execute("UPDATE gpu_alerts SET status='clear', ts=? WHERE id=?",
-                              (ats, row["id"]))
-            stale = time.time() - GPU_ALERT_WINDOW * 4 * 60
-            c.execute("UPDATE gpu_alerts SET status='clear', ts=? WHERE machine=? AND status='active' AND ts<?",
-                      (ats, machine, stale))
+                observed = bool(all_util) if key[1] == "high_util" else any(
+                    r["temp"] is not None for r in recent.get(key[0], []))
+                if key not in now_keys and observed:
+                    c.execute("UPDATE gpu_alerts SET status='clear', ts=?, resolved_at=? WHERE id=?",
+                              (ats, ats, row["id"]))
+        for args in advice:
+            _queue_gpu_alert_advice(*args)
     except Exception as e:
         print("GPU alert 評估錯誤", machine, e)
 
@@ -399,9 +443,10 @@ def get_active_gpu_alerts():
     try:
         with _conn() as c:
             rows = c.execute(
-                "SELECT ts,machine,gpu,kind,status,value,threshold,text FROM gpu_alerts "
+                "SELECT ts,machine,gpu,kind,status,value,threshold,text,created_at,last_seen_at,resolved_at FROM gpu_alerts "
                 "WHERE status='active' ORDER BY ts DESC").fetchall()
-        return [dict(r) for r in rows]
+        now = time.time()
+        return [dict(r, stale=now - (r["last_seen_at"] or r["ts"]) > GPU_ALERT_WINDOW * 60) for r in rows]
     except Exception as e:
         print("GPU alert 讀取錯誤", e)
         return []

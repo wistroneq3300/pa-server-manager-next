@@ -16,11 +16,11 @@
 
 | 順序 | Finding | 主題 | 狀態／證據 |
 |---|---|---|---|
-| 1 | F01 | target／stored secret 綁定 | 已修正，待本批推送；main.py、terminal_bridge/server.js、static/js/app.js。Terminal target/user/port/slot 綁定；probe-bmc 拒絕新目標借用密碼；change-os-ip 改用明確輸入帳密。Python 88 項、Terminal handler 與 Chrome fixture 回歸通過；未驗實機，F02 授權與 F03b 身份 enrollment 仍待處理。 |
+| 1 | F01 | target／stored secret 綁定 | 已修正並推送 2c42420；main.py、terminal_bridge/server.js、static/js/app.js。Terminal target/user/port/slot 綁定；probe-bmc 拒絕新目標借用密碼；change-os-ip 改用明確輸入帳密。Python 88 項、Terminal handler 與 Chrome fixture 回歸通過；未驗實機，F02 授權與 F03b 身份 enrollment 仍待處理。 |
 | 2 | F02 | API／bridge auth 與設備授權 | 待處理；外部 proxy/SSO 未驗證 |
 | 3 | F03 | Git／inventory 憑證分離 | 待處理；現役有效性未驗證 |
-| 4 | F04、F05 | 告警誤解除、LLM 在 DB 交易內 | 待處理；隔離重現 |
-| 5 | F06 | Terminal URL／SSH cleanup | 待處理；隔離重現 |
+| 4 | F04、F05 | 告警誤解除、LLM 在 DB 交易內 | 已修正，待本批推送；telemetry_core.py；保留告警時間與 stale、交易提交後有界 AI 工作。95 項 Python regression 通過，含慢 LLM 期間另一連線寫入；未驗實機。 |
+| 5 | F06 | Terminal URL／SSH cleanup | 已修正，待本批推送；terminal_bridge/server.js；Node 真實 handler mock 驗證 malformed URL、ready/shell 前後斷線與廣播清理通過；未驗實機。 |
 | 6 | F07、F07b、F07c | Broker expiry/cap/async、KVM logout | 待處理；部分隔離重現，未驗實機 |
 | 7 | F08、F09 | L10/L11 mutation、link identity | 待處理；隔離重現 |
 | 8 | F10 | Test variant／AI advice | 待處理；原始碼與資料統計 |

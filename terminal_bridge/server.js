@@ -119,6 +119,7 @@ function handleTerminal(ws, url) {
   let conn = null;
   let stream = null;
   let ready = false;
+  let closed = false;
 
   const send = (type, payload) => {
     if (ws.readyState === ws.OPEN) {
@@ -150,6 +151,7 @@ function handleTerminal(ws, url) {
   ws.on('close', () => { cleanup(); });
 
   const cleanup = () => {
+    closed = true;
     if (stream) { try { stream.end(); } catch {} }
     if (conn) { try { conn.end(); } catch {} }
     stream = null; conn = null;
@@ -158,13 +160,16 @@ function handleTerminal(ws, url) {
   send('status', 'connecting...');
 
   const conn2 = new Client();
+  conn = conn2;
   conn2.on('ready', () => {
+    if (closed) { conn2.end(); return; }
     conn2.shell({ term: 'xterm-256color', cols: 120, rows: 30 }, (err, str) => {
-      if (err) { send('error', `SSH session 失敗: ${err.message}`); return; }
+      if (closed) { if (str) str.end(); conn2.end(); return; }
+      if (err) { send('error', `SSH session 失敗: ${err.message}`); cleanup(); return; }
       stream = str;
       str.on('data', (d) => send('data', d));
       str.stderr.on('data', (d) => send('data', d));
-      str.on('close', () => { if (ready) send('status', 'connection closed'); else send('error', 'SSH session closed before ready'); });
+      str.on('close', () => { if (ready) send('status', 'connection closed'); else send('error', 'SSH session closed before ready'); conn2.end(); });
       conn2.on('close', () => {});
       ready = true;
       send('status', 'connected');
@@ -173,17 +178,19 @@ function handleTerminal(ws, url) {
     let shown = String(err && err.message || err);
     if (/all configured authentication methods failed/i.test(shown)) shown = 'Authentication failed';
     send('error', `SSH 連線失敗: ${shown}`);
+    cleanup();
   }).connect({
     host, port, username: user, password: pass,
     readyTimeout: 15000,
   });
-  conn = conn2;
 }
 
 // ---- 廣播終端（/ws/broadcast）：事件驅動 fan-out，多台 OS shell ----
 function handleBroadcast(ws, url) {
   loadCreds(); // 每次連線前重新載入最新機台帳密（支援 runtime 新增大機台）
   let shells = {};      // name -> ssh2 Client stream
+  const clients = new Set();
+  let closed = false;
 
   const jsend = (obj) => { if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
 
@@ -219,6 +226,7 @@ function handleBroadcast(ws, url) {
 
   // 第一個 JSON 須為 {targets:[...], kind:"os"}
   ws.once('message', (data) => {
+    if (closed) return;
     let text; try { text = data.toString(); } catch {}
     let msg; try { msg = JSON.parse(text || ''); } catch {}
     if (!msg || !Array.isArray(msg.targets)) {
@@ -229,7 +237,7 @@ function handleBroadcast(ws, url) {
     const kind = msg.kind || 'os';
     if (kind !== 'os') { jsend({ type:'error', msg:'廣播終端目前僅支援 OS shell' }); try{ws.close();}catch{} return; }
 
-    const names = msg.targets;
+    const names = [...new Set(msg.targets.map(String))];
     let pending = names.length;
     const joined = [];
     const failed = [];
@@ -246,6 +254,7 @@ function handleBroadcast(ws, url) {
       joined.push(nm);
     };
     const done = () => {
+      if (closed) return;
       if (joined.length) {
         jsend({ type:'ready', joined, failed });
       } else {
@@ -254,6 +263,7 @@ function handleBroadcast(ws, url) {
       }
     };
 
+    if (!pending) { done(); return; }
     for (const nm of names) {
       // target 格式：純 name（主 OS，向後相容）或 name#slot
       //   slot=0（或無）→ 主 OS（CREDS[name].os）
@@ -286,17 +296,27 @@ function handleBroadcast(ws, url) {
         continue;
       }
       const c = new Client();
-      c.on('ready', () => {
-        c.shell({ term:'xterm-256color', cols:100, rows:24 }, (err, stream) => {
-          if (err) { failed.push(nm); }
-          else { started(nm, stream); }
-          pending--;
-          if (pending === 0) done();
-        });
-      }).on('error', (err) => {
-        failed.push(nm);
+      clients.add(c);
+      let settled = false;
+      const finish = (err, stream) => {
+        if (closed) { if (stream) stream.destroy(); c.end(); return; }
+        if (settled) return;
+        settled = true;
+        if (err) { failed.push(nm); c.end(); }
+        else {
+          started(nm, stream);
+          stream.on('close', () => c.end());
+        }
         pending--;
         if (pending === 0) done();
+      };
+      c.on('close', () => { clients.delete(c); if (!settled) finish(new Error('SSH closed before ready')); });
+      c.on('ready', () => {
+        if (closed) { c.end(); return; }
+        c.shell({ term:'xterm-256color', cols:100, rows:24 }, finish);
+      }).on('error', (err) => {
+        if (settled) { c.end(); return; }
+        finish(err);
       }).connect({
         host: cred.host, port: cred.port || 22,
         username: cred.user, password: cred.pass,
@@ -306,19 +326,27 @@ function handleBroadcast(ws, url) {
   });
 
   function teardown() {
+    closed = true;
     for (const nm of Object.keys(shells)) {
       try { shells[nm].destroy(); } catch {}
     }
     shells = {};
+    for (const client of clients) { try { client.end(); } catch {} }
+    clients.clear();
   }
 }
 
 wss.on('connection', (ws, req) => {
-  const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/ws/broadcast') {
-    handleBroadcast(ws, url);
-  } else {
-    handleTerminal(ws, url);
+  try {
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/ws/broadcast') {
+      handleBroadcast(ws, url);
+    } else {
+      handleTerminal(ws, url);
+    }
+  } catch {
+    sendErr(ws, 'Invalid terminal connection request');
+    try { ws.close(4001, 'Invalid connection request'); } catch {}
   }
 });
 
