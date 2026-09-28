@@ -321,7 +321,9 @@ def ping_check(ip, timeout=3):
     cmd = ["ping", "-c", "1", "-W", str(timeout), ip]
     # -c 1: 只送一次; -W: 逾時秒數
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 3)
+        from probe_budget import ping_slot
+        with ping_slot:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 3)
         return r.returncode == 0
     except Exception:
         return False
@@ -927,7 +929,6 @@ class ChangeOsIp(BaseModel):
 
 
 @app.post("/api/machines/{name}/change-os-ip")
-@_data_transaction
 def change_os_ip(name: str, body: ChangeOsIp):
     """變更機台的 OS IP（因 DHCP 有時會漂移）。
 
@@ -936,9 +937,10 @@ def change_os_ip(name: str, body: ChangeOsIp):
       2) Use explicitly supplied credentials for the new IP, then check hostname.
     → 符合才更新 os_ip 並存檔。避免把 IP 誤配到別的機器。
     """
-    if name not in machines:
-        raise HTTPException(404, f"機台不存在: {name}")
-    m = machines[name]
+    with _DATA_LOCK:
+        if name not in machines:
+            raise HTTPException(404, f"機台不存在: {name}")
+        m = copy.deepcopy(machines[name])
     new_ip = (body.new_os_ip or "").strip()
     if not new_ip:
         raise HTTPException(400, "請輸入新的 OS IP")
@@ -970,17 +972,9 @@ def change_os_ip(name: str, body: ChangeOsIp):
                        f"判定為別的機器，拒絕變更。"}
 
     old_ip = m.get("os_ip")
-    m["os_ip"] = new_ip
-    m.update(os_user=user, os_pass=password, os_port=port)
-    slots = m.get("os") or []
-    if slots:
-        slots[int(m.get("active_os") or 1) - 1]["ip"] = new_ip
-        slots[int(m.get("active_os") or 1) - 1].update(user=user, **{"pass": password}, port=port)
-        _sync_active_os(m)
-    _save_data()
-    _invalidate_machine_cache(name)
+    safe = _commit_connection(name, m, {"os_ip": new_ip, "os_user": user, "os_pass": password, "os_port": port})
     return {"ok": True, "changed": True, "msg": f"已將 OS IP 由 {old_ip} 更新為 {new_ip}。",
-            "machine": _bmc_safe(m)}
+            "machine": safe}
 
 
 class ChangeBmcIp(BaseModel):
@@ -988,12 +982,12 @@ class ChangeBmcIp(BaseModel):
 
 
 @app.post("/api/machines/{name}/change-bmc-ip")
-@_data_transaction
 def change_bmc_ip(name: str, body: ChangeBmcIp):
     """變更機台的 BMC IP。只要新 IP ping 得通就允許變更（無hostname驗證）。"""
-    if name not in machines:
-        raise HTTPException(404, f"機台不存在: {name}")
-    m = machines[name]
+    with _DATA_LOCK:
+        if name not in machines:
+            raise HTTPException(404, f"機台不存在: {name}")
+        m = copy.deepcopy(machines[name])
     new_ip = (body.new_bmc_ip or "").strip()
     if not new_ip:
         raise HTTPException(400, "請輸入新的 BMC IP")
@@ -1002,16 +996,10 @@ def change_bmc_ip(name: str, body: ChangeBmcIp):
     if not ping_check(new_ip, timeout=3):
         return {"ok": False, "changed": False,
                 "msg": f"Ping 不到新 BMC IP {new_ip}，未變更。請確認該 IP 現在是線上。"}
-    old_ip = m.get("bmc_ip") or "(無)"
-    m["bmc_ip"] = new_ip
-    slots = m.get("os") or []
-    if slots:
-        slots[int(m.get("active_os") or 1) - 1]["bmc_ip"] = new_ip
-        _sync_active_os(m)
-    _save_data()
-    _invalidate_machine_cache(name)
+    old_ip = m.get("bmc_ip")
+    safe = _commit_connection(name, m, {"bmc_ip": new_ip})
     return {"ok": True, "changed": True, "msg": f"已將 BMC IP 由 {old_ip} 更新為 {new_ip}。",
-            "machine": _bmc_safe(m)}
+            "machine": safe}
 
 
 # ---- 多 OS 機框（一台 server 含多個獨立 OS，每個 OS 配對一個 BMC）CRUD ----
@@ -1401,7 +1389,15 @@ def _kick_status_scan(force=False):
     """若快取過期，在背景 thread 刷新狀態，立即回傳舊快取（避免阻塞 API 回應）。
     force=True 時同步執行。"""
     if force:
-        _refresh_status(force=True)
+        if not _STATUS_LOCK.acquire(blocking=False):
+            # Join the current scan instead of issuing a duplicate full scan.
+            with _STATUS_LOCK:
+                pass
+            return
+        try:
+            _refresh_status(force=True)
+        finally:
+            _STATUS_LOCK.release()
         return
     now = time.time()
     if _STATUS_TIME and (now - _STATUS_TIME) < _STATUS_TTL:
@@ -1669,17 +1665,46 @@ def machine_get_one(name: str):
 
 
 def _bmc_safe(m):
-    """回傳不含密碼的機台資訊 + 即時 ping。"""
+    """Mask credentials and report cached observations without network I/O."""
     c = dict(m)
     c["os_pass"] = "****" if c.get("os_pass") else ""
     c["bmc_pass"] = "****" if c.get("bmc_pass") else ""
-    c["os_alive"] = ping_check(m.get("os_ip"), 2) if m.get("os_ip") else None
-    c["bmc_alive"] = ping_check(m.get("bmc_ip"), 2) if m.get("bmc_ip") else None
     c["os"] = _mask_os_list(m.get("os"))
-    c["connectivity"] = {kind: {"source": "ICMP ping", "observed_at": time.time() if m.get(kind + "_ip") else None,
-        "configured": bool(m.get(kind + "_ip"))} for kind in ("os", "bmc")}
+    c["connectivity"] = {}
+    for kind in ("os", "bmc"):
+        key = (kind, m.get("name"))
+        configured = bool(m.get(kind + "_ip"))
+        c[kind + "_alive"] = globals().get("_status_cache", {}).get(key) if configured else None
+        c["connectivity"][kind] = {
+            "source": "ICMP ping cache",
+            "observed_at": globals().get("_status_observed", {}).get(key) if configured else None,
+            "configured": configured,
+        }
     return c
 
+
+def _commit_connection(name, snapshot, updates):
+    """Compare and save after probes finish outside the inventory lock."""
+    with _DATA_LOCK:
+        m = machines.get(name)
+        if m is None or m != snapshot:
+            raise HTTPException(409, "Equipment changed during verification; reload and retry")
+        try:
+            m.update(updates)
+            slots = m.get("os") or []
+            if slots:
+                slot = slots[int(m.get("active_os") or 1) - 1]
+                for key, value in updates.items():
+                    slot[{"os_ip": "ip", "os_user": "user", "os_pass": "pass",
+                          "os_port": "port"}.get(key, key)] = value
+                _sync_active_os(m)
+            _save_data()
+        except Exception:
+            m.clear()
+            m.update(copy.deepcopy(snapshot))
+            raise
+        _invalidate_machine_cache(name)
+        return _bmc_safe(m)
 
 def _is_masked(v):
     """前端回傳的密碼若含遮罩符號（**）就視為「未提供」，不得寫回成為真實密碼。

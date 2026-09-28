@@ -72,6 +72,23 @@ Updated: 2026-09-28. PROJECT_STATUS.md is the single maintained continuation rec
 - Worktree: C:/Users/kobei/Documents/Codex/2026-09-28/pa-manager-continue-pa-server-manager/f01-worktree.
   F02/F03 await login/credential context; remaining queue continues in later batches.
 
+## F11/F15 first concurrency hardening (2026-09-28)
+
+- F08/F09/F10/F16 published as 258092078f974dff4a2df9d8608d55e3c9106ef3; remote verified.
+- OS/BMC IP verification runs outside the inventory lock, then compares the complete record
+  snapshot before a short save. Concurrent changes return 409; save failures restore the record.
+- Mutation response serialization no longer performs hidden Ping under the transaction lock;
+  it reports cached observation timestamps and unknown after invalidation, never a fabricated result.
+- Forced status requests join an existing scan. All ICMP calls share a process-wide 32-probe
+  semaphore, including status, Rack and topology request pools.
+- Validation: 109 isolated Python regressions passed, including actual threaded tests for
+  slow probes, stale commits, rollback, coalesced scans and the shared ICMP budget.
+- Partial: JSON remains single-process/full-file storage; per-request waiting threads and
+  non-ICMP power/health probes are not yet a shared scheduler. No capacity benchmark performed.
+- Remaining work: F02 auth integration and F03 credential handling need user choices;
+  F03b identity enrollment and OneTree logout require compatibility details. F18/F19/F14,
+  F17, staged F12/F13, F15b and capability planning remain open. No live deployment/testing.
+
 ## Product vision documentation (2026-09-28; published)
 
 - README now defines PA Manager's long-term direction as a multi-project, AI-driven

@@ -130,7 +130,9 @@ class Reliability(unittest.TestCase):
     def test_every_inventory_writer_is_transactional(self):
         tree = ast.parse((ROOT / 'main.py').read_text(encoding='utf-8'))
         for n in tree.body:
-            if isinstance(n, ast.FunctionDef) and n.name != '_save_data' and any(
+            # The optimistic connection commit has its own locked rollback contract,
+            # exercised with concurrent probes and failed saves in concurrency_regression.
+            if isinstance(n, ast.FunctionDef) and n.name not in ('_save_data', '_commit_connection') and any(
                 isinstance(x, ast.Call) and isinstance(x.func, ast.Name) and x.func.id == '_save_data'
                 for x in ast.walk(n)):
                 self.assertIn('_data_transaction', [d.id for d in n.decorator_list if isinstance(d, ast.Name)])

@@ -25,7 +25,7 @@
 | 7 | F08、F09 | L10/L11 mutation、link identity | 已修正；專用 L11 snapshot、link ID 與歧義拒絕、刪設備清理 links；104 項 Python regression 與工作區 Chrome 回歸通過。 |
 | 8 | F10 | Test variant／AI advice | 已修正；variant ID、精確 AI advice 與選取、版本 cache、UNRESOLVED；Python 與重複代碼 Chrome fixture 通過。 |
 | 9 | F03b | SSH／BMC identity enrollment | 待處理；需分批驗相容性 |
-| 10 | F11、F15 | inventory 鎖、探測併發 | 待處理；未做容量 benchmark |
+| 10 | F11、F15 | inventory 鎖、探測併發 | 部分修正：IP 驗證移出鎖、snapshot compare/save/rollback；回應不在鎖內 Ping；force scan 合併、全服務 ICMP 32 併發上限。109 項 Python regression 通過；JSON 全檔儲存、非 ICMP scheduler 與容量 benchmark 仍待處理。 |
 | 11 | F18、F19 | 新提案互動／語意、表單 labels | 待處理；完整清單搜尋保留已在 Chrome 重現 |
 | 12 | F14 | Rack Ping 保留場景／視角 | 待處理；原始碼路徑確認 |
 | 13 | F16、F17 | 建置版本、測試環境／CI | F16 已修正：本地 build 輸出、source checksum／version／variant IDs，3,112 列原欄位逐列一致；F17 待處理。 |

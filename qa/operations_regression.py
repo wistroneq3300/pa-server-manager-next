@@ -43,7 +43,7 @@ class Operations(unittest.TestCase):
                       telemetry_core=SimpleNamespace(kind_of=lambda m,n='':m.get('mgx_type','server')),
                       HTTPException=ApiError, _DATA_LOCK=threading.RLock(), ping_check=lambda *a, **k:True,
                       _save_data=Mock(), ssh_run=Mock(return_value=('node',0,'')))
-        extract('main.py', ['_sync_active_os','_invalidate_machine_cache','_bmc_safe','_mask_os_list',
+        extract('main.py', ['_sync_active_os','_invalidate_machine_cache','_bmc_safe','_mask_os_list','_commit_connection',
                 'machine_delete_os','change_os_ip','change_bmc_ip','probe_bmc','_reboot_machine',
                 '_operation_target'], self.s)
 
